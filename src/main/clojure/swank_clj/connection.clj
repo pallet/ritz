@@ -85,6 +85,7 @@
            :writer (OutputStreamWriter. (.getOutputStream socket) encoding)
            :read-monitor (Object.)
            :write-monitor (Object.)
+           :sldb-levels []
            :pending #{}
            :timeout nil}))
       (swap! (fn [connection]
@@ -96,6 +97,10 @@
 
 (defn remove-pending-id [connection id]
   (swap! connection update-in [:pending] disj id))
+
+(defn pending
+  [connection]
+  (:pending @connection))
 
 (defn local-port
   [connection]
@@ -141,3 +146,23 @@
 (defn create
   [socket options]
   (authenticate (initialise socket options)))
+
+(defn next-sldb-level
+  [connection restarts thread]
+  (logging/trace "next-sldb-level")
+  (swap!
+   connection update-in [:sldb-levels]
+   (fn [levels]
+     (conj (or levels []) {:restarts restarts :thread thread})))
+  (count (:sldb-levels @connection)))
+
+(defn sldb-level
+  [connection]
+  (count (:sldb-levels @connection)))
+
+(defn invoke-restart
+  [connection level n]
+  (let [m (nth (dec level) (:sldb-levels @connection))]
+    (if-let [f (nth n (:restarts m))]
+      (f))
+    {:thread m}))

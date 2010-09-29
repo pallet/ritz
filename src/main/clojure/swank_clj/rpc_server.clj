@@ -44,8 +44,7 @@
     (let [timeout (:timeout @connection)
           result (if timeout
                    (.get future timeout TimeUnit/MILLISECONDS)
-                   (.get future))]
-      (logging/trace "rpc-server/response %s" result))
+                   (.get future))])
     (catch CancellationException e
       (connection/send-to-emacs connection "cancelled"))
     (catch TimeoutException e

@@ -5,12 +5,20 @@
                                 (java.io.File. "/tmp/swank.log"))))
 (def monitor (Object.))
 
+(def log-level (atom nil))
+
+(defn set-level
+  "Set log level"
+  [level]
+  (reset! log-level level))
+
 (defmacro log
   [level fmt-str & args]
-  `(locking monitor
-     (.write logging-out (format ~fmt-str ~@args))
-     (.write logging-out "\n")
-     (.flush logging-out)))
+  `(when (= ~level @log-level)
+     (locking monitor
+       (.write logging-out (format ~fmt-str ~@args))
+       (.write logging-out "\n")
+       (.flush logging-out))))
 
 (defmacro trace
   [fmt-str & args]

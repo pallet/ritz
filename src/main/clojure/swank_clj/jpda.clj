@@ -89,8 +89,10 @@
 
 (defn methods
   "Return a class's methods with name from the vm."
-  [class method-name]
-  (.methodsByName class method-name))
+  ([class method-name]
+     (.methodsByName class method-name))
+  ([class method-name signature]
+     (.methodsByName class method-name signature)))
 
 (defn mirror-of
   "Mirror a primitive value or string into the given vm."
@@ -107,10 +109,14 @@
   [^StringReference value]
   (.value value))
 
+(defn object-reference
+  [obj-ref]
+  (format "ObjectReference %s" (.. obj-ref referenceType name)))
 
-(defn remote-value
-  "Create remote value using a unary constructor"
-  [vm value]
-  (let [class-name (.. (class value) name)
-        class-ref (first (.classesByName vm class-name))]
-  ))
+(defn location-type-name
+  [location]
+  (.. location declaringType name))
+
+(defn location-method-name
+  [location]
+  (.. location declaringType name))

@@ -6,7 +6,8 @@
    [swank-clj.jpda :as jpda]
    [swank-clj.connection :as connection]
    [swank-clj.executor :as executor]
-   [clojure.java.io :as io])
+   [clojure.java.io :as io]
+   [clojure.string :as string])
   (:import
    java.net.Socket
    java.net.InetSocketAddress
@@ -28,10 +29,18 @@
 (defonce connections (atom {}))
 
 (defn add-connection [connection proxied-connection]
-  (swap! connection assoc connection proxied-connection))
+  (swap! connections assoc connection proxied-connection))
 
 (defn remove-connection [connection]
-  (swap! connection dissoc connection))
+  (swap! connections dissoc connection))
+
+
+
+(def throwable (delay (first (jpda/classes (:vm vm) "java.lang.Throwable"))))
+(def get-message (delay (first (jpda/methods @throwable "getMessage"))))
+(defn exception-message [exception thread]
+  (if-let [message (jpda/invoke-method exception @get-message thread [])]
+    (jpda/string-value message)))
 
 (def continue-handling (atom true))
 
@@ -40,6 +49,7 @@
   (->
    context
    (assoc
+       :event-request-manager manager
        :exception-request (doto (.createExceptionRequest manager nil true true)
                             (.setSuspendPolicy
                              ExceptionRequest/SUSPEND_EVENT_THREAD)
@@ -129,7 +139,8 @@
       (logging/trace
        "swank/eval-for-emacs: no forwarding fn %s" (first form))
       (executor/execute-request
-       (partial connection/send-to-emacs connection `(:return (:abort) ~id))))))
+       (partial connection/send-to-emacs connection `(:return (:abort) ~id)))
+      (connection/remove-pending-id connection id))))
 
 (defn forward-reply
   [connection]
@@ -138,58 +149,80 @@
   (let [proxied-connection (:proxy-to @connection)
         reply (connection/read-from-connection proxied-connection)]
     (executor/execute-request
-     (partial connection/send-to-emacs connection reply))))
+     (partial connection/send-to-emacs connection reply))
+    (let [id (second reply)]
+      (connection/remove-pending-id connection id))))
 
-;; (defn debugger-condition-for-emacs [exception]
-;;   (list (or (.getMessage exception) "No message.")
-;;         (str "  [Thrown " (class exception) "]")
-;;         nil))
+(defn debugger-condition-for-emacs [exception thread]
+  (list (or (exception-message exception thread) "No message.")
+        (str "  [Thrown " (.. exception referenceType name) "]")
+        nil))
 
-;; (defn format-restarts-for-emacs [restarts]
-;;   (doall (map #(list (first (second %)) (second (second %))) restarts)))
+(defn format-restarts-for-emacs [restarts]
+  (doall (map #(list (first (second %)) (second (second %))) restarts)))
 
-;; (defn exception-stacktrace [t]
-;;   (map #(list %1 %2 '(:restartable nil))
-;;        (iterate inc 0)
-;;        (map str (.getStackTrace t))))
+(defn format-frame
+  [frame]
+  (let [location (.location frame)
+        method (.method location)
+        line (.lineNumber location)
+        source-name (.sourceName location)
+        source-path (.sourcePath location)
+        declaring-type (.declaringType location)]
+    (format
+     "%s %s %s:%s"
+     (.name declaring-type)
+     (.name method)
+     source-path
+     line)))
 
-;; (defn build-backtrace [exception start end]
-;;   (doall (take (- end start) (drop start (exception-stacktrace exception)))))
+(defn exception-stacktrace [thread]
+  (map #(list %1 %2 '(:restartable nil))
+       (iterate inc 0)
+       (map format-frame (.frames thread))))
+
+(defn build-backtrace [thread start end]
+  (doall (take (- end start) (drop start (exception-stacktrace thread)))))
 
 
 ;; (defonce *debug-quit-exception* (Exception. "Debug quit"))
 ;; (defonce *debug-continue-exception* (Exception. "Debug continue"))
 ;; (defonce *debug-abort-exception* (Exception. "Debug abort"))
 
-;; (defn make-restart [kw name description f]
-;;   [kw [name description f]])
+(defn make-restart [kw name description f]
+  [kw [name description f]])
 
-;; (defn calculate-restarts [thrown]
-;;   (let [restarts [(make-restart :quit "QUIT" "Quit to the SLIME top level"
-;;                                (fn [] (throw *debug-quit-exception*)))]]
-;;     (into (array-map) restarts)))
+(defn calculate-restarts [thrown thread]
+  (logging/trace "calculate-restarts")
+  (let [restarts [(make-restart :quit "QUIT" "Quit to the SLIME top level"
+                               (fn [] (.resume thread)))]]
+    (into (array-map) restarts)))
 
+(defn build-debugger-info-for-emacs [exception thread restarts start end conts]
+  (list (debugger-condition-for-emacs exception thread)
+        (format-restarts-for-emacs restarts)
+        (build-backtrace thread start end)
+        []
+        conts))
 
-;; (defn build-debugger-info-for-emacs [exception restarts start end]
-;;   (list (debugger-condition-for-emacs exception)
-;;         (format-restarts-for-emacs restarts)
-;;         (build-backtrace exception start end)
-;;         []))
-
-;; (defn connection-and-id-from-thread
-;;   "Walk the stack frames to find the eval-for-emacs call and extract
-;;    the id argument."
-;;   [thread]
-;;   (logging/trace "Finding id for thread %s" thread)
-;;   (reduce (fn [id frame]
-;;             (or id
-;;                 (if-let [location (.location frame)]
-;;                   (when (= "eval-for-emacs" (.. location method name))
-;;                     (let [connection (first (.getArgumentValues frame))
-;;                           id (last (.getArgumentValues frame))]
-;;                       {:connection connection
-;;                        :id id})))))
-;;           nil (.frames thread)))
+(defn invoke-sldb
+  [connection exception thread]
+  (logging/trace "invoke-sldb")
+  (let [thread-id (.uniqueID thread)
+        restarts (calculate-restarts exception thread)
+        level (connection/next-sldb-level connection restarts thread-id)]
+    (logging/trace "invoke-sldb: call emacs")
+    (connection/send-to-emacs
+     connection
+     (list* :debug thread-id level
+            (build-debugger-info-for-emacs
+             exception thread
+             restarts
+             0 *sldb-initial-frames*
+             (connection/pending connection))))
+    (connection/send-to-emacs
+     connection
+     `(:debug-activate ~thread-id ~level nil))))
 
 (defn vm-rt
   "Lookup clojure runtime."
@@ -238,9 +271,60 @@
   [vm thread form]
   `(remote-eval* ~vm ~thread '~(eval-to-string form)))
 
+(defmacro remote-
+  [vm thread form]
+  `(remote-eval* ~vm ~thread '~(eval-to-string form)))
+
 (defmacro control-eval
   [form]
   `(read-string (remote-eval vm (:control-thread vm) '~form)))
+
+(def jni-object "Ljava/lang/Object;")
+(defn invoke-signature
+  "Clojure invoke signature for the specified number of arguments"
+  [n]
+  (str "(" (string/join (repeat n jni-object)) ")" jni-object))
+
+(defn clojure-fn
+  "Resolve a clojure function in the remote vm. Returns an ObjectReference and
+   a Method for n arguments."
+  [ns name n]
+  (let [object (->>
+                [(jpda/mirror-of (:vm vm) ns) (jpda/mirror-of (:vm vm) name)]
+                (jpda/invoke-method (:RT vm) (:var vm) (:control-thread vm)))]
+    [object (first (jpda/methods
+                    (.referenceType object) "invoke" (invoke-signature n)))]))
+
+(defn invoke-clojure-fn
+  "Invoke a function on the control connection with the given remote arguments."
+  [ns name & args]
+  (let [[object method] (clojure-fn ns name (count args))]
+    (jpda/invoke-method object method (:control-thread vm) args)))
+
+(defn read-arg
+  "Read the value of the given arg"
+  [arg]
+  (->
+   (invoke-clojure-fn "clojure.core" "pr-str" arg)
+   jpda/string-value
+   read-string))
+
+(defn get-keyword
+  "Get ObjectReference for the result of looking up keyword in a remote map
+   object."
+  [m kw]
+  (let [kw (invoke-clojure-fn
+            "clojure.core" "keyword" (jpda/mirror-of (:vm vm) (name kw)))
+        method (first
+                (jpda/methods
+                 (.referenceType m) "invoke" (invoke-signature 1)))]
+    (logging/trace "map %s" (jpda/object-reference m))
+    (logging/trace "signature %s" (invoke-signature 1))
+    (logging/trace "keyword %s" (jpda/object-reference kw))
+    (logging/trace "method %s" (pr-str method))
+    (jpda/invoke-method m method (:control-thread vm) [kw])))
+
+;; objectref(Integer)
 
 ;; (defn vm-var
 ;;   [thread namespace name]
@@ -296,21 +380,35 @@
         (Thread/sleep 200)
         (recur)))))
 
+(defn add-exception-event-request
+  [vm]
+  (when-not (:exception-request vm)
+    (assoc vm
+      :exception-request (doto (.createExceptionRequest
+                                (:event-request-manager vm)
+                                nil true true)
+                           (.setSuspendPolicy
+                            ExceptionRequest/SUSPEND_ALL)
+                           (.enable)))))
+
+(defn ensure-exception-event-request
+  []
+  (alter-var-root #'vm add-exception-event-request))
+
 ;;; VM events
-(def throwable (delay (first (jpda/classes (:vm vm) "java.lang.Throwable"))))
-(def get-message (delay (first (jpda/methods @throwable "getMessage"))))
-
-(defn exception-message [exception thread]
-  (jpda/invoke-method exception @get-message thread []))
-
 (defn maybe-acquire-control-thread
-  "Inspect exception to see if we can use it to acquire a control thread."
+  "Inspect exception to see if we can use it to acquire a control thread.
+   If found, swap the exception event request for uncaught exceptions."
   [exception thread]
   (try
     (when-let [message (exception-message exception thread)]
-      (when (= (jpda/string-value message) control-thread-name)
+      (when (= message control-thread-name)
         (.suspend thread)
-        (alter-var-root #'vm assoc :control-thread thread)
+        (.disable (:exception-request vm))
+        (alter-var-root
+         #'vm assoc
+         :control-thread thread
+         :exception-request nil)
         (control-thread-acquired!)))
     (catch Throwable e
       (logging/trace
@@ -318,12 +416,48 @@
        (pr-str e)
        (with-out-str (.printStackTrace e))))))
 
+(defn connection-and-id-from-thread
+  "Walk the stack frames to find the eval-for-emacs call and extract
+   the id argument."
+  [thread]
+  (logging/trace "connection-and-id-from-thread %s" thread)
+  (some (fn [frame]
+          (when-let [location (.location frame)]
+            (when (and (= "swank_clj.swank$eval_for_emacs"
+                          (jpda/location-type-name location))
+                       (= "invoke"
+                          (jpda/location-method-name location)))
+              (logging/trace "connection-and-id-from-thread found frame")
+              (let [connection (first (.getArgumentValues frame))
+                    id (last (.getArgumentValues frame))
+                    ;; socket (-> (invoke-clojure-fn
+                    ;;             "clojure.core" "deref" connection)
+                    ;;            (get-keyword :socket))
+                    ;; port (jpda/invoke-method
+                    ;;       socket
+                    ;;       (first
+                    ;;        (jpda/methods
+                    ;;         (.referenceType socket) "getPort"))
+                    ;;       (:control-thread vm) [])
+                    ]
+                {:connection connection
+                 :id (read-arg id)}))))
+        (.frames thread)))
+
 (defmethod jpda/handle-event ExceptionEvent
   [event connected]
   (let [exception (.exception event)
         thread (jpda/event-thread event)]
     (when (:control-thread vm)
-      (println event))
+      (logging/trace "EXCEPTION %s" (exception-message exception thread))
+      ;; assume a single connection for now
+      (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
+        (let [connection (ffirst @connections)]
+          (if (and id connection) ;; ensure we have started - id needs to go
+            (do
+              (logging/trace "Activating sldb")
+              (invoke-sldb connection exception thread))
+            (logging/trace "Not activating sldb")))))
     (when-not (:control-thread vm)
       (maybe-acquire-control-thread exception thread))))
 
@@ -331,7 +465,7 @@
 ;;   [event connected]
 ;;   (println event)
 ;;     (logging/trace "jpda/handle-event vmstart")
-;;     ))
+;;     )
 
     ;; (when (= (.getMessage exception) control-thread-name)
     ;;   (logging/trace "jpda/handle-event execpetion control-thread-name")

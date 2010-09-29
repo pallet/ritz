@@ -48,9 +48,10 @@
 (defn start-server
   "Start the server and write the listen port number to
    PORT-FILE. This is the entry point for Emacs."
-  [connection-f port-file {:keys [announce join]
+  [connection-f port-file {:keys [announce join log-level]
                            :or {join true announce :default}
                            :as options}]
+  (logging/set-level (keyword (:log-level options)))
   (logging/trace "socket-server/start-server")
   (when (nil? connection-f)
     (throw (IllegalArgumentException. "Null connection function")))
@@ -86,7 +87,6 @@
   [{:keys [port encoding server-ns backlog host]
     :or {server-ns 'swank-clj.proxy}
     :as options}]
-  (logging/trace "socket-server/start")
   (let [stop (atom false)
         options (-> options
                     (update-in
@@ -109,5 +109,5 @@
                          (System/getProperty)
                          (File. "slime-port.txt")
                          (.getCanonicalPath))
-                     ~options))))
+                     '~options))))
      :need-prompt (constantly false))))

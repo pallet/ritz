@@ -1,6 +1,7 @@
 (ns swank-clj.swank
   "Swank protocol"
   (:require
+   [swank-clj.debug :as debug]
    [swank-clj.logging :as logging]
    [swank-clj.connection :as connection]
    [swank-clj.commands :as commands]
@@ -22,26 +23,28 @@
 (defn eval-for-emacs [connection form buffer-package id]
   (logging/trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
   (try
-    ;; (connection/add-pending-id connection id)
+    (connection/add-pending-id connection id)
     (if-let [f (commands/slime-fn (cmd (name (first form))))]
       (let [result (with-package buffer-package
                      (apply f (eval (vec (rest form)))))]
         ;; TODO (run-hook *pre-reply-hook*)
         (logging/trace "swank/eval-for-emacs: result %s %s" result id)
-        (connection/send-to-emacs connection `(:return (:ok ~result) ~id)))
+        (connection/send-to-emacs connection `(:return (:ok ~result) ~id))
+        (connection/remove-pending-id connection id))
       ;; swank function not defined, abort
       (command-not-found connection form buffer-package id))
-    (catch Throwable t
-      ;; Thread/interrupted clears this thread's interrupted status; if
-      ;; Thread.stop was called on us it may be set and will cause an
-      ;; InterruptedException in one of the send-to-emacs calls below
-      (.printStackTrace t)
-      (logging/trace
-         "swank/eval-for-emacs: exception %s %s"
-         (pr-str t)
-         (with-out-str (.printStackTrace t)))
-      ;;(Thread/interrupted)
-      (connection/send-to-emacs connection`(:return (:abort) ~id)))
+    ;; (catch Throwable t
+    ;;   ;; Thread/interrupted clears this thread's interrupted status; if
+    ;;   ;; Thread.stop was called on us it may be set and will cause an
+    ;;   ;; InterruptedException in one of the send-to-emacs calls below
+    ;;   (.printStackTrace t)
+    ;;   (logging/trace
+    ;;      "swank/eval-for-emacs: exception %s %s"
+    ;;      (pr-str t)
+    ;;      (with-out-str (.printStackTrace t)))
+    ;;   ;;(Thread/interrupted)
+    ;;   (connection/send-to-emacs connection`(:return (:abort) ~id))
+    ;;   (connection/remove-pending-id connection id))
     ;; (finally
     ;;  (connection/remove-pending-id connection id))
     ))
@@ -50,6 +53,8 @@
   "Executes a message."
   [ev connection]
   (logging/trace "swank/dispatch-event: %s" (pr-str ev))
+  (when debug/vm
+    (debug/ensure-exception-event-request))
   (let [[action & args] ev]
     (logging/trace "swank/dispatch-event: %s -> %s" action (pr-str args))
     (cond
