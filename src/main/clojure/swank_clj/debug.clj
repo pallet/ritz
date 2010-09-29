@@ -194,15 +194,14 @@
 
 (defn calculate-restarts [thrown thread]
   (logging/trace "calculate-restarts")
-  (let [restarts [(make-restart :quit "QUIT" "Quit to the SLIME top level"
+  (let [restarts [(make-restart :quit "CONTINUE" "Pass exception to program"
                                (fn [] (.resume thread)))]]
-    (into (array-map) restarts)))
+    (apply array-map (apply concat restarts))))
 
 (defn build-debugger-info-for-emacs [exception thread restarts start end conts]
   (list (debugger-condition-for-emacs exception thread)
         (format-restarts-for-emacs restarts)
         (build-backtrace thread start end)
-        []
         conts))
 
 (defn invoke-sldb
@@ -219,10 +218,13 @@
              exception thread
              restarts
              0 *sldb-initial-frames*
-             (connection/pending connection))))
+             (list* (connection/pending connection)))))
     (connection/send-to-emacs
      connection
-     `(:debug-activate ~thread-id ~level nil))))
+     `(:debug-activate ~thread-id ~level nil))
+    (.suspend thread)))
+
+(def var-signature "(Ljava/lang/String;Ljava/lang/String;)Lclojure/lang/Var;")
 
 (defn vm-rt
   "Lookup clojure runtime."
@@ -236,7 +238,7 @@
                  :Var (first (jpda/classes (:vm vm) "clojure.lang.Var")))]
         (assoc vm
           :read-string (first (jpda/methods (:RT vm) "readString"))
-          :var (first (jpda/methods (:RT vm) "var"))
+          :var (first (jpda/methods (:RT vm) "var" var-signature))
           :eval (first (jpda/methods (:Compiler vm) "eval"))
           :get (first (jpda/methods (:Var vm) "get"))))
       (throw (Exception. "No clojure runtime found in vm")))
@@ -288,33 +290,35 @@
 (defn clojure-fn
   "Resolve a clojure function in the remote vm. Returns an ObjectReference and
    a Method for n arguments."
-  [ns name n]
-  (let [object (->>
-                [(jpda/mirror-of (:vm vm) ns) (jpda/mirror-of (:vm vm) name)]
-                (jpda/invoke-method (:RT vm) (:var vm) (:control-thread vm)))]
+  [ns name n thread]
+  (let [object (jpda/invoke-method
+                (:RT vm) (:var vm) thread
+                [(jpda/mirror-of (:vm vm) ns)
+                 (jpda/mirror-of (:vm vm) name)])]
     [object (first (jpda/methods
                     (.referenceType object) "invoke" (invoke-signature n)))]))
 
 (defn invoke-clojure-fn
   "Invoke a function on the control connection with the given remote arguments."
-  [ns name & args]
-  (let [[object method] (clojure-fn ns name (count args))]
-    (jpda/invoke-method object method (:control-thread vm) args)))
+  [ns name thread & args]
+  (logging/trace "invoke-clojure-fn %s %s %s" ns name args)
+  (let [[object method] (clojure-fn ns name (count args) thread)]
+    (jpda/invoke-method object method thread args)))
 
 (defn read-arg
   "Read the value of the given arg"
-  [arg]
+  [thread arg]
   (->
-   (invoke-clojure-fn "clojure.core" "pr-str" arg)
+   (invoke-clojure-fn "clojure.core" "pr-str" thread arg)
    jpda/string-value
    read-string))
 
 (defn get-keyword
   "Get ObjectReference for the result of looking up keyword in a remote map
    object."
-  [m kw]
+  [thread m kw]
   (let [kw (invoke-clojure-fn
-            "clojure.core" "keyword" (jpda/mirror-of (:vm vm) (name kw)))
+            "clojure.core" "keyword" thread (jpda/mirror-of (:vm vm) (name kw)))
         method (first
                 (jpda/methods
                  (.referenceType m) "invoke" (invoke-signature 1)))]
@@ -382,14 +386,17 @@
 
 (defn add-exception-event-request
   [vm]
-  (when-not (:exception-request vm)
-    (assoc vm
-      :exception-request (doto (.createExceptionRequest
-                                (:event-request-manager vm)
-                                nil true true)
-                           (.setSuspendPolicy
-                            ExceptionRequest/SUSPEND_ALL)
-                           (.enable)))))
+  (logging/trace "add-exception-event-request")
+  (if (:exception-request vm)
+    vm
+    (do (logging/trace "add-exception-event-request: adding request")
+        (assoc vm
+          :exception-request (doto (.createExceptionRequest
+                                    (:event-request-manager vm)
+                                    nil true true)
+                               (.setSuspendPolicy
+                                ExceptionRequest/SUSPEND_ALL)
+                               (.enable))))))
 
 (defn ensure-exception-event-request
   []
@@ -423,6 +430,10 @@
   (logging/trace "connection-and-id-from-thread %s" thread)
   (some (fn [frame]
           (when-let [location (.location frame)]
+            ;; (logging/trace
+            ;;  "connection-and-id-from-thread %s %s"
+            ;;  (jpda/location-type-name location)
+            ;;  (jpda/location-method-name location))
             (when (and (= "swank_clj.swank$eval_for_emacs"
                           (jpda/location-type-name location))
                        (= "invoke"
@@ -432,26 +443,31 @@
                     id (last (.getArgumentValues frame))
                     ;; socket (-> (invoke-clojure-fn
                     ;;             "clojure.core" "deref" connection)
-                    ;;            (get-keyword :socket))
+                    ;;            (get-keyword thread :socket))
                     ;; port (jpda/invoke-method
                     ;;       socket
                     ;;       (first
                     ;;        (jpda/methods
                     ;;         (.referenceType socket) "getPort"))
-                    ;;       (:control-thread vm) [])
+                    ;;       thread [])
                     ]
+                (logging/trace
+                 "connection-and-id-from-thread id %s connection %s"
+                 (jpda/object-reference id)
+                 (jpda/object-reference connection))
                 {:connection connection
-                 :id (read-arg id)}))))
+                 :id (read-arg thread id)}))))
         (.frames thread)))
 
 (defmethod jpda/handle-event ExceptionEvent
   [event connected]
   (let [exception (.exception event)
         thread (jpda/event-thread event)]
-    (when (:control-thread vm)
+    (when (and (:control-thread vm) (:RT vm))
       (logging/trace "EXCEPTION %s" (exception-message exception thread))
       ;; assume a single connection for now
       (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
+        (logging/trace "exception-event: %s %s" id connection)
         (let [connection (ffirst @connections)]
           (if (and id connection) ;; ensure we have started - id needs to go
             (do

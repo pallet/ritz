@@ -162,7 +162,8 @@
 
 (defn invoke-restart
   [connection level n]
-  (let [m (nth (dec level) (:sldb-levels @connection))]
-    (if-let [f (nth n (:restarts m))]
+  (let [m (nth (:sldb-levels @connection) (dec level))]
+    (when-let [f (last (nth (vals (:restarts m)) n))]
+      (swap! connection update-in [:sldb-levels] subvec 0 n)
       (f))
-    {:thread m}))
+    (:thread m)))

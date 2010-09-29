@@ -119,4 +119,4 @@
 
 (defn location-method-name
   [location]
-  (.. location declaringType name))
+  (.. location method name))

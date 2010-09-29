@@ -17,4 +17,5 @@
 (defslimefn invoke-nth-restart-for-emacs [level n]
   (let [thread (connection/invoke-restart core/*current-connection* level n)]
     (connection/send-to-emacs
-     core/*current-connection* `(:debug-return ~thread ~level nil))))
+     core/*current-connection* `(:debug-return ~thread ~level nil))
+    nil))
