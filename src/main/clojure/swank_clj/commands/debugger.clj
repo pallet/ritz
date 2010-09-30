@@ -36,3 +36,7 @@
 (defslimefn frame-locals-and-catch-tags [n]
   (list (frame-locals-for-emacs n)
         (frame-catch-tags-for-emacs n)))
+
+(defslimefn frame-source-location [n]
+  (let [level-info (connection/sldb-level-info core/*current-connection*)]
+    (debug/source-location-for-frame level-info n)))

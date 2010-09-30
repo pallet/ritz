@@ -120,3 +120,56 @@
 (defn location-method-name
   [location]
   (.. location method name))
+
+(defn location-source-name
+  [location]
+  (try
+    (.. location sourceName)
+    (catch Exception _ "UNKNOWN")))
+
+(defn location-source-path
+  [location]
+  (try
+    (.. location sourcePath)
+    (catch Exception _ "UNKNOWN")))
+
+(defn location-line-number
+  [location]
+  (try
+    (.lineNumber location)
+    (catch Exception _ -1)))
+
+
+;; from cdt
+(defn clojure-frame?
+  "Predicate to test if a frame is a clojure frame. Checks the for the extension
+   of the frame location's source name, or for the presence of well know clojure
+   field prefixes."
+  [frame fields]
+  (let [names (map #(.name %) fields)]
+    (or (.endsWith (location-source-path (.location frame)) ".clj")
+        (some #{"__meta"} names))))
+
+(def clojure-implementation-regex
+  #"(^const__\d*$|^__meta$|^__var__callsite__\d*$|^__site__\d*__$|^__thunk__\d*__$)")
+
+(defn filter-implementation-fields [fields]
+  (seq (remove #(re-find clojure-implementation-regex (.name %)) fields)))
+
+(defn clojure-fields
+  "Closure locals are fields on the frame's this object."
+  [frame]
+  (when-let [this (.thisObject frame)]
+    (let [fields (.. this referenceType fields)]
+      (when (clojure-frame? frame fields)
+        (filter-implementation-fields fields)))))
+
+(defn clojure-locals
+  [frame]
+  (when-let [fields (clojure-fields frame)]
+    (.getValues (.thisObject frame) fields)))
+
+(defn frame-locals
+  [frame]
+  (when-let [locals (.visibleVariables frame)]
+    (.getValues frame locals)))

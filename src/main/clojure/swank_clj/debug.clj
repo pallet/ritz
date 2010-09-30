@@ -9,6 +9,7 @@
    [clojure.java.io :as io]
    [clojure.string :as string])
   (:import
+   java.io.File
    java.net.Socket
    java.net.InetSocketAddress
    java.net.InetAddress
@@ -331,9 +332,8 @@
   [frame]
   (let [location (.location frame)
         method (.method location)
-        line (try (.lineNumber location) (catch Exception _ 0))
-        ;;source-name (try (.sourceName location) (catch Exception _ "UNKNOWN"))
-        source-path (try (.sourcePath location) (catch Exception _ "UNKNOWN"))
+        line (jpda/location-line-number location)
+        source-path (jpda/location-source-path location)
         declaring-type (.declaringType location)]
     (format
      "%s %s %s:%s"
@@ -407,6 +407,7 @@
    :else x))
 
 (defn frame-locals
+  "Return frame locals for slime"
   [level-info n]
   (let [frame (nth (.frames (:thread level-info)) n)]
     (seq
@@ -414,9 +415,47 @@
       second
       (map #(list :name (.name (key %1))
                   :id %2
-                  :value (pr-str (inspector-value (:thread level-info) (val %1))))
-           (.getValues frame (.visibleVariables frame))
+                  :value (pr-str
+                          (inspector-value (:thread level-info) (val %1))))
+           (merge {} (jpda/frame-locals frame) (jpda/clojure-locals frame))
            (range))))))
+
+
+;;; Source location
+
+(defn- clean-windows-path [#^String path]
+  ;; Decode file URI encoding and remove an opening slash from
+  ;; /c:/program%20files/... in jar file URLs and file resources.
+  (or (and (.startsWith (System/getProperty "os.name") "Windows")
+           (second (re-matches #"^/([a-zA-Z]:/.*)$" path)))
+      path))
+
+(defn- slime-zip-resource [#^java.net.URL resource]
+  (let [jar-connection #^java.net.JarURLConnection (.openConnection resource)
+        jar-file (.getPath (.toURI (.getJarFileURL jar-connection)))]
+    (list :zip (clean-windows-path jar-file) (.getEntryName jar-connection))))
+
+(defn- slime-file-resource [#^java.net.URL resource]
+  (list :file (clean-windows-path (.getFile resource))))
+
+(defn- slime-find-resource [#^String file]
+  (if-let [resource (.getResource (clojure.lang.RT/baseLoader) file)]
+    (if (= (.getProtocol resource) "jar")
+      (slime-zip-resource resource)
+      (slime-file-resource resource))))
+
+(defn- slime-find-file [#^String file]
+  (if (.isAbsolute (File. file))
+    (list :file file)
+    (slime-find-resource file)))
+
+(defn source-location-for-frame [level-info n]
+  (when-let [frame (nth (.frames (:thread level-info)) n)]
+    (let [location (.location frame)]
+      `(:location
+        ~(slime-find-file (jpda/location-source-path location))
+        (:line ~(jpda/location-line-number location))
+        nil))))
 
 ;;; events
 (defn add-exception-event-request
