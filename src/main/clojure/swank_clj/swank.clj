@@ -33,21 +33,20 @@
         (connection/remove-pending-id connection id))
       ;; swank function not defined, abort
       (command-not-found connection form buffer-package id))
-    ;; (catch Throwable t
-    ;;   ;; Thread/interrupted clears this thread's interrupted status; if
-    ;;   ;; Thread.stop was called on us it may be set and will cause an
-    ;;   ;; InterruptedException in one of the send-to-emacs calls below
-    ;;   (.printStackTrace t)
-    ;;   (logging/trace
-    ;;      "swank/eval-for-emacs: exception %s %s"
-    ;;      (pr-str t)
-    ;;      (with-out-str (.printStackTrace t)))
-    ;;   ;;(Thread/interrupted)
-    ;;   (connection/send-to-emacs connection`(:return (:abort) ~id))
-    ;;   (connection/remove-pending-id connection id))
-    ;; (finally
-    ;;  (connection/remove-pending-id connection id))
-    ))
+    (catch Throwable t
+      ;; Thread/interrupted clears this thread's interrupted status; if
+      ;; Thread.stop was called on us it may be set and will cause an
+      ;; InterruptedException in one of the send-to-emacs calls below
+      (.printStackTrace t)
+      (logging/trace
+       "swank/eval-for-emacs: exception %s %s"
+       (pr-str t)
+       (with-out-str (.printStackTrace t)))
+      ;;(Thread/interrupted)
+      (connection/send-to-emacs connection`(:return (:abort) ~id))
+      ;; (finally
+      ;;  (connection/remove-pending-id connection id))
+      )))
 
 (defn dispatch-event
   "Executes a message."

@@ -153,76 +153,6 @@
     (let [id (second reply)]
       (connection/remove-pending-id connection id))))
 
-(defn debugger-condition-for-emacs [exception thread]
-  (list (or (exception-message exception thread) "No message.")
-        (str "  [Thrown " (.. exception referenceType name) "]")
-        nil))
-
-(defn format-restarts-for-emacs [restarts]
-  (doall (map #(list (first (second %)) (second (second %))) restarts)))
-
-(defn format-frame
-  [frame]
-  (let [location (.location frame)
-        method (.method location)
-        line (.lineNumber location)
-        source-name (.sourceName location)
-        source-path (.sourcePath location)
-        declaring-type (.declaringType location)]
-    (format
-     "%s %s %s:%s"
-     (.name declaring-type)
-     (.name method)
-     source-path
-     line)))
-
-(defn exception-stacktrace [thread]
-  (map #(list %1 %2 '(:restartable nil))
-       (iterate inc 0)
-       (map format-frame (.frames thread))))
-
-(defn build-backtrace [thread start end]
-  (doall (take (- end start) (drop start (exception-stacktrace thread)))))
-
-
-;; (defonce *debug-quit-exception* (Exception. "Debug quit"))
-;; (defonce *debug-continue-exception* (Exception. "Debug continue"))
-;; (defonce *debug-abort-exception* (Exception. "Debug abort"))
-
-(defn make-restart [kw name description f]
-  [kw [name description f]])
-
-(defn calculate-restarts [thrown thread]
-  (logging/trace "calculate-restarts")
-  (let [restarts [(make-restart :quit "CONTINUE" "Pass exception to program"
-                               (fn [] (.resume thread)))]]
-    (apply array-map (apply concat restarts))))
-
-(defn build-debugger-info-for-emacs [exception thread restarts start end conts]
-  (list (debugger-condition-for-emacs exception thread)
-        (format-restarts-for-emacs restarts)
-        (build-backtrace thread start end)
-        conts))
-
-(defn invoke-sldb
-  [connection exception thread]
-  (logging/trace "invoke-sldb")
-  (let [thread-id (.uniqueID thread)
-        restarts (calculate-restarts exception thread)
-        level (connection/next-sldb-level connection restarts thread-id)]
-    (logging/trace "invoke-sldb: call emacs")
-    (connection/send-to-emacs
-     connection
-     (list* :debug thread-id level
-            (build-debugger-info-for-emacs
-             exception thread
-             restarts
-             0 *sldb-initial-frames*
-             (list* (connection/pending connection)))))
-    (connection/send-to-emacs
-     connection
-     `(:debug-activate ~thread-id ~level nil))
-    (.suspend thread)))
 
 (def var-signature "(Ljava/lang/String;Ljava/lang/String;)Lclojure/lang/Var;")
 
@@ -305,13 +235,17 @@
   (let [[object method] (clojure-fn ns name (count args) thread)]
     (jpda/invoke-method object method thread args)))
 
+(defn pr-str-arg
+  "Read the value of the given arg"
+  [thread arg]
+  (-> (invoke-clojure-fn "clojure.core" "pr-str" thread arg)
+      jpda/string-value))
+
 (defn read-arg
   "Read the value of the given arg"
   [thread arg]
-  (->
-   (invoke-clojure-fn "clojure.core" "pr-str" thread arg)
-   jpda/string-value
-   read-string))
+  (-> (pr-str-arg thread arg)
+      read-string))
 
 (defn get-keyword
   "Get ObjectReference for the result of looking up keyword in a remote map
@@ -384,6 +318,107 @@
         (Thread/sleep 200)
         (recur)))))
 
+;;; debug methods
+(defn debugger-condition-for-emacs [exception thread]
+  (list (or (exception-message exception thread) "No message.")
+        (str "  [Thrown " (.. exception referenceType name) "]")
+        nil))
+
+(defn format-restarts-for-emacs [restarts]
+  (doall (map #(list (first (second %)) (second (second %))) restarts)))
+
+(defn format-frame
+  [frame]
+  (let [location (.location frame)
+        method (.method location)
+        line (try (.lineNumber location) (catch Exception _ 0))
+        ;;source-name (try (.sourceName location) (catch Exception _ "UNKNOWN"))
+        source-path (try (.sourcePath location) (catch Exception _ "UNKNOWN"))
+        declaring-type (.declaringType location)]
+    (format
+     "%s %s %s:%s"
+     (.name declaring-type)
+     (.name method)
+     source-path
+     line)))
+
+(defn exception-stacktrace [thread]
+  (map #(list %1 %2 '(:restartable nil))
+       (iterate inc 0)
+       (map format-frame (.frames thread))))
+
+(defn build-backtrace [level-info start end]
+  (doall
+   (take (- end start)
+         (drop start (exception-stacktrace (:thread level-info))))))
+
+
+;; (defonce *debug-quit-exception* (Exception. "Debug quit"))
+;; (defonce *debug-continue-exception* (Exception. "Debug continue"))
+;; (defonce *debug-abort-exception* (Exception. "Debug abort"))
+
+(defn make-restart [kw name description f]
+  [kw [name description f]])
+
+(defn calculate-restarts [thrown thread]
+  (logging/trace "calculate-restarts")
+  (let [restarts [(make-restart :quit "CONTINUE" "Pass exception to program"
+                               (fn [] (.resume thread)))]]
+    (apply array-map (apply concat restarts))))
+
+(defn build-debugger-info-for-emacs [exception level-info start end conts]
+  (list (debugger-condition-for-emacs exception (:thread level-info))
+        (format-restarts-for-emacs (:restarts level-info))
+        (build-backtrace level-info start end)
+        conts))
+
+(defn invoke-sldb
+  [connection exception thread]
+  (logging/trace "invoke-sldb")
+  (let [thread-id (.uniqueID thread)
+        restarts (calculate-restarts exception thread)
+        level-info {:restarts restarts :thread thread}
+        level (connection/next-sldb-level connection level-info)]
+    (logging/trace "invoke-sldb: call emacs")
+    (connection/send-to-emacs
+     connection
+     (list* :debug thread-id level
+            (build-debugger-info-for-emacs
+             exception level-info 0 *sldb-initial-frames*
+             (list* (connection/pending connection)))))
+    (connection/send-to-emacs
+     connection
+     `(:debug-activate ~thread-id ~level nil))
+    (.suspend thread)))
+
+(defn invoke-restart
+  [level-info n]
+  (when-let [f (last (nth (vals (:restarts level-info)) n))]
+    (f))
+  (.uniqueID (:thread level-info)))
+
+
+(defn inspector-value
+  "Create a value that can be displayed."
+  [thread x]
+  (cond
+   (instance? com.sun.jdi.PrimitiveValue x) (.value x)
+   (instance? com.sun.jdi.Value x) (pr-str-arg thread x)
+   :else x))
+
+(defn frame-locals
+  [level-info n]
+  (let [frame (nth (.frames (:thread level-info)) n)]
+    (seq
+     (sort-by
+      second
+      (map #(list :name (.name (key %1))
+                  :id %2
+                  :value (pr-str (inspector-value (:thread level-info) (val %1))))
+           (.getValues frame (.visibleVariables frame))
+           (range))))))
+
+;;; events
 (defn add-exception-event-request
   [vm]
   (logging/trace "add-exception-event-request")
@@ -422,6 +457,11 @@
        "control thread acquistion error %s %s"
        (pr-str e)
        (with-out-str (.printStackTrace e))))))
+
+(defn caught? [exception-event]
+  (when-let [location (.catchLocation exception-event)]
+    (logging/trace "caught? %s" (jpda/location-type-name location))
+    (not (.startsWith (jpda/location-type-name location) "swank_clj."))))
 
 (defn connection-and-id-from-thread
   "Walk the stack frames to find the eval-for-emacs call and extract
@@ -469,7 +509,8 @@
       (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
         (logging/trace "exception-event: %s %s" id connection)
         (let [connection (ffirst @connections)]
-          (if (and id connection) ;; ensure we have started - id needs to go
+          ;; ensure we have started - id and connection need to go
+          (if (and id connection (not (caught? event)))
             (do
               (logging/trace "Activating sldb")
               (invoke-sldb connection exception thread))

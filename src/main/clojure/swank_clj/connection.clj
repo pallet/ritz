@@ -148,22 +148,23 @@
   (authenticate (initialise socket options)))
 
 (defn next-sldb-level
-  [connection restarts thread]
+  [connection level-info]
   (logging/trace "next-sldb-level")
   (swap!
    connection update-in [:sldb-levels]
    (fn [levels]
-     (conj (or levels []) {:restarts restarts :thread thread})))
+     (conj (or levels []) level-info)))
   (count (:sldb-levels @connection)))
+
+(defn sldb-drop-level [connection n]
+  (swap! connection update-in [:sldb-levels] subvec 0 n))
 
 (defn sldb-level
   [connection]
   (count (:sldb-levels @connection)))
 
-(defn invoke-restart
-  [connection level n]
-  (let [m (nth (:sldb-levels @connection) (dec level))]
-    (when-let [f (last (nth (vals (:restarts m)) n))]
-      (swap! connection update-in [:sldb-levels] subvec 0 n)
-      (f))
-    (:thread m)))
+(defn sldb-level-info
+  ([connection]
+     (last (:sldb-levels @connection)))
+  ([connection level]
+     (nth (:sldb-levels @connection) (dec level))))
