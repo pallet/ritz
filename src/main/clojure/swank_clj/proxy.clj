@@ -21,25 +21,24 @@
   []
   (logging/trace "proxy/serve-connection")
   (fn proxy-connection-handler
-    [socket options]
+    [io-connection options]
     (logging/trace "proxy/proxy-connection-handler")
     (forward-non-debug-commands)
     (let [vm-options (->
                       options
                       (dissoc :announce)
-                      (merge {:port 0 :join true
-                              :server-ns 'swank-clj.repl}))
-          _ (logging/trace "vm-options %s" vm-options)
+                      (merge {:port 0 :join true :server-ns 'swank-clj.repl}))
           vm (debug/ensure-vm vm-options)
           port (debug/wait-for-control-thread)]
+      (logging/trace "proxy/connection-handler proxied server on %s" port)
       (if (= port (:port options))
         (do
           (logging/trace "invalid port")
-          (.close socket))
+          ((:close-connection io-connection) io-connection))
         (let [proxied-connection (debug/create-connection (assoc vm :port port))
               _ (logging/trace "proxy/connection-handler connected to proxied")
               [connection future] (rpc-server/serve-connection
-                                   socket
+                                   io-connection
                                    (merge
                                     options
                                     {:proxy-to proxied-connection}))]

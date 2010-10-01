@@ -6,6 +6,7 @@
    [swank-clj.jpda :as jpda]
    [swank-clj.connection :as connection]
    [swank-clj.executor :as executor]
+   [swank-clj.rpc-socket-connection :as rpc-socket-connection]
    [clojure.java.io :as io]
    [clojure.string :as string])
   (:import
@@ -87,14 +88,15 @@
 
 (defn launch-vm
   "Launch and configure the vm for the debugee."
-  [vm {:keys [announce port] :as options}]
+  [vm {:keys [announce port log-level] :as options}]
   (if vm
     vm
     (do
       (reset! continue-handling true)
       (let [cmd (format vm-main (pr-str {:port port
                                          :announce announce
-                                         :server-ns 'swank-clj.repl}))
+                                         :server-ns 'swank-clj.repl
+                                         :log-level (keyword log-level)}))
             vm (jpda/launch (jpda/current-classpath) cmd)]
         ;; (.setDebugTraceMode vm VirtualMachine/TRACE_NONE)
         (let [options (-> options
@@ -123,7 +125,10 @@
 
 (defn create-connection [options]
   (logging/trace "debugger/create-connection: connecting to proxied connection")
-  (connection/create (connect-to-repl-on-vm (:port options)) options))
+  (->
+   (connect-to-repl-on-vm (:port options))
+   (rpc-socket-connection/create options)
+   (connection/create options)))
 
 (defn forward-command
   [connection form buffer-package id]
@@ -147,12 +152,12 @@
   [connection]
   (logging/trace
    "debugger/forward-command: waiting reply from proxied connection")
-  (let [proxied-connection (:proxy-to @connection)
-        reply (connection/read-from-connection proxied-connection)]
-    (executor/execute-request
-     (partial connection/send-to-emacs connection reply))
-    (let [id (second reply)]
-      (connection/remove-pending-id connection id))))
+  (let [proxied-connection (:proxy-to @connection)]
+    (let [reply (connection/read-from-connection proxied-connection)]
+      (executor/execute-request
+       (partial connection/send-to-emacs connection reply))
+      (let [id (second reply)]
+        (connection/remove-pending-id connection id)))))
 
 
 (def var-signature "(Ljava/lang/String;Ljava/lang/String;)Lclojure/lang/Var;")
@@ -304,6 +309,8 @@
   (logging/trace "control-thread-acquired!")
   (.countDown @wait-for-control-thread-latch))
 
+(def vm-port (atom nil))
+
 (defn wait-for-control-thread
   []
   (logging/trace "wait-for-control-thread")
@@ -313,7 +320,11 @@
   (ensure-runtime)
   (logging/trace "wait-for-control-thread: runtime set")
   (loop []
-    (if-let [port (control-eval (deref swank-clj.socket-server/acceptor-port))]
+    (if-let [port (swap!
+                   vm-port
+                   #(or %
+                        (control-eval
+                         (deref swank-clj.socket-server/acceptor-port))))]
       port
       (do
         (Thread/sleep 200)
@@ -500,7 +511,7 @@
 (defn caught? [exception-event]
   (when-let [location (.catchLocation exception-event)]
     (logging/trace "caught? %s" (jpda/location-type-name location))
-    (not (.startsWith (jpda/location-type-name location) "swank_clj."))))
+    (not (.startsWith (jpda/location-type-name location) "swank_clj.swank"))))
 
 (defn connection-and-id-from-thread
   "Walk the stack frames to find the eval-for-emacs call and extract

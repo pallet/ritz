@@ -2,6 +2,7 @@
   "Socket server."
   (:require
    [swank-clj.executor :as executor]
+   [swank-clj.rpc-socket-connection :as rpc-socket-connection]
    [swank-clj.logging :as logging])
   (:import
    java.net.ServerSocket
@@ -30,7 +31,8 @@
     (throw (IllegalArgumentException. "Accept requested on closed socket"))
     (let [connection (.accept socket)]
       (logging/trace "accept-connection: starting connection")
-      (executor/execute #(f connection options)))))
+      (executor/execute
+       #(f (rpc-socket-connection/create connection options) options)))))
 
 (defn server-socket
   "Open the server socket"

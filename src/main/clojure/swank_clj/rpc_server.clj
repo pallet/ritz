@@ -60,10 +60,11 @@
   "Dispatch a message on a connection."
   [connection]
   (logging/trace "dispatch-message %s" (and (:proxy-to @connection) "PROXY"))
-  (let [form (connection/read-from-connection connection)
-        _ (logging/trace "dispatch-message: %s" form)
-        future (executor/execute #(dispatch-event form connection))]
-    (executor/execute #(response future form connection))))
+  (when (connection/connected? connection)
+    (let [form (connection/read-from-connection connection)
+          _ (logging/trace "dispatch-message: %s" form)
+          future (executor/execute #(dispatch-event form connection))]
+      (executor/execute #(response future form connection)))))
 
 (defn serve-connection
   "Serve a set of RPC functions"

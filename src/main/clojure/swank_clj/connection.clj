@@ -1,7 +1,6 @@
 (ns swank-clj.connection
   (:require
    [swank-clj.logging :as logging]
-   [swank-clj.rpc :as rpc]
    [clojure.java.io :as java-io])
   (:import
    java.io.BufferedReader
@@ -12,27 +11,29 @@
    java.io.StringWriter))
 
 
+(defn connected?
+  "Predicate to test if connection is open"
+  [connection]
+  (let [connection @connection]
+    ((:connected? connection) connection)))
+
+(defn close
+  "Close a connection"
+  [connection]
+  (let [connection @connection]
+    ((:close-connection connection) connection)))
+
 (defn send-to-emacs
   "Sends a message (msg) to emacs."
   [connection msg]
-  (try
-    (let [writer (:writer @connection)]
-      (locking (:write-monitor @connection)
-        (rpc/encode-message writer msg)))
-    (catch Exception e
-      (logging/trace "Caught exception while writing %s" (str e))
-      '(:read-error "" e))))
+  (let [connection @connection]
+    ((:write-message connection) connection msg)))
 
 (defn read-from-connection
   "Read a form from the connection."
   [connection]
-  (try
-    (let [reader (:reader @connection)]
-      (locking (:read-monitor @connection)
-        (rpc/decode-message reader)))
-    (catch Exception e
-      (logging/trace "Caught exception while reading %s" (str e))
-      '(:read-error "" e))))
+  (let [connection @connection]
+    ((:read-message connection) connection)))
 
 
 (defn ^PrintWriter call-on-flush-stream
@@ -55,42 +56,19 @@
      (call-on-flush-stream
       #(send-to-emacs connection `(:write-string ~%)))))
 
-(def ^{:private true :doc "Translate encoding strings from slime to java"}
-  encoding-map
-  {"latin-1" "iso-8859-1"
-   "latin-1-unix" "iso-8859-1"
-   "iso-latin-1-unix" "iso-8859-1"
-   "iso-8859-1" "iso-8859-1"
-   "iso-8859-1-unix" "iso-8859-1"
-
-   "utf-8" "utf-8"
-   "utf-8-unix" "utf-8"
-
-   "euc-jp" "euc-jp"
-   "euc-jp-unix" "euc-jp"
-
-   "us-ascii" "us-ascii"
-   "us-ascii-unix" "us-ascii"})
 
 (defn- initialise
   "Set up the initial state of an accepted connection."
-  [socket options]
-  (let [encoding (encoding-map (:encoding options) (:encoding options))]
-    (doto
-        (atom
-         (merge
-          options
-          {:socket socket
-           :reader (InputStreamReader. (.getInputStream socket) encoding)
-           :writer (OutputStreamWriter. (.getOutputStream socket) encoding)
-           :read-monitor (Object.)
-           :write-monitor (Object.)
-           :sldb-levels []
-           :pending #{}
-           :timeout nil}))
-      (swap! (fn [connection]
-               (assoc connection
-                 :writer-redir (make-output-redirection connection)))))))
+  [io-connection options]
+  (doto
+      (atom
+       (merge
+        options
+        io-connection
+        {:sldb-levels []
+         :pending #{}
+         :timeout nil
+         :writer-redir (make-output-redirection io-connection)}))))
 
 (defn add-pending-id [connection id]
   (swap! connection update-in [:pending] conj id))
@@ -102,15 +80,11 @@
   [connection]
   (:pending @connection))
 
-(defn local-port
-  [connection]
-  (.getLocalPort (:socket @connection)))
-
 (defn close-connection
   [connection]
   (logging/trace "close-connection")
-  (.close (:socket @connection))
-  (swap! connection dissoc :socket :reader :writer))
+  ((:close-connection @connection) @connection)
+  (swap! connection dissoc :read-message :reader :write-message :writer))
 
 (def ^{:private true}
   slime-secret-path
@@ -144,8 +118,8 @@
     connection))
 
 (defn create
-  [socket options]
-  (authenticate (initialise socket options)))
+  [io-connection options]
+  (authenticate (initialise io-connection options)))
 
 (defn next-sldb-level
   [connection level-info]
