@@ -84,7 +84,7 @@
       :vm-ev (executor/daemon-thread
               "vm-events"
               (jpda/run-events
-                (:vm vm) continue-handling jpda/handle-event)
+               (:vm vm) continue-handling jpda/handle-event)
               (logging/trace "vm-events: exit")))))
 
 (defn launch-vm
@@ -148,6 +148,14 @@
       (executor/execute-request
        (partial connection/send-to-emacs connection `(:return (:abort) ~id)))
       (connection/remove-pending-id connection id))))
+
+(defn forward-rpc
+  [connection rpc]
+  (let [proxied-connection (:proxy-to @connection)]
+    (logging/trace
+     "debugger/forward-command: forwarding %s to proxied connection" rpc)
+    (executor/execute-request
+     (partial connection/send-to-emacs proxied-connection rpc))))
 
 (defn forward-reply
   [connection]
@@ -426,11 +434,11 @@
      (sort-by
       second
       (map #(list :name (.name (key %1))
-                  :id %2
-                  :value (pr-str
-                          (inspector-value (:thread level-info) (val %1))))
-           (merge {} (jpda/frame-locals frame) (jpda/clojure-locals frame))
-           (range))))))
+                  :id 0
+                  :value
+                  (let [value (inspector-value (:thread level-info) (val %1))]
+                    (str value)))
+           (merge {} (jpda/frame-locals frame) (jpda/clojure-locals frame)))))))
 
 
 ;;; Source location
@@ -565,7 +573,8 @@
             (do
               (logging/trace "Activating sldb")
               (invoke-sldb connection exception thread))
-            (logging/trace "Not activating sldb")))))
+            (do (logging/trace "Not activating sldb")
+                (logging/trace (string/join (exception-stacktrace thread))))))))
     (when-not (:control-thread vm)
       (maybe-acquire-control-thread exception thread))))
 

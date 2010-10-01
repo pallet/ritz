@@ -23,17 +23,32 @@
   (let [connection @connection]
     ((:close-connection connection) connection)))
 
+(defn send-to-emacs*
+  "Sends a message (msg) to emacs."
+  [connection msg]
+  ((:write-message connection) connection msg))
+
 (defn send-to-emacs
   "Sends a message (msg) to emacs."
   [connection msg]
-  (let [connection @connection]
-    ((:write-message connection) connection msg)))
+  (send-to-emacs* @connection msg))
 
 (defn read-from-connection
   "Read a form from the connection."
   [connection]
   (let [connection @connection]
     ((:read-message connection) connection)))
+
+(defn write-to-input
+  "Read a form from the connection."
+  [connection tag value]
+  (let [connection @connection]
+    (if (= tag @(:input-tag connection))
+      (do
+        (reset! (:input-tag connection) nil)
+        (.write (:input-source connection) (.getBytes value) 0 (.length value)))
+      (logging/trace
+       "Input with tag mismatch %s %s" tag @(:input-tag connection)))))
 
 
 (defn ^PrintWriter call-on-flush-stream
@@ -52,23 +67,71 @@
      true)))
 
 (defn- ^java.io.StringWriter make-output-redirection
-  ([connection]
+  ([io-connection]
      (call-on-flush-stream
-      #(send-to-emacs connection `(:write-string ~%)))))
+      #((:write-message io-connection) io-connection `(:write-string ~%)))))
+
+
+(def tag-counter (atom 0))
+(defn make-tag []
+  (swap! tag-counter (fn [x] (mod (inc x) Long/MAX_VALUE))))
+
+(defn thread-id
+  ([] (thread-id (Thread/currentThread)))
+  ([#^Thread thread]
+     (.getId thread)))
+
+(defn ^java.io.Reader make-repl-input-stream
+  "Creates a stream that will ask emacs for input."
+  [connection]
+  (logging/trace "make-repl-input-stream")
+  (let [out-to-in (java.io.PipedOutputStream.)
+        request-pending (atom nil)
+        request-input (fn [] (let [tag (make-tag)]
+                               (when (compare-and-set! request-pending nil tag)
+                                 ;; (logging/trace
+                                 ;;  "make-repl-input-stream: requesting..")
+                                 (send-to-emacs*
+                                  connection
+                                  `(:read-string ~(thread-id) ~tag)))))
+        in (proxy [java.io.PipedInputStream] [out-to-in]
+             (read ([]
+                      ;; (logging/trace "make-repl-input-stream: read")
+                      ;; (when (zero? (.available this))
+                      ;;   (request-input))
+                      (proxy-super read))
+                   ([b s l]
+                      (logging/trace "make-repl-input-stream: read 3")
+                      (when (zero? (.available this))
+                        (request-input))
+                      (proxy-super read b s l))))]
+    [(java.io.PushbackReader. (java.io.InputStreamReader. in))
+     out-to-in request-pending]))
 
 
 (defn- initialise
   "Set up the initial state of an accepted connection."
   [io-connection options]
-  (doto
-      (atom
-       (merge
-        options
-        io-connection
-        {:sldb-levels []
-         :pending #{}
-         :timeout nil
-         :writer-redir (make-output-redirection io-connection)}))))
+  (let [connection (doto
+                       (atom
+                        (merge
+                         options
+                         io-connection
+                         {:sldb-levels []
+                          :pending #{}
+                          :timeout nil
+                          :writer-redir (make-output-redirection
+                                         io-connection)})))]
+    ;;(when-not (:proxy-to options))
+
+      (swap! connection
+             (fn [connection]
+               (merge connection
+                      (zipmap
+                       [:input-redir :input-source :input-tag]
+                       (make-repl-input-stream connection)))))
+    ;; (logging/trace "connection %s" (pr-str @connection))
+    connection))
 
 (defn add-pending-id [connection id]
   (swap! connection update-in [:pending] conj id))

@@ -8,13 +8,16 @@
    [swank-clj.debug :as debug]
    swank-clj.commands.debugger))
 
-(defn forward-non-debug-commands
+(defn forward-commands
   "Alter eval-for-emacs to forward unrecognised commands to proxied connection."
   []
   (alter-var-root
    #'swank/command-not-found
    (fn [_ x] x)
-   debug/forward-command))
+   debug/forward-command)
+  (alter-var-root
+   #'swank/forward-rpc
+   (fn [_] debug/forward-rpc)))
 
 (defn serve-connection
   "Serve connection for proxy rpc functions"
@@ -23,7 +26,7 @@
   (fn proxy-connection-handler
     [io-connection options]
     (logging/trace "proxy/proxy-connection-handler")
-    (forward-non-debug-commands)
+    (forward-commands)
     (let [vm-options (->
                       options
                       (dissoc :announce)

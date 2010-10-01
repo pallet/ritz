@@ -47,7 +47,8 @@
   (try
     (let [writer (:writer connection)]
       (locking (:write-monitor connection)
-        (rpc/encode-message writer msg)))
+        (rpc/encode-message writer msg)
+        (.flush writer)))
     (catch SocketException e
       (logging/trace "Caught exception while writing %s" (str e))
       (when (.isOutputShutdown (:socket connection))
@@ -58,6 +59,7 @@
   "Read a form from the connection."
   [connection]
   (try
+    (logging/trace "rpc-socket-connection/read-mesage")
     (let [reader (:reader connection)]
       (locking (:read-monitor connection)
         (rpc/decode-message reader)))

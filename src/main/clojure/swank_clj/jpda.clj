@@ -78,7 +78,10 @@
          (if-not @connected
            nil
            (do
-             (handle-event-set vm queue connected f)
+             (try
+               (handle-event-set vm queue connected f)
+               (catch com.sun.jdi.InternalException e
+                 (logging/trace "VM-EVENTS, exeception %s" e)))
              (recur)))))))
 
 ;;; low level wrappers
@@ -162,6 +165,7 @@
   (when-let [this (.thisObject frame)]
     (let [fields (.. this referenceType fields)]
       (when (clojure-frame? frame fields)
+        (logging/trace "Field names %s" (vec (map #(.name %) fields)))
         (filter-implementation-fields fields)))))
 
 (defn clojure-locals
