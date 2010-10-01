@@ -17,6 +17,7 @@
    com.sun.jdi.event.ExceptionEvent
    com.sun.jdi.request.ExceptionRequest
    com.sun.jdi.event.VMStartEvent
+   com.sun.jdi.event.VMDeathEvent
    com.sun.jdi.VirtualMachine))
 
 (defonce vm nil)
@@ -573,6 +574,13 @@
 ;;   (println event)
 ;;     (logging/trace "jpda/handle-event vmstart")
 ;;     )
+
+(defmethod jpda/handle-event VMDeathEvent
+  [event connected]
+  (doseq [[connection proxied-connection] @connections]
+    (connection/close proxied-connection)
+    (connection/close connection))
+  (System/exit 0))
 
     ;; (when (= (.getMessage exception) control-thread-name)
     ;;   (logging/trace "jpda/handle-event execpetion control-thread-name")
