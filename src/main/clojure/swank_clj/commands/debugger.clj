@@ -5,11 +5,13 @@
    [swank-clj.jpda :as jpda]
    [swank-clj.connection :as connection]
    [swank-clj.debug :as debug]
+   [swank-clj.inspect :as inspect]
+   [swank-clj.messages :as messages]
    [swank-clj.swank.core :as core]
    [clojure.java.io :as io]
    )
   (:use
-   swank-clj.commands))
+   [swank-clj.commands :only [defslimefn]]))
 
 (defn invoke-restart [restart]
   ((nth restart 2)))
@@ -23,7 +25,7 @@
         thread-id (debug/invoke-restart level-info n)]
     (connection/sldb-drop-level core/*current-connection* n)
     (connection/send-to-emacs
-     core/*current-connection* `(:debug-return ~thread-id ~level nil))
+     core/*current-connection* (messages/debug-return thread-id level))
     nil))
 
 (defslimefn frame-catch-tags-for-emacs [n]
@@ -31,7 +33,8 @@
 
 (defslimefn frame-locals-for-emacs [n]
   (let [level-info (connection/sldb-level-info core/*current-connection*)]
-    (debug/frame-locals level-info n)))
+    (messages/frame-locals
+     (debug/frame-locals-with-string-values level-info n))))
 
 (defslimefn frame-locals-and-catch-tags [n]
   (list (frame-locals-for-emacs n)
@@ -40,3 +43,11 @@
 (defslimefn frame-source-location [n]
   (let [level-info (connection/sldb-level-info core/*current-connection*)]
     (debug/source-location-for-frame level-info n)))
+
+(defslimefn inspect-frame-var [frame index]
+  (let [inspector (connection/inspector core/*current-connection*)
+        level-info (connection/sldb-level-info core/*current-connection*)
+        object (debug/nth-frame-var level-info frame index)]
+    (inspect/reset-inspector inspector)
+    (messages/inspector
+     (inspect/inspect-object inspector object))))

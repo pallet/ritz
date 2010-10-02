@@ -430,16 +430,26 @@
   "Return frame locals for slime"
   [level-info n]
   (let [frame (nth (.frames (:thread level-info)) n)]
-    (seq
-     (sort-by
-      second
-      (map #(list :name (.name (key %1))
-                  :id 0
-                  :value
-                  (let [value (inspector-value (:thread level-info) (val %1))]
-                    (str value)))
-           (merge {} (jpda/frame-locals frame) (jpda/clojure-locals frame)))))))
+    (merge {} (jpda/frame-locals frame) (jpda/clojure-locals frame))))
 
+(defn frame-locals-with-string-values
+  "Return frame locals for slime"
+  [level-info n]
+  (for [map-entry (frame-locals level-info n)]
+    {:name (.name (key map-entry))
+     :value (val map-entry)
+     :string-value (str
+                    (inspector-value (:thread level-info) (val map-entry)))}))
+
+(defn nth-frame-var [level-info frame-index var-index]
+  (let [inspector-value (partial inspector-value (:thread level-info))]
+    (->
+     (seq (frame-locals level-info frame-index))
+     (nth var-index)
+     val
+     inspector-value
+     str
+     read-string)))
 
 ;;; Source location
 

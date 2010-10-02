@@ -5,6 +5,7 @@
    [swank-clj.logging :as logging]
    [swank-clj.debug :as debug]
    swank-clj.commands.basic
+   swank-clj.commands.inspector
    swank-clj.commands.contrib))
 
 (defn serve-connection

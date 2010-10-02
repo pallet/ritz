@@ -121,7 +121,8 @@
                           :pending #{}
                           :timeout nil
                           :writer-redir (make-output-redirection
-                                         io-connection)})))]
+                                         io-connection)
+                          :inspector (atom {})})))]
     ;;(when-not (:proxy-to options))
 
       (swap! connection
@@ -205,3 +206,8 @@
      (last (:sldb-levels @connection)))
   ([connection level]
      (nth (:sldb-levels @connection) (dec level))))
+
+(defn inspector
+  "Return the connection's inspector information."
+  [connection]
+  (:inspector @connection))
