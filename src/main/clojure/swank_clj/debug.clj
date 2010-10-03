@@ -6,6 +6,7 @@
    [swank-clj.jpda :as jpda]
    [swank-clj.connection :as connection]
    [swank-clj.executor :as executor]
+   [swank-clj.inspect :as inspect]
    [swank-clj.rpc-socket-connection :as rpc-socket-connection]
    [clojure.java.io :as io]
    [clojure.string :as string])
@@ -18,7 +19,8 @@
    com.sun.jdi.request.ExceptionRequest
    com.sun.jdi.event.VMStartEvent
    com.sun.jdi.event.VMDeathEvent
-   com.sun.jdi.VirtualMachine))
+   com.sun.jdi.VirtualMachine
+   com.sun.jdi.ObjectReference))
 
 (defonce vm nil)
 
@@ -42,7 +44,9 @@
 (def throwable (delay (first (jpda/classes (:vm vm) "java.lang.Throwable"))))
 (def get-message (delay (first (jpda/methods @throwable "getMessage"))))
 (defn exception-message [exception thread]
-  (if-let [message (jpda/invoke-method exception @get-message thread [])]
+  (if-let [message (jpda/invoke-method
+                    exception @get-message thread jpda/invoke-single-threaded
+                    [])]
     (jpda/string-value message)))
 
 (def continue-handling (atom true))
@@ -131,23 +135,40 @@
    (rpc-socket-connection/create options)
    (connection/create options)))
 
+(defn inspect-if-inspector-active
+  [handler]
+  (fn [connection form buffer-package id f]
+    (logging/trace
+     "inspect-if-inspector-active %s %s %s"
+     f
+     (re-find #"inspect" (name (first form)))
+     (inspect/content (connection/inspector connection)))
+    (if (and f
+             (re-find #"inspect" (name (first form)))
+             (inspect/content (connection/inspector connection)))
+      (core/execute-slime-fn* connection f (rest form) buffer-package)
+      (handler connection form buffer-package id f))))
+
+(defn execute-unless-inspect
+  [handler]
+  (fn [connection form buffer-package id f]
+    (if (and f (or (= "inspect-frame-var" (name (first form)))
+                   (not (re-find #"inspect" (name (first form))))))
+      (core/execute-slime-fn* connection f (rest form) buffer-package)
+      (handler connection form buffer-package id f))))
+
 (defn forward-command
-  [connection form buffer-package id]
-  (if-let [proxied-connection (:proxy-to @connection)]
-    (do
+  [handler]
+  (fn [connection form buffer-package id f]
+    (let [proxied-connection (:proxy-to @connection)]
       (logging/trace
        "debugger/forward-command: forwarding %s to proxied connection"
        (first form))
       (executor/execute-request
        (partial
         connection/send-to-emacs
-        proxied-connection (list :emacs-rex form buffer-package true id))))
-    (do
-      (logging/trace
-       "swank/eval-for-emacs: no forwarding fn %s" (first form))
-      (executor/execute-request
-       (partial connection/send-to-emacs connection `(:return (:abort) ~id)))
-      (connection/remove-pending-id connection id))))
+        proxied-connection (list :emacs-rex form buffer-package true id)))
+      :swank-clj.swank/pending)))
 
 (defn forward-rpc
   [connection rpc]
@@ -200,31 +221,35 @@
   (or args []))
 
 (defn remote-eval*
-  [vm thread form]
-  (if-let [rv (->>
-               (str form)
-               (jpda/mirror-of (:vm vm))
-               arg-list
-               (jpda/invoke-method (:RT vm) (:read-string vm) thread)
-               arg-list
-               (jpda/invoke-method (:Compiler vm) (:eval vm) thread))]
-    (jpda/string-value rv)))
+  ([vm thread form]
+     (remote-eval* vm thread form jpda/invoke-multi-threaded))
+  ([vm thread form options]
+     (if-let [rv (->>
+                  (str form)
+                  (jpda/mirror-of (:vm vm))
+                  arg-list
+                  (jpda/invoke-method
+                   (:RT vm) (:read-string vm) thread options)
+                  arg-list
+                  (jpda/invoke-method
+                   (:Compiler vm) (:eval vm) thread options))]
+       (jpda/string-value rv))))
 
 (defn eval-to-string
   [form]
   `(pr-str (eval ~form)))
 
 (defmacro remote-eval
-  [vm thread form]
-  `(remote-eval* ~vm ~thread '~(eval-to-string form)))
-
-(defmacro remote-
-  [vm thread form]
-  `(remote-eval* ~vm ~thread '~(eval-to-string form)))
+  ([vm thread form]
+     `(remote-eval* ~vm ~thread '~(eval-to-string form)))
+  ([vm thread form options]
+     `(remote-eval* ~vm ~thread '~(eval-to-string form) ~options)))
 
 (defmacro control-eval
-  [form]
-  `(read-string (remote-eval vm (:control-thread vm) '~form)))
+  ([form]
+     `(read-string (remote-eval vm (:control-thread vm) '~form)))
+  ([form options]
+     `(read-string (remote-eval vm (:control-thread vm) '~form ~options))))
 
 (def jni-object "Ljava/lang/Object;")
 (defn invoke-signature
@@ -238,6 +263,7 @@
   [ns name n thread]
   (let [object (jpda/invoke-method
                 (:RT vm) (:var vm) thread
+                jpda/invoke-single-threaded
                 [(jpda/mirror-of (:vm vm) ns)
                  (jpda/mirror-of (:vm vm) name)])]
     [object (first (jpda/methods
@@ -245,16 +271,18 @@
 
 (defn invoke-clojure-fn
   "Invoke a function on the control connection with the given remote arguments."
-  [ns name thread & args]
+  [ns name thread options & args]
   (logging/trace "invoke-clojure-fn %s %s %s" ns name args)
   (let [[object method] (clojure-fn ns name (count args) thread)]
-    (jpda/invoke-method object method thread args)))
+    (jpda/invoke-method object method thread options args)))
 
 (defn pr-str-arg
   "Read the value of the given arg"
-  [thread arg]
-  (-> (invoke-clojure-fn "clojure.core" "pr-str" thread arg)
-      jpda/string-value))
+  ([thread arg]
+     (pr-str-arg thread arg jpda/invoke-single-threaded))
+  ([thread arg options]
+     (-> (invoke-clojure-fn "clojure.core" "pr-str" thread options arg)
+         jpda/string-value)))
 
 (defn read-arg
   "Read the value of the given arg"
@@ -267,7 +295,8 @@
    object."
   [thread m kw]
   (let [kw (invoke-clojure-fn
-            "clojure.core" "keyword" thread (jpda/mirror-of (:vm vm) (name kw)))
+            "clojure.core" "keyword" thread jpda/invoke-multi-threaded
+            (jpda/mirror-of (:vm vm) (name kw)))
         method (first
                 (jpda/methods
                  (.referenceType m) "invoke" (invoke-signature 1)))]
@@ -275,7 +304,8 @@
     (logging/trace "signature %s" (invoke-signature 1))
     (logging/trace "keyword %s" (jpda/object-reference kw))
     (logging/trace "method %s" (pr-str method))
-    (jpda/invoke-method m method (:control-thread vm) [kw])))
+    (jpda/invoke-method
+     m method (:control-thread vm) jpda/invoke-single-threaded [kw])))
 
 ;; objectref(Integer)
 
@@ -333,7 +363,8 @@
                    vm-port
                    #(or %
                         (control-eval
-                         (deref swank-clj.socket-server/acceptor-port))))]
+                         (deref swank-clj.socket-server/acceptor-port)
+                         jpda/invoke-single-threaded)))]
       port
       (do
         (Thread/sleep 200)
@@ -351,16 +382,22 @@
 (defn format-frame
   [frame]
   (let [location (.location frame)
-        method (.method location)
+        declaring-type (jpda/location-type-name location)
+        method (jpda/location-method-name location)
         line (jpda/location-line-number location)
-        source-path (jpda/location-source-path location)
-        declaring-type (.declaringType location)]
-    (format
-     "%s %s %s:%s"
-     (.name declaring-type)
-     (.name method)
-     source-path
-     line)))
+        source-name (jpda/location-source-name location)]
+    (if (and (= method "invoke") (.endsWith source-name ".clj"))
+      (format
+       "%s %s:%s"
+       (jpda/unmunge-clojure declaring-type)
+       source-name
+       line)
+      (format
+       "%s %s %s:%s"
+       declaring-type
+       method
+       source-name
+       line))))
 
 (defn exception-stacktrace [thread]
   (map #(list %1 %2 '(:restartable nil))
@@ -417,14 +454,42 @@
     (f))
   (.uniqueID (:thread level-info)))
 
+(def stm-types #{"clojure.lang.Atom"})
+
+(defn stm-type? [object-reference]
+  (stm-types (.. object-reference referenceType name)))
+
+(defn invoke-option-for [object-reference]
+  (logging/trace
+   "invoke-option-for %s" (.. object-reference referenceType name))
+  (if (stm-type? object-reference)
+    jpda/invoke-multi-threaded
+    jpda/invoke-single-threaded))
 
 (defn inspector-value
-  "Create a value that can be displayed."
+  "Create a local value for the specified reference."
   [thread x]
   (cond
    (instance? com.sun.jdi.PrimitiveValue x) (.value x)
-   (instance? com.sun.jdi.Value x) (pr-str-arg thread x)
+   (instance? com.sun.jdi.Value x) (if (stm-type? x)
+                                     (format "#<%s>" (.. x referenceType name))
+                                     (let [s (pr-str-arg
+                                              thread x (invoke-option-for x))]
+                                       (if (.startsWith s "#<")
+                                         s
+                                         (read-string s))))
    :else x))
+
+(defn inspector-value-string
+  "Create a value that can be displayed."
+  [thread x]
+  (cond
+   (instance? com.sun.jdi.PrimitiveValue x) (pr-str (.value x))
+   (instance? com.sun.jdi.Value x) (if (stm-type? x)
+                                     (format "#<%s>" (.. x referenceType name))
+                                     (pr-str-arg
+                                      thread x (invoke-option-for x)))
+   :else (pr-str x)))
 
 (defn frame-locals
   "Return frame locals for slime"
@@ -438,18 +503,19 @@
   (for [map-entry (frame-locals level-info n)]
     {:name (.name (key map-entry))
      :value (val map-entry)
-     :string-value (str
-                    (inspector-value (:thread level-info) (val map-entry)))}))
+     :string-value (inspector-value-string
+                    (:thread level-info) (val map-entry))}))
 
-(defn nth-frame-var [level-info frame-index var-index]
+(defn nth-frame-var
+  "Return the var-index'th var in the frame-index'th frame"
+  [level-info frame-index var-index]
+  {:pre [(< frame-index (count (.frames (:thread level-info))))]}
   (let [inspector-value (partial inspector-value (:thread level-info))]
     (->
      (seq (frame-locals level-info frame-index))
      (nth var-index)
      val
-     inspector-value
-     str
-     read-string)))
+     inspector-value)))
 
 ;;; Source location
 

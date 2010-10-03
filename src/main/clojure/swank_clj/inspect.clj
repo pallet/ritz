@@ -65,6 +65,7 @@
 ;; Many of these will probably be redefined by swank-clojure-debug
 (defmulti emacs-inspect
   (fn known-types [obj]
+    (logging/trace "emacs-inspect %s" (type obj))
     (cond
      (map? obj) :map
      (vector? obj) :vector
@@ -74,7 +75,8 @@
      (instance? Class obj) :class
      (instance? clojure.lang.Namespace obj) :namespace
      (instance? clojure.lang.ARef obj) :aref
-     (.isArray (class obj)) :array)))
+     (and obj (.isArray (class obj))) :array
+     :else (class obj))))
 
 (defn inspect-meta-information [obj]
   (when (> (count (meta obj)) 0)
@@ -279,10 +281,13 @@
 (defn content [inspector]
   (:inspector-content @inspector))
 
-(defn nth-part [inspector index]
+(defn nth-part
+  [inspector index]
+  {:pre [(< index (count (:inspectee-parts @inspector)))]}
   (get (:inspectee-parts @inspector) index))
 
 (defn call-nth-action [inspector index args]
+  {:pre [(index < (count (:inspectee-actions @inspector)))]}
   (let [[fn refresh?] (get (:inspectee-actions @inspector) index)]
     (apply fn args)
     (when refresh?

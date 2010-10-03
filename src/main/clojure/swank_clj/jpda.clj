@@ -2,7 +2,8 @@
   "JPDA/JDI wrapper"
   (:refer-clojure :exclude [methods])
   (:require
-   [swank-clj.logging :as logging])
+   [swank-clj.logging :as logging]
+   [clojure.string :as string])
   (:import
    (com.sun.jdi
     VirtualMachine Bootstrap VMDisconnectedException
@@ -102,11 +103,13 @@
   [vm value]
   (.mirrorOf vm value))
 
+(def invoke-multi-threaded 0)
+(def invoke-single-threaded ObjectReference/INVOKE_SINGLE_THREADED)
+(def invoke-nonvirtual ObjectReference/INVOKE_NONVIRTUAL)
+
 (defn invoke-method
-  [class-or-object method thread args]
-  (.invokeMethod
-   class-or-object thread method args
-   ObjectReference/INVOKE_SINGLE_THREADED))
+  [class-or-object method thread options args]
+  (.invokeMethod class-or-object thread method args options))
 
 (defn string-value
   [^StringReference value]
@@ -177,3 +180,12 @@
   [frame]
   (when-let [locals (.visibleVariables frame)]
     (.getValues frame locals)))
+
+(defn unmunge-clojure
+  "unmunge a clojure name"
+  [munged-name]
+  {:pre [(string? munged-name)]}
+  (reduce
+   #(string/replace %1 (val %2) (str (key %2)))
+   (string/replace munged-name "$" "/")
+   clojure.lang.Compiler/CHAR_MAP))

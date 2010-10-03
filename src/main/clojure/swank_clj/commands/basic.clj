@@ -7,8 +7,11 @@
    swank-clj.commands)
   (:require
    [swank-clj.util.sys :as sys]
+   [swank-clj.messages :as messages]
    [swank-clj.swank.core :as core]
    [swank-clj.swank.find :as find]
+   [swank-clj.swank.basic :as basic]
+   [swank-clj.connection :as connection]
    [swank-clj.clj-contrib.pprint :as pprint]
    [swank-clj.clj-contrib.macroexpand :as macroexpand])
   (:import
@@ -16,9 +19,12 @@
    (java.util.zip ZipFile)
    (clojure.lang LineNumberingPushbackReader)))
 
+;; Note: For debugging purposes, keep bindings and with- macros out of commands,
+;; as they create catch sites.
+
 ;;;; Connection
 
-(defslimefn connection-info []
+(defslimefn connection-info [connection]
   `(:pid ~(sys/get-pid)
          :style :spawn
          :lisp-implementation (:type "Clojure"
@@ -28,79 +34,46 @@
                          :prompt ~(name (ns-name *ns*)))
          :version ~(deref core/*protocol-version*)))
 
-(defslimefn quit-lisp []
+(defslimefn quit-lisp [connection]
   (System/exit 0))
 
-(defslimefn toggle-debug-on-swank-error []
+(defslimefn toggle-debug-on-swank-error [connection]
   ;; (alter-var-root #'swank.core/*debug-swank-clojure* not)
   )
 
 ;;;; Evaluation
+(defslimefn interactive-eval-region [connection string]
+  (pr-str (first (basic/eval-region string))))
 
-(defn- eval-region
-  "Evaluate string, return the results of the last form as a list and
-   a secondary value the last form."
-  ([string]
-     (eval-region string "NO_SOURCE_FILE" 1))
-  ([string file line]
-     (with-open [rdr (proxy [LineNumberingPushbackReader]
-                         ((StringReader. string))
-                       (getLineNumber [] line))]
-       (binding [*file* file]
-         (loop [form (read rdr false rdr), value nil, last-form nil]
-           (if (= form rdr)
-             [value last-form]
-             (recur (read rdr false rdr)
-                    (eval form)
-                    form)))))))
+(defslimefn interactive-eval [connection string]
+  (pr-str (first (basic/eval-region string))))
 
-(defn- compile-region
-  "Compile region."
-  ([string file line]
-     (with-open [rdr1 (proxy [LineNumberingPushbackReader]
-                          ((StringReader. string)))
-                 rdr (proxy [LineNumberingPushbackReader] (rdr1)
-                       (getLineNumber [] (+ line (.getLineNumber rdr1) -1)))]
-       (clojure.lang.Compiler/load rdr file (.getName (File. file))))))
+(defslimefn listener-eval [connection form]
+  (let [result (basic/eval-form connection form)]
+    (connection/send-to-emacs connection (messages/repl-result result))))
 
-
-(defslimefn interactive-eval-region [string]
-  (pr-str (first (eval-region string))))
-
-(defslimefn interactive-eval [string]
-  (pr-str (first (eval-region string))))
-
-(defslimefn listener-eval [form]
-  (core/with-package-tracking
-    (let [[value last-form] (eval-region form)]
-      ;; (when (and last-form (not (one-of? last-form '*1 '*2 '*3 '*e)))
-      ;;   (set! *3 *2)
-      ;;   (set! *2 *1)
-      ;;   (set! *1 value))
-      (core/send-repl-results-to-emacs value))))
-
-(defslimefn eval-and-grab-output [string]
+(defslimefn eval-and-grab-output [connection string]
   (with-local-vars [retval nil]
     (list (with-out-str
-            (var-set retval (pr-str (first (eval-region string)))))
+            (var-set retval (pr-str (first (basic/eval-region string)))))
           (var-get retval))))
 
-(defslimefn pprint-eval [string]
-  (pprint/pretty-pr-code (first (eval-region string))))
+(defslimefn pprint-eval [connection string]
+  (pprint/pretty-pr-code (first (basic/eval-region string))))
 
 ;;;; Macro expansion
 
 (defn- apply-macro-expander [expander string]
   (pprint/pretty-pr-code (expander (read-string string))))
 
-(defslimefn swank-macroexpand-1 [string]
+(defslimefn swank-macroexpand-1 [connection string]
   (apply-macro-expander macroexpand-1 string))
 
-(defslimefn swank-macroexpand [string]
+(defslimefn swank-macroexpand [connection string]
   (apply-macro-expander macroexpand string))
 
 ;; not implemented yet, needs walker
-(defslimefn swank-macroexpand-all [string]
+(defslimefn swank-macroexpand-all [connection string]
   (apply-macro-expander macroexpand/macroexpand-all string))
 
 ;;;; Compiler / Execution
@@ -148,11 +121,11 @@
                )))))))
 
 (defslimefn compile-file-for-emacs
-  ([file-name load? & compile-options]
-     (when load?
-       (compile-file-for-emacs* file-name))))
+  [connection file-name load? & compile-options]
+  (when load?
+    (compile-file-for-emacs* file-name)))
 
-(defslimefn load-file [file-name]
+(defslimefn load-file [connection file-name]
   (pr-str (clojure.core/load-file file-name)))
 
 (defn- line-at-position [file position]
@@ -162,7 +135,8 @@
       (.getLineNumber f))
     (catch Exception e 1)))
 
-(defslimefn compile-string-for-emacs [string buffer position directory debug]
+(defslimefn compile-string-for-emacs
+  [connection string buffer position directory debug]
   (let [start (System/nanoTime)
         line (line-at-position directory position)
         ret (do
@@ -171,7 +145,7 @@
                         directory line
                         (Exception. (str "No such namespace: "
                                          core/*current-package*)))))
-              (compile-region string directory line))
+              (basic/compile-region string directory line))
         delta (- (System/nanoTime) start)]
     `(:compilation-result nil ~(pr-str ret) ~(/ delta 1000000000.0))))
 
@@ -189,20 +163,20 @@
     (describe-to-string v)
     (str "Unknown symbol " symbol-name)))
 
-(defslimefn describe-symbol [symbol-name]
+(defslimefn describe-symbol [connection symbol-name]
   (describe-symbol* symbol-name))
 
-(defslimefn describe-function [symbol-name]
+(defslimefn describe-function [connection symbol-name]
   (describe-symbol* symbol-name))
 
 ;; Only one namespace... so no kinds
-(defslimefn describe-definition-for-emacs [name kind]
+(defslimefn describe-definition-for-emacs [connection name kind]
   (describe-symbol* name))
 
 ;; Only one namespace... so only describe symbol
 (defslimefn documentation-symbol
-  ([symbol-name default] (documentation-symbol symbol-name))
-  ([symbol-name] (describe-symbol* symbol-name)))
+  ([connection symbol-name default] (documentation-symbol symbol-name))
+  ([connection symbol-name] (describe-symbol* symbol-name)))
 
 ;;;; Documentation
 
@@ -252,13 +226,14 @@ that symbols accessible in the current namespace go first."
                (compare nx ny))))))
 
 (defslimefn apropos-list-for-emacs
-  ([name]
-     (apropos-list-for-emacs name nil))
-  ([name external-only?]
-     (apropos-list-for-emacs name external-only? nil))
-  ([name external-only? case-sensitive?]
-     (apropos-list-for-emacs name external-only? case-sensitive? nil))
-  ([name external-only? case-sensitive? package]
+  ([connection name]
+     (apropos-list-for-emacs connection name nil))
+  ([connection name external-only?]
+     (apropos-list-for-emacs connection name external-only? nil))
+  ([connection name external-only? case-sensitive?]
+     (apropos-list-for-emacs
+      connection name external-only? case-sensitive? nil))
+  ([connection name external-only? case-sensitive? package]
      (let [package (when package
                      (or (find-ns (symbol package))
                          'user))]
@@ -268,7 +243,7 @@ that symbols accessible in the current namespace go first."
                                    package))))))
 
 ;;;; Operator messages
-(defslimefn operator-arglist [name package]
+(defslimefn operator-arglist [connection name package]
   (try
     (let [f (read-string name)]
       (cond
@@ -283,10 +258,10 @@ that symbols accessible in the current namespace go first."
 ;;;; Package Commands
 
 (defslimefn list-all-package-names
-  ([] (map (comp str ns-name) (all-ns)))
-  ([nicknames?] (list-all-package-names)))
+  ([connection] (map (comp str ns-name) (all-ns)))
+  ([connection nicknames?] (list-all-package-names)))
 
-(defslimefn set-package [name]
+(defslimefn set-package [connection name]
   (let [ns (core/maybe-ns name)]
     (in-ns (ns-name ns))
     (list (str (ns-name ns))
@@ -304,7 +279,7 @@ that symbols accessible in the current namespace go first."
       (println (str fname " returned " (apply str (take 240 (pr-str result)))))
       result)))
 
-(defslimefn swank-toggle-trace [fname]
+(defslimefn swank-toggle-trace [connection fname]
   (when-let [sym (ns-resolve
                   (core/maybe-ns core/*current-package*) (symbol fname))]
     (if-let [f# (get traced-fn-map sym)]
@@ -320,7 +295,7 @@ that symbols accessible in the current namespace go first."
                            (trace-fn-call sym f# args))))
         (str " traced.")))))
 
-(defslimefn untrace-all []
+(defslimefn untrace-all [connection]
   (doseq [sym (keys traced-fn-map)]
     (swank-toggle-trace (.sym sym))))
 
@@ -388,7 +363,7 @@ that symbols accessible in the current namespace go first."
             (:error "Source definition not found."))))))
    (catch java.lang.ClassNotFoundException e nil)))
 
-(defslimefn find-definitions-for-emacs [name]
+(defslimefn find-definitions-for-emacs [connection name]
   (let [sym-name (read-string name)]
     (or (find-var-definition sym-name)
         (find-ns-definition
@@ -397,76 +372,76 @@ that symbols accessible in the current namespace go first."
         `((~name (:error "Source definition not found."))))))
 
 
-(defslimefn throw-to-toplevel []
+(defslimefn throw-to-toplevel [connection]
   ;; (throw *debug-quit-exception*)
   )
 
 (defn invoke-restart [restart]
   ((nth restart 2)))
 
-(defslimefn invoke-nth-restart-for-emacs [level n]
+(defslimefn invoke-nth-restart-for-emacs [connection level n]
   ;; ((invoke-restart (*sldb-restarts* (nth (keys *sldb-restarts*) n))))
   )
 
-(defslimefn throw-to-toplevel []
+(defslimefn throw-to-toplevel [connection]
   ;; (if-let [restart (*sldb-restarts* :quit)]
   ;;   (invoke-restart restart))
   )
 
-(defslimefn sldb-continue []
+(defslimefn sldb-continue [connection]
   ;; (if-let [restart (*sldb-restarts* :continue)]
   ;;   (invoke-restart restart))
   )
 
-(defslimefn sldb-abort []
+(defslimefn sldb-abort [connection]
   ;; (if-let [restart (*sldb-restarts* :abort)]
   ;;   (invoke-restart restart))
   )
 
 
-(defslimefn backtrace [start end]
+(defslimefn backtrace [connection start end]
   ;; (build-backtrace start end)
   )
 
-(defslimefn buffer-first-change [file-name] nil)
+(defslimefn buffer-first-change [connection file-name] nil)
 
 (defn locals-for-emacs [m]
   (sort-by second
            (map #(list :name (name (first %)) :id 0
                        :value (str (second %))) m)))
 
-(defslimefn frame-catch-tags-for-emacs [n] nil)
-(defslimefn frame-locals-for-emacs [n]
+(defslimefn frame-catch-tags-for-emacs [connection n] nil)
+(defslimefn frame-locals-for-emacs [connection n]
   ;; (if (and (zero? n) (seq *current-env*))
   ;;   (locals-for-emacs *current-env*))
   )
 
-(defslimefn frame-locals-and-catch-tags [n]
+(defslimefn frame-locals-and-catch-tags [connection n]
   (list (frame-locals-for-emacs n)
         (frame-catch-tags-for-emacs n)))
 
-(defslimefn debugger-info-for-emacs [start end]
+(defslimefn debugger-info-for-emacs [connection start end]
   ;; (build-debugger-info-for-emacs start end)
   )
 
-(defslimefn eval-string-in-frame [expr n]
+(defslimefn eval-string-in-frame [connection expr n]
   ;; (if (and (zero? n) *current-env*)
   ;;   (with-bindings *current-env*
   ;;     (eval expr)))
   )
 
-(defslimefn frame-source-location [n]
+(defslimefn frame-source-location [connection n]
   ;; (source-location-for-frame
   ;;  (nth (.getStackTrace *current-exception*) n))
   )
 
 ;; Older versions of slime use this instead of the above.
-(defslimefn frame-source-location-for-emacs [n]
+(defslimefn frame-source-location-for-emacs [connection n]
   ;; (source-location-for-frame
   ;;  (nth (.getStackTrace *current-exception*) n))
   )
 
-(defslimefn create-repl [target] '("user" "user"))
+(defslimefn create-repl [connection target] '("user" "user"))
 
 ;;; Threads
 
@@ -490,18 +465,17 @@ that symbols accessible in the current namespace go first."
   "Return a list (LABELS (ID NAME STATUS ATTRS ...) ...).
 LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
-  []
+  [connection]
   (reset! thread-list (get-thread-list))
   (let [labels '(id name priority state)]
     (cons labels (map extract-info @thread-list))))
 
 ;;; TODO: Find a better way, as Thread.stop is deprecated
-(defslimefn kill-nth-thread [index]
+(defslimefn kill-nth-thread [connection index]
   (when index
     (when-let [thread (nth @thread-list index nil)]
       (println "Thread: " thread)
       (.stop thread))))
 
-(defslimefn quit-thread-browser []
+(defslimefn quit-thread-browser [connection]
   (reset! thread-list []))
-

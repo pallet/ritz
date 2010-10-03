@@ -4,6 +4,8 @@
    [swank-clj.executor :as executor]
    [swank-clj.debug :as debug]
    [swank-clj.logging :as logging]
+   [swank-clj.messages :as messages]
+   [swank-clj.hooks :as hooks]
    [swank-clj.connection :as connection]
    [swank-clj.commands :as commands]
    [swank-clj.swank.core :as core])
@@ -16,32 +18,26 @@
    java.util.concurrent.ExecutionException
    java.util.concurrent.TimeoutException))
 
-(defmacro with-package [package & body]
-  `(binding [*ns* (core/maybe-ns ~package)
-             core/*current-package* (core/maybe-ns ~package)]
-     ~@body))
-
-(defn- cmd [cmd]
-  (if (.startsWith cmd "swank:") (.substring cmd 6) cmd))
-
-(defn command-not-found [connection form buffer-package id]
-  (logging/trace
-   "swank/eval-for-emacs: could not find fn %s" (first form))
-  `(:return (:abort) ~id))
+(def default-pipeline
+  (core/execute-slime-fn core/command-not-found))
 
 (defn eval-for-emacs [connection form buffer-package id]
   (logging/trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
   (try
     (connection/add-pending-id connection id)
-    (if-let [f (commands/slime-fn (cmd (name (first form))))]
-      (let [result (with-package buffer-package
-                     (apply f (eval (vec (rest form)))))]
-        ;; TODO (run-hook *pre-reply-hook*)
-        (logging/trace "swank/eval-for-emacs: result %s %s" result id)
-        (connection/send-to-emacs connection `(:return (:ok ~result) ~id))
-        (connection/remove-pending-id connection id))
-      ;; swank function not defined, abort
-      (command-not-found connection form buffer-package id))
+    (let [f (commands/slime-fn (name (first form)))
+          handler (or (connection/swank-handler connection) default-pipeline)
+          result (handler connection form buffer-package id f)]
+      (condp = result
+          ::abort (do
+                    (messages/abort id)
+                    (connection/remove-pending-id connection id))
+          ::pending (logging/trace "swank/eval-for-emacs: pending %s" id)
+          (do
+            (hooks/run-hook core/*pre-reply-hook*)
+            (connection/remove-pending-id connection id)
+            (logging/trace "swank/eval-for-emacs: result %s %s" result id)
+            (connection/send-to-emacs connection (messages/ok result id)))))
     (catch Throwable t
       ;; Thread/interrupted clears this thread's interrupted status; if
       ;; Thread.stop was called on us it may be set and will cause an
@@ -52,7 +48,7 @@
        (pr-str t)
        (with-out-str (.printStackTrace t)))
       ;;(Thread/interrupted)
-      (connection/send-to-emacs connection`(:return (:abort) ~id))
+      (connection/send-to-emacs connection (messages/abort id))
       ;; (finally
       ;;  (connection/remove-pending-id connection id))
       )))
@@ -88,10 +84,10 @@
         (logging/trace
          "swank/dispatch-event: :emacs-rex %s %s %s %s"
          form-string package thread id)
-        (let [last-values (:last-values @connection)]
+        (let [last-values (:result-history @connection)]
           (binding [*1 (first last-values)
-                    *2 (second last-values)
-                    *3 (nth last-values 2)
+                    *2 (fnext last-values)
+                    *3 (first (nnext last-values))
                     *e (:last-exception @connection)
                     core/*current-connection* connection
                     *out* (:writer-redir @connection)

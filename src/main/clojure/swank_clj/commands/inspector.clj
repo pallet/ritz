@@ -8,48 +8,48 @@
    [swank-clj.commands :only [defslimefn]]))
 
 
-(defslimefn init-inspector [string]
-  (let [inspector (connection/inspector core/*current-connection*)]
+(defslimefn init-inspector [connection string]
+  (let [inspector (connection/inspector connection)]
     (inspect/reset-inspector inspector)
     (messages/inspector
      (inspect/inspect-object inspector (eval (read-string string))))))
 
-(defslimefn inspector-nth-part [index]
-  (inspect/nth-part (connection/inspector core/*current-connection*) index))
+(defslimefn inspector-nth-part [connection index]
+  (inspect/nth-part (connection/inspector connection) index))
 
-(defslimefn inspect-nth-part [index]
-  (let [inspector (connection/inspector core/*current-connection*)]
+(defslimefn inspect-nth-part [connection index]
+  (let [inspector (connection/inspector connection)]
     (messages/inspector
-     (inspect/inspect-object inspector (inspector-nth-part index)))))
+     (inspect/inspect-object inspector (inspector-nth-part connection index)))))
 
-(defslimefn inspector-range [from to]
-  (let [inspector (connection/inspector core/*current-connection*)]
+(defslimefn inspector-range [connection from to]
+  (let [inspector (connection/inspector connection)]
     (inspect/content-range inspector from to)))
 
-(defslimefn inspector-call-nth-action [index & args]
+(defslimefn inspector-call-nth-action [connection index & args]
   (when-let [inspector (inspect/call-nth-action
-                        (connection/inspector core/*current-connection*)
+                        (connection/inspector connection)
                         index args)]
     (messages/inspector inspector)))
 
-(defslimefn inspector-pop []
+(defslimefn inspector-pop [connection]
   (messages/inspector
    (inspect/pop-inspectee
-    (connection/inspector core/*current-connection*))))
+    (connection/inspector connection))))
 
-(defslimefn inspector-next []
+(defslimefn inspector-next [connection]
   (messages/inspector
    (inspect/next-inspectee
-    (connection/inspector core/*current-connection*))))
+    (connection/inspector connection))))
 
-(defslimefn inspector-reinspect []
+(defslimefn inspector-reinspect [connection]
   (let [inspector
-        (connection/inspector core/*current-connection*)]
+        (connection/inspector connection)]
     (messages/inspector (inspect/reinspect inspector))))
 
-(defslimefn quit-inspector []
-  (inspect/reset-inspector (connection/inspector core/*current-connection*))
+(defslimefn quit-inspector [connection]
+  (inspect/reset-inspector (connection/inspector connection))
   nil)
 
-(defslimefn describe-inspectee []
-  (inspect/describe-inspectee (connection/inspector core/*current-connection*)))
+(defslimefn describe-inspectee [connection]
+  (inspect/describe-inspectee (connection/inspector connection)))

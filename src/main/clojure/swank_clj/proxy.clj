@@ -3,21 +3,29 @@
   (:require
    [swank-clj.executor :as executor]
    [swank-clj.swank :as swank]
+   [swank-clj.swank.core :as core]
    [swank-clj.rpc-server :as rpc-server]
    [swank-clj.logging :as logging]
    [swank-clj.debug :as debug]
-   swank-clj.commands.debugger))
+   swank-clj.commands.debugger
+   swank-clj.commands.inspector))
 
 (defn forward-commands
   "Alter eval-for-emacs to forward unrecognised commands to proxied connection."
   []
-  (alter-var-root
-   #'swank/command-not-found
-   (fn [_ x] x)
-   debug/forward-command)
+  ;; (alter-var-root
+  ;;  #'swank/command-not-found
+  ;;  (fn [_ x] x)
+  ;;  debug/forward-command)
   (alter-var-root
    #'swank/forward-rpc
    (fn [_] debug/forward-rpc)))
+
+(def swank-pipeline
+  (debug/inspect-if-inspector-active
+   (debug/execute-unless-inspect
+    (debug/forward-command
+     core/command-not-found))))
 
 (defn serve-connection
   "Serve connection for proxy rpc functions"
@@ -44,7 +52,8 @@
                                    io-connection
                                    (merge
                                     options
-                                    {:proxy-to proxied-connection}))]
+                                    {:proxy-to proxied-connection
+                                     :swank-handler swank-pipeline}))]
           (logging/trace "proxy/connection-handler running")
           (executor/execute-loop
            (partial debug/forward-reply connection) :name "Reply pump")

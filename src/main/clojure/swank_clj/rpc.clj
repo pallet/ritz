@@ -66,7 +66,10 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
                 (= "nil" str) nil
                 (= "t" str) true
                 (.startsWith str ":") (keyword (.substring str 1))
-                :else (symbol str))))))))
+                :else
+                (if-let [m (re-matches #"(.+):(.+)" str)]
+                  (apply symbol (drop 1 m))
+                  (symbol str)))))))))
 
 (defn- read-packet
   ([#^Reader reader]

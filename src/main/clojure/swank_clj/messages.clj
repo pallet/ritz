@@ -2,6 +2,18 @@
   (:require
    [swank-clj.inspect :as inspect]))
 
+(defn abort
+  "Command aborted message."
+  [id]
+  `(:return (:abort) ~id))
+
+(defn ok
+  "Command completed message."
+  [result id]
+  `(:return (:ok ~result) ~id))
+
+(defn repl-result [val]
+  `(:write-string ~(str (pr-str val) "\n") :repl-result))
 
 (defn inspector
   "Message for an inspector"

@@ -122,7 +122,9 @@
                           :timeout nil
                           :writer-redir (make-output-redirection
                                          io-connection)
-                          :inspector (atom {})})))]
+                          :inspector (atom {})
+                          :result-history nil
+                          :last-exception nil})))]
     ;;(when-not (:proxy-to options))
 
       (swap! connection
@@ -188,11 +190,12 @@
 (defn next-sldb-level
   [connection level-info]
   (logging/trace "next-sldb-level")
-  (swap!
-   connection update-in [:sldb-levels]
-   (fn [levels]
-     (conj (or levels []) level-info)))
-  (count (:sldb-levels @connection)))
+  (-> (swap!
+       connection update-in [:sldb-levels]
+       (fn [levels]
+         (conj (or levels []) level-info)))
+      :sldb-levels
+      count))
 
 (defn sldb-drop-level [connection n]
   (swap! connection update-in [:sldb-levels] subvec 0 n))
@@ -211,3 +214,16 @@
   "Return the connection's inspector information."
   [connection]
   (:inspector @connection))
+
+(defn swank-handler
+  [connection]
+  (:swank-handler @connection))
+
+(defn add-result-to-history
+  "Add result to history, returning a history vector"
+  [connection result]
+  (->
+   (swap! connection update-in [:result-history]
+          (fn [history]
+            (take 3 (conj history result))))
+   :result-history))

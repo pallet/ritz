@@ -1,8 +1,8 @@
 (ns swank-clj.commands.contrib
   (:use
-   swank-clj.commands))
+   [swank-clj.commands :only [defslimefn]]))
 
-(defslimefn swank-require [keys]
+(defslimefn swank-require [connection keys]
   (binding [*ns* (find-ns 'swank.commands.contrib)]
     (doseq [k (if (seq? keys) keys (list keys))]
       (try
