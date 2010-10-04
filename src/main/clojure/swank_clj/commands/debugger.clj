@@ -50,5 +50,6 @@
         object (debug/nth-frame-var level-info frame index)]
     (when object
       (inspect/reset-inspector inspector)
+      (inspect/inspect-object inspector object)
       (messages/inspector
-       (inspect/inspect-object inspector object)))))
+       (inspect/display-values inspector)))))

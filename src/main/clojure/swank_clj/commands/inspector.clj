@@ -11,26 +11,22 @@
 (defslimefn init-inspector [connection string]
   (let [inspector (connection/inspector connection)]
     (inspect/reset-inspector inspector)
-    (messages/inspector
-     (inspect/inspect-object inspector (eval (read-string string))))))
-
-(defslimefn inspector-nth-part [connection index]
-  (inspect/nth-part (connection/inspector connection) index))
+    (inspect/inspect-object inspector (eval (read-string string)))
+    (messages/inspector (inspect/display-values inspector))))
 
 (defslimefn inspect-nth-part [connection index]
   (let [inspector (connection/inspector connection)]
-    (messages/inspector
-     (inspect/inspect-object inspector (inspector-nth-part connection index)))))
+    (inspect/inspect-object inspector (inspect/nth-part inspector index))
+    (messages/inspector (inspect/display-values inspector))))
 
 (defslimefn inspector-range [connection from to]
   (let [inspector (connection/inspector connection)]
     (inspect/content-range inspector from to)))
 
 (defslimefn inspector-call-nth-action [connection index & args]
-  (when-let [inspector (inspect/call-nth-action
-                        (connection/inspector connection)
-                        index args)]
-    (messages/inspector inspector)))
+  (let [inspector (connection/inspector connection)]
+    (when (inspect/call-nth-action index args)
+      (messages/inspector (inspect/display-values inspector)))))
 
 (defslimefn inspector-pop [connection]
   (messages/inspector

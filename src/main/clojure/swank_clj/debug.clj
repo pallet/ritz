@@ -39,15 +39,28 @@
 (defn remove-connection [connection]
   (swap! connections dissoc connection))
 
+(defn log-exception [e]
+  (logging/trace
+   "Caught exception %s %s"
+   (pr-str e)
+   (with-out-str (.printStackTrace e))))
+
+(defmacro with-caught-jdpa-exceptions
+  [& body]
+  `(try
+     ~@body
+     (catch com.sun.jdi.InternalException e#
+       (log-exception e#))))
 
 
 (def throwable (delay (first (jpda/classes (:vm vm) "java.lang.Throwable"))))
 (def get-message (delay (first (jpda/methods @throwable "getMessage"))))
 (defn exception-message [exception thread]
-  (if-let [message (jpda/invoke-method
-                    exception @get-message thread jpda/invoke-single-threaded
-                    [])]
-    (jpda/string-value message)))
+  (with-caught-jdpa-exceptions
+    (if-let [message (jpda/invoke-method
+                      exception @get-message thread jpda/invoke-single-threaded
+                      [])]
+      (jpda/string-value message))))
 
 (def continue-handling (atom true))
 
@@ -135,7 +148,18 @@
    (rpc-socket-connection/create options)
    (connection/create options)))
 
-(defn inspect-if-inspector-active
+(def *current-thread-reference*)
+
+(defn execute-if-inspect-frame-var
+  [handler]
+  (fn [connection form buffer-package id f]
+    (if (and f (= "inspect-frame-var" (name (first form))))
+      (binding [*current-thread-reference*
+                (:thread (connection/sldb-level-info connection))]
+        (core/execute-slime-fn* connection f (rest form) buffer-package))
+      (handler connection form buffer-package id f))))
+
+(defn execute-inspect-if-inspector-active
   [handler]
   (fn [connection form buffer-package id f]
     (logging/trace
@@ -146,14 +170,16 @@
     (if (and f
              (re-find #"inspect" (name (first form)))
              (inspect/content (connection/inspector connection)))
-      (core/execute-slime-fn* connection f (rest form) buffer-package)
+      (binding [*current-thread-reference*
+                ;; this may be wrong level's thread
+                (:thread (connection/sldb-level-info connection))]
+        (core/execute-slime-fn* connection f (rest form) buffer-package))
       (handler connection form buffer-package id f))))
 
 (defn execute-unless-inspect
   [handler]
   (fn [connection form buffer-package id f]
-    (if (and f (or (= "inspect-frame-var" (name (first form)))
-                   (not (re-find #"inspect" (name (first form))))))
+    (if (and f (not (re-find #"inspect" (name (first form)))))
       (core/execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
 
@@ -186,7 +212,8 @@
     (let [reply (connection/read-from-connection proxied-connection)]
       (executor/execute-request
        (partial connection/send-to-emacs connection reply))
-      (let [id (second reply)]
+      (let [id (last reply)]
+        (logging/trace "removing pending-id %s" id)
         (connection/remove-pending-id connection id)))))
 
 
@@ -224,15 +251,24 @@
   ([vm thread form]
      (remote-eval* vm thread form jpda/invoke-multi-threaded))
   ([vm thread form options]
-     (if-let [rv (->>
-                  (str form)
-                  (jpda/mirror-of (:vm vm))
-                  arg-list
-                  (jpda/invoke-method
-                   (:RT vm) (:read-string vm) thread options)
-                  arg-list
-                  (jpda/invoke-method
-                   (:Compiler vm) (:eval vm) thread options))]
+     {:pre [vm thread form options]}
+     (logging/trace "debug/remote-eval* %s" form)
+     (->>
+      (str form)
+      (jpda/mirror-of (:vm vm))
+      arg-list
+      (jpda/invoke-method
+       (:RT vm) (:read-string vm) thread options)
+      arg-list
+      (jpda/invoke-method
+       (:Compiler vm) (:eval vm) thread options))))
+
+(defn remote-eval-to-string*
+  ([vm thread form]
+     (remote-eval-to-string* vm thread form jpda/invoke-multi-threaded))
+  ([vm thread form options]
+     (logging/trace "debug/remote-eval-to-string* %s" form)
+     (if-let [rv (remote-eval* vm thread form options)]
        (jpda/string-value rv))))
 
 (defn eval-to-string
@@ -241,9 +277,13 @@
 
 (defmacro remote-eval
   ([vm thread form]
-     `(remote-eval* ~vm ~thread '~(eval-to-string form)))
+     `(remote-eval-to-string* ~vm ~thread '~(eval-to-string form)))
   ([vm thread form options]
-     `(remote-eval* ~vm ~thread '~(eval-to-string form) ~options)))
+     `(remote-eval-to-string* ~vm ~thread '~(eval-to-string form) ~options)))
+
+(defmacro remote-value
+  [vm thread form options]
+  `(remote-eval* ~vm ~thread '~form ~options))
 
 (defmacro control-eval
   ([form]
@@ -260,10 +300,10 @@
 (defn clojure-fn
   "Resolve a clojure function in the remote vm. Returns an ObjectReference and
    a Method for n arguments."
-  [ns name n thread]
+  [ns name n thread options]
   (let [object (jpda/invoke-method
                 (:RT vm) (:var vm) thread
-                jpda/invoke-single-threaded
+                options
                 [(jpda/mirror-of (:vm vm) ns)
                  (jpda/mirror-of (:vm vm) name)])]
     [object (first (jpda/methods
@@ -273,13 +313,13 @@
   "Invoke a function on the control connection with the given remote arguments."
   [ns name thread options & args]
   (logging/trace "invoke-clojure-fn %s %s %s" ns name args)
-  (let [[object method] (clojure-fn ns name (count args) thread)]
+  (let [[object method] (clojure-fn ns name (count args) thread options)]
     (jpda/invoke-method object method thread options args)))
 
 (defn pr-str-arg
   "Read the value of the given arg"
   ([thread arg]
-     (pr-str-arg thread arg jpda/invoke-single-threaded))
+     (pr-str-arg thread arg jpda/invoke-multi-threaded))
   ([thread arg options]
      (-> (invoke-clojure-fn "clojure.core" "pr-str" thread options arg)
          jpda/string-value)))
@@ -305,7 +345,7 @@
     (logging/trace "keyword %s" (jpda/object-reference kw))
     (logging/trace "method %s" (pr-str method))
     (jpda/invoke-method
-     m method (:control-thread vm) jpda/invoke-single-threaded [kw])))
+     m method (:control-thread vm) jpda/invoke-multi-threaded [kw])))
 
 ;; objectref(Integer)
 
@@ -388,12 +428,12 @@
         source-name (jpda/location-source-name location)]
     (if (and (= method "invoke") (.endsWith source-name ".clj"))
       (format
-       "%s %s:%s"
+       "%s (%s:%s)"
        (jpda/unmunge-clojure declaring-type)
        source-name
        line)
       (format
-       "%s %s %s:%s"
+       "%s.%s (%s:%s)"
        declaring-type
        method
        source-name
@@ -459,6 +499,9 @@
 (defn stm-type? [object-reference]
   (stm-types (.. object-reference referenceType name)))
 
+(defn lazy-seq? [object-reference]
+  (= "clojure.lang.LazySeq" (.. object-reference referenceType name)))
+
 (defn invoke-option-for [object-reference]
   (logging/trace
    "invoke-option-for %s" (.. object-reference referenceType name))
@@ -466,56 +509,107 @@
     jpda/invoke-multi-threaded
     jpda/invoke-single-threaded))
 
-(defn inspector-value
-  "Create a local value for the specified reference."
-  [thread x]
-  (cond
-   (instance? com.sun.jdi.PrimitiveValue x) (.value x)
-   (instance? com.sun.jdi.Value x) (if (stm-type? x)
-                                     (format "#<%s>" (.. x referenceType name))
-                                     (let [s (pr-str-arg
-                                              thread x (invoke-option-for x))]
-                                       (if (.startsWith s "#<")
-                                         s
-                                         (read-string s))))
-   :else x))
+(defmethod inspect/value-as-string com.sun.jdi.PrimitiveValue
+  [obj] (pr-str (.value obj)))
 
-(defn inspector-value-string
-  "Create a value that can be displayed."
-  [thread x]
-  (cond
-   (instance? com.sun.jdi.PrimitiveValue x) (pr-str (.value x))
-   (instance? com.sun.jdi.Value x) (if (stm-type? x)
-                                     (format "#<%s>" (.. x referenceType name))
-                                     (pr-str-arg
-                                      thread x (invoke-option-for x)))
-   :else (pr-str x)))
+(defmethod inspect/value-as-string com.sun.jdi.Value
+  [obj]
+  (try
+    (jpda/string-value
+     (invoke-clojure-fn
+      "swank-clj.inspect" "value-as-string"
+      *current-thread-reference*
+      jpda/invoke-multi-threaded
+      obj))
+    (catch com.sun.jdi.InternalException e
+      (logging/trace "inspect/value-as-string: exeception %s" e)
+      (format "#<%s>" (.. obj referenceType name)))))
+
+;; (defmethod inspect/emacs-inspect com.sun.jdi.PrimitiveValue
+;;   [obj]
+;;   (inspect/emacs-inspect (.value obj)))
+
+;; (defmethod inspect/emacs-inspect com.sun.jdi.Value
+;;   [obj]
+;;   (try
+;;     (->
+;;      (invoke-clojure-fn
+;;       "swank-clj.inspect" "emacs-inspect"
+;;       *current-thread-reference*
+;;       jpda/invoke-multi-threaded
+;;       obj))
+;;     (catch com.sun.jdi.InternalException e
+;;       (logging/trace "inspect/emacs-inspect: exeception %s" e)
+;;       `("unavailable : " ~(str e)))))
+
+(defmethod inspect/object-content-range com.sun.jdi.PrimitiveValue
+  [object start end]
+  (inspect/object-content-range (.value object) start end))
+
+(defmethod inspect/object-content-range com.sun.jdi.Value
+  [object start end]
+  (logging/trace
+   "inspect/object-content-range com.sun.jdi.Value %s %s" start end)
+  (read-arg
+   *current-thread-reference*
+   (invoke-clojure-fn
+    "swank-clj.inspect" "object-content-range"
+    *current-thread-reference* jpda/invoke-multi-threaded
+    object
+    (remote-eval*
+     vm *current-thread-reference* start jpda/invoke-single-threaded)
+    (remote-eval*
+     vm *current-thread-reference* end jpda/invoke-single-threaded))))
+
+(defmethod inspect/object-nth-part com.sun.jdi.Value
+  [object n max-index]
+  (read-arg
+   *current-thread-reference*
+   (invoke-clojure-fn
+    "swank-clj.inspect" "object-nth-part"
+    *current-thread-reference* jpda/invoke-multi-threaded
+    object (jpda/mirror-of (:vm vm) n) (jpda/mirror-of (:vm vm) max-index))))
+
+(defmethod inspect/object-call-nth-action :default com.sun.jdi.Value
+  [object n max-index args]
+  (read-arg
+   *current-thread-reference*
+   (invoke-clojure-fn
+    "swank-clj.inspect" "object-call-nth-action"
+    *current-thread-reference*
+    jpda/invoke-multi-threaded
+    object
+    (jpda/mirror-of (:vm vm) n)
+    (jpda/mirror-of (:vm vm) max-index)
+    (remote-eval (:vm vm) *current-thread-reference* args))))
 
 (defn frame-locals
   "Return frame locals for slime"
   [level-info n]
   (let [frame (nth (.frames (:thread level-info)) n)]
-    (merge {} (jpda/frame-locals frame) (jpda/clojure-locals frame))))
+    (sort-by
+     #(.name (key %))
+     (merge {} (jpda/frame-locals frame) (jpda/clojure-locals frame)))))
 
 (defn frame-locals-with-string-values
   "Return frame locals for slime"
   [level-info n]
-  (for [map-entry (frame-locals level-info n)]
-    {:name (.name (key map-entry))
-     :value (val map-entry)
-     :string-value (inspector-value-string
-                    (:thread level-info) (val map-entry))}))
+  (binding [*current-thread-reference* (:thread level-info)]
+    (doall
+     (for [map-entry (seq (frame-locals level-info n))]
+       {:name (.name (key map-entry))
+        :value (val map-entry)
+        :string-value (inspect/value-as-string (val map-entry))}))))
 
 (defn nth-frame-var
   "Return the var-index'th var in the frame-index'th frame"
   [level-info frame-index var-index]
   {:pre [(< frame-index (count (.frames (:thread level-info))))]}
-  (let [inspector-value (partial inspector-value (:thread level-info))]
-    (->
-     (seq (frame-locals level-info frame-index))
-     (nth var-index)
-     val
-     inspector-value)))
+  (logging/trace "debug/nth-frame-var %s %s" frame-index var-index)
+  (->
+   (seq (frame-locals-with-string-values level-info frame-index))
+   (nth var-index)
+   :value))
 
 ;;; Source location
 
@@ -639,18 +733,22 @@
   (let [exception (.exception event)
         thread (jpda/event-thread event)]
     (when (and (:control-thread vm) (:RT vm))
-      (logging/trace "EXCEPTION %s" (exception-message exception thread))
+      (logging/trace "EXCEPTION %s" event)
       ;; assume a single connection for now
-      (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
-        (logging/trace "exception-event: %s %s" id connection)
-        (let [connection (ffirst @connections)]
-          ;; ensure we have started - id and connection need to go
-          (if (and id connection (not (caught? event)))
-            (do
-              (logging/trace "Activating sldb")
-              (invoke-sldb connection exception thread))
-            (do (logging/trace "Not activating sldb")
-                (logging/trace (string/join (exception-stacktrace thread))))))))
+      (if (caught? event)
+        (do (logging/trace "Not activating sldb")
+                (logging/trace (string/join (exception-stacktrace thread))))
+        (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
+          (logging/trace "EXCEPTION %s" (exception-message exception thread))
+          (logging/trace "exception-event: %s %s" id connection)
+          (let [connection (ffirst @connections)]
+            ;; ensure we have started - id and connection need to go
+            (if (and id connection)
+              (do
+                (logging/trace "Activating sldb")
+                (invoke-sldb connection exception thread))
+              (do (logging/trace "Not activating sldb")
+                  (logging/trace (string/join (exception-stacktrace thread)))))))))
     (when-not (:control-thread vm)
       (maybe-acquire-control-thread exception thread))))
 

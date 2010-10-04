@@ -2,20 +2,13 @@
   (:require
    [swank-clj.commands :as commands]
    [swank-clj.logging :as logging]
-   [swank-clj.swank.core :as core]))
+   [swank-clj.swank.core :as core]
+   [clojure.string :as string]))
 
 (defn reset-inspector [inspector]
   (swap! inspector {:part-index (atom 0)}))
 
-(defn inspectee-title* [obj]
-  (cond
-   (instance? clojure.lang.LazySeq obj) (str "clojure.lang.LazySeq@...")
-   :else (str obj)))
-
-(defn inspectee-title [inspector]
-  (inspectee-title* (:inspectee @inspector)))
-
-(defn position
+(defn- position
   "Finds the first position of an item that matches a given predicate
    within col. Returns nil if not found. Optionally provide a start
    offset to search from."
@@ -28,9 +21,75 @@
            (recur (rest coll) (inc i))))))
   {:tag Integer})
 
+(defmulti value-as-string
+  (fn [obj] (type obj)))
+
+(defmethod value-as-string :default
+  [obj] (pr-str obj))
+
+(def *lazy-seq-items-sample-size* 10)
+
+(defmethod value-as-string clojure.lang.LazySeq
+  [obj]
+  (let [sample (take *lazy-seq-items-sample-size* obj)]
+    (str "#<clojure.lang.LazySeq ("
+         (string/join " " (map value-as-string sample))
+         (when (= *lazy-seq-items-sample-size* (count sample))
+           " ...")
+         ")>")))
+
+(def *sequential-items-sample-size* 10)
+
+(defmethod value-as-string clojure.lang.APersistentVector
+  [obj]
+  (let [sample (take *sequential-items-sample-size* obj)]
+    (str "["
+         (string/join " " (map value-as-string sample))
+         (when (= *sequential-items-sample-size* (count sample))
+           " ...")
+         "]")))
+
+(defmethod value-as-string clojure.lang.APersistentSet
+  [obj]
+  (let [sample (take *sequential-items-sample-size* obj)]
+    (str "#{"
+         (string/join " " (map value-as-string sample))
+         (when (= *sequential-items-sample-size* (count sample))
+           " ...")
+         "}")))
+
+(defmethod value-as-string clojure.lang.APersistentMap
+  [obj]
+  (let [sample (apply concat (take *sequential-items-sample-size* obj))]
+    (str "{"
+         (string/join " " (map value-as-string sample))
+         (when (= (* 2 *sequential-items-sample-size*) (count sample))
+           " ...")
+         "}")))
+
+(defmethod value-as-string clojure.lang.Sequential
+  [obj]
+  (let [sample (take *sequential-items-sample-size* obj)]
+    (str "("
+         (string/join " " (map value-as-string sample))
+         (when (= *lazy-seq-items-sample-size* (count sample))
+           " ...")
+         ")")))
+
+(defmethod value-as-string clojure.lang.Cons
+  [obj]
+  (let [sample (take *lazy-seq-items-sample-size* obj)]
+    (str "(" (value-as-string (.first obj))
+         (when-not (= clojure.lang.PersistentList$EmptyList (class (.more obj)))
+           (str " " (value-as-string (.more obj))))
+         ")")))
+
+(defn inspectee-title [inspector]
+  (value-as-string (:inspectee @inspector)))
+
 (defn print-part-to-string [value]
-  (inspectee-title* value)
-  ;; (let [s (inspectee-title* value)
+  (value-as-string value)
+  ;; (let [s (value-as-string value)
   ;;       pos (position #{value} @*inspector-history*)]
   ;;   (if pos
   ;;     (str "#" pos "=" s)
@@ -38,7 +97,7 @@
   )
 
 (defn inspectee-index [inspector]
-  (count (:inspectee-parts @inspector)))
+  (:end-index @inspector 0))
 
 (defn value-part [obj s parts]
   [(list :value (or s (print-part-to-string obj)) (count parts))
@@ -204,8 +263,8 @@
     ("Interns" (ns-interns obj)))))
 
 
-(defn inspector-content [inspector specs]
-  (logging/trace "inspector-content %s" (vec specs))
+(defn inspector-content [specs]
+  (logging/trace "inspector-content" specs)
   (letfn [(spec-seq
            [output parts actions seq]
            (let [[f & args] seq]
@@ -227,38 +286,95 @@
             (seq? val) (spec-seq output parts actions val)))]
     (reduce spec-value [[] [] []] specs)))
 
+(defmulti object-content-range
+  "This is to avoid passing lazy sequences over jdwp."
+  (fn [object ^Integer start ^Integer end] (type object)))
+
+;; (defn object-content-range-invoker
+;;   "Provide a typed invoker for object-content-range"
+;;   [object ^Integer start ^Integer end]
+;;   (object-content-range object start end))
+
 ;; Works for infinite sequences, but it lies about length. Luckily, emacs
 ;; doesn't care.
-(defn content-range [inspector start end]
-  (let [lst (:inspectee-content @inspector)
-        amount-wanted (- end start)
+(defmethod object-content-range :default
+  [object start end]
+  (logging/trace "object-content-range %s %s %s" object start end)
+  (let [amount-wanted (- end start)
+        lst (emacs-inspect object)
         shifted (drop start lst)
         taken (seq (take amount-wanted shifted))
-        amount-taken (count taken)]
+        amount-taken (count taken)
+        content (inspector-content taken)]
     (if (< amount-taken amount-wanted)
-      (list taken (+ amount-taken start) start end)
+      (list (seq (first content)) (+ amount-taken start) start end)
       ;; There's always more until we know there isn't
-      (list taken (+ end 500) start end))))
+      (list (seq (first content)) (+ end 500) start end))))
+
+(defn content-range [inspector start end]
+  (swap! inspector update-in [:end-index] (fn [x] (max (or x 0) end)))
+  (object-content-range (:inspectee @inspector) start end))
+
+(defmulti object-nth-part
+  (fn [object n max-index] (type object)))
+
+(defmethod object-nth-part :default
+  [object n max-index]
+  (let [[content parts actions] (inspector-content
+                                 (take max-index (emacs-inspect object)))]
+    (assert (< n (count parts)))
+    (nth parts n)))
+
+(defn nth-part
+  [inspector index]
+  (let [{:keys [inspectee end-index] :or {end-index 0}} @inspector]
+    (object-nth-part inspectee index end-index)))
+
+(defmulti object-call-nth-action
+  (fn [object n max-index args] (type object)))
+
+(defmethod object-call-nth-action :default
+  [object n max-index args]
+  (let [[content parts actions] (inspector-content
+                                 (take max-index (emacs-inspect object)))]
+    (assert (< n (count actions)))
+    (let [[fn refresh?] (nth actions n)]
+      (apply fn (eval (vec args)))
+      refresh?)))
+
+(defn call-nth-action [inspector index args]
+  (let [{:keys [inspectee end-index] :or {end-index 0}} @inspector]
+    (object-call-nth-action inspectee index end-index args)))
 
 (defn inspect-object [inspector object]
+  (logging/trace "Inspecting %s" object)
   (swap!
    inspector
    (fn [current]
-     (let [[output parts actions] (inspector-content
-                                   current (emacs-inspect object))]
-       (merge
-        current
-        {:inspectee object
-         :inspector-stack (conj
-                           (:inspector-stack current) object)
-         :inspectee-content output
-         :inspectee-parts parts
-         :inspectee-actions actions
-         :inspector-history (if (filter #(identical? object %)
-                                        (:inspector-history current))
-                              (:inspector-history current)
-                              (conj (:inspector-history current) object))}))))
+     (merge
+      current
+      {:inspectee object
+       :inspector-stack (conj (:inspector-stack current) object)
+       :inspector-history (if (filter #(identical? object %)
+                                      (:inspector-history current))
+                            (:inspector-history current)
+                            (conj (:inspector-history current) object))})))
   inspector)
+
+(defn display-values
+  ([inspector]
+     (display-values inspector 0 (:end-index @inspector 500)))
+  ([inspector start end]
+     (logging/trace "display-values")
+     (let [x (inspectee-title inspector)
+           _ (logging/trace "display-values: x %s" x)
+           y (inspectee-index inspector)
+           _ (logging/trace "display-values: y %s" y)
+           z (content-range inspector start end)
+           _ (logging/trace "display-values: z %s" z)])
+     [(inspectee-title inspector)
+      (inspectee-index inspector)
+      (content-range inspector start end)]))
 
 (defn pop-inspectee [inspector]
   (swap! inspector update-in :inspector-stack pop)
@@ -281,17 +397,6 @@
 (defn content [inspector]
   (:inspector-content @inspector))
 
-(defn nth-part
-  [inspector index]
-  {:pre [(< index (count (:inspectee-parts @inspector)))]}
-  (get (:inspectee-parts @inspector) index))
-
-(defn call-nth-action [inspector index args]
-  {:pre [(index < (count (:inspectee-actions @inspector)))]}
-  (let [[fn refresh?] (get (:inspectee-actions @inspector) index)]
-    (apply fn args)
-    (when refresh?
-      (inspect-object inspector))))
 
 
 ;; (defn inspect-in-emacs [what]

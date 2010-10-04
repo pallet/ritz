@@ -1,6 +1,7 @@
 (ns swank-clj.messages
   (:require
-   [swank-clj.inspect :as inspect]))
+   [swank-clj.inspect :as inspect]
+   [swank-clj.logging :as logging]))
 
 (defn abort
   "Command aborted message."
@@ -17,10 +18,9 @@
 
 (defn inspector
   "Message for an inspector"
-  [inspector]
-  (list :title (inspect/inspectee-title inspector)
-        :id (inspect/inspectee-index inspector)
-        :content (inspect/content-range inspector 0 500)))
+  [[title id content]]
+  (logging/trace "messages/inspector %s %s %s" title id content)
+  `(:title ~title :id ~id :content ~(seq content)))
 
 (defn inspect
   "Message to request an inspector for given content, as a readable string."

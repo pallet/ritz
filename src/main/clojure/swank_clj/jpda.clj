@@ -65,11 +65,16 @@
   (try
    (let [event-set (.remove queue)]
      (doseq [event event-set]
-       (f event connected))
-     (.resume event-set))
-   (catch InterruptedException e)
-   (catch VMDisconnectedException e
-     (reset! connected false))))
+       (try
+         (f event connected)
+         (catch VMDisconnectedException e
+           (reset! connected false))
+         (catch Throwable e
+           (logging/trace
+            "VM-EVENT, exeception %s\n%s"
+            e
+            (with-out-str (.printStackTrace e))))))
+     (.resume event-set))))
 
 (defn run-events
   ([vm connected] (run-events connected handle-event))
@@ -165,11 +170,15 @@
 (defn clojure-fields
   "Closure locals are fields on the frame's this object."
   [frame]
-  (when-let [this (.thisObject frame)]
-    (let [fields (.. this referenceType fields)]
-      (when (clojure-frame? frame fields)
-        (logging/trace "Field names %s" (vec (map #(.name %) fields)))
-        (filter-implementation-fields fields)))))
+  (try
+    (when-let [this (.thisObject frame)]
+      (let [fields (.. this referenceType fields)]
+        (when (clojure-frame? frame fields)
+          (logging/trace "Field names %s" (vec (map #(.name %) fields)))
+          (filter-implementation-fields fields))))
+    (catch com.sun.jdi.AbsentInformationException e
+      (logging/trace "fields unavailable")
+      nil)))
 
 (defn clojure-locals
   [frame]
@@ -178,8 +187,12 @@
 
 (defn frame-locals
   [frame]
-  (when-let [locals (.visibleVariables frame)]
-    (.getValues frame locals)))
+  (try
+    (when-let [locals (.visibleVariables frame)]
+      (.getValues frame locals))
+    (catch com.sun.jdi.AbsentInformationException e
+      (logging/trace "locals unavailable")
+      nil)))
 
 (defn unmunge-clojure
   "unmunge a clojure name"
