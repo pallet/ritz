@@ -8,7 +8,7 @@
    (com.sun.jdi
     VirtualMachine Bootstrap VMDisconnectedException
     ObjectReference StringReference ThreadReference)
-   (com.sun.jdi.event VMDisconnectEvent LocatableEvent)))
+   (com.sun.jdi.event VMDisconnectEvent LocatableEvent ExceptionEvent)))
 
 (def connector-names
      {:command-line "com.sun.jdi.CommandLineLaunch"
@@ -71,9 +71,10 @@
            (reset! connected false))
          (catch Throwable e
            (logging/trace
-            "VM-EVENT, exeception %s\n%s"
+            "VM-EVENT, exeception %s" ; \n%s
             e
-            (with-out-str (.printStackTrace e *out*))))))
+            ;; (with-out-str (.printStackTrace e *out*))
+            ))))
      (.resume event-set))))
 
 (defn run-events
@@ -123,6 +124,10 @@
 (defn object-reference
   [obj-ref]
   (format "ObjectReference %s" (.. obj-ref referenceType name)))
+
+(defn catch-location
+  [^ExceptionEvent event]
+  (.catchLocation event))
 
 (defn location-type-name
   [location]

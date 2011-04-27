@@ -6,6 +6,7 @@
    ;; (swank.util string clojure)
    swank-clj.commands)
   (:require
+   [swank-clj.logging :as logging]
    [swank-clj.util.sys :as sys]
    [swank-clj.messages :as messages]
    [swank-clj.swank.core :as core]
@@ -49,8 +50,11 @@
   (pr-str (first (basic/eval-region string))))
 
 (defslimefn listener-eval [connection form]
-  (let [result (basic/eval-form connection form)]
-    (connection/send-to-emacs connection (messages/repl-result result))))
+  (let [[result exception] (basic/eval-form connection form)]
+    (logging/trace "listener-eval: %s %s" result exception)
+    (if exception
+      [:swank-clj.swank/abort exception]
+      (connection/send-to-emacs connection (messages/repl-result result)))))
 
 (defslimefn eval-and-grab-output [connection string]
   (with-local-vars [retval nil]

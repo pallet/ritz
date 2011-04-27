@@ -203,6 +203,10 @@
       count))
 
 (defn sldb-drop-level [connection n]
+  (logging/trace
+   "sldb-drop-level: :levels %s :level %s"
+   (count (:sldb-levels @connection))
+   n)
   (swap! connection update-in [:sldb-levels] subvec 0 n))
 
 (defn sldb-level
@@ -213,6 +217,10 @@
   ([connection]
      (last (:sldb-levels @connection)))
   ([connection level]
+     (logging/trace
+      "sldb-level-info: :levels %s :level %s"
+      (count (:sldb-levels @connection))
+      level)
      (nth (:sldb-levels @connection) (dec level))))
 
 (defn aborting-level?

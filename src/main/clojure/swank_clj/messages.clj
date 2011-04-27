@@ -5,8 +5,10 @@
 
 (defn abort
   "Command aborted message."
-  [id]
-  `(:return (:abort) ~id))
+  ([id]
+     `(:return (:abort "NIL") ~id))
+  ([id t]
+     `(:return (:abort ~(str t)) ~id)))
 
 (defn ok
   "Command completed message."

@@ -189,6 +189,8 @@
       (core/execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
 
+(declare clear-abort-for-current-level)
+
 (defn forward-command
   [handler]
   (fn [connection form buffer-package id f]
@@ -199,6 +201,8 @@
       (logging/trace
        "VM threads:\n%s"
        (string/join "\n" (map format-thread (jpda/threads (:vm vm)))))
+      (when (= 'swank/listener-eval (first form))
+        (clear-abort-for-current-level connection))
       (executor/execute-request
        (partial
         connection/send-to-emacs
@@ -509,6 +513,19 @@
   [connection]
   (connection/aborting-level? connection))
 
+(defn clear-abort-for-current-level
+  "Clear any abort for the current level"
+  [connection]
+  (swap!
+   connection
+   (fn [c]
+     (logging/trace
+      "clear-abort-for-current-level %s %s"
+      (count (:sldb-levels c)) (:abort-to-level c))
+     (if (and (:abort-to-level c)
+              (= (count (:sldb-levels c)) (:abort-to-level c)))
+       (dissoc c :abort-to-level)
+       c))))
 
 (defn calculate-restarts [connection thrown thread]
   (logging/trace "calculate-restarts")
@@ -516,18 +533,18 @@
                   identity
                   [(make-restart
                     :continue "CONTINUE" "Pass exception to program"
-                    (fn []
+                    (fn [_]
                       (logging/trace "restart Continuing")
                       (.resume thread)))
                    (make-restart
                     :abort "ABORT" "Return to SLIME's top level."
-                    (fn []
+                    (fn [connection]
                       (logging/trace "restart Aborting to top level")
                       (abort-all-levels connection)))
                    (when (> (count (:sldb-levels @connection)) 1)
                      (make-restart
                       :quit "QUIT" "Return to previous level."
-                      (fn []
+                      (fn [connection]
                         (logging/trace "restart Quiting to previous level")
                         (abort-level connection)
                         (.resume thread))))])]
@@ -559,9 +576,9 @@
     (.suspend thread)))
 
 (defn invoke-restart
-  [level-info n]
+  [connection level-info n]
   (when-let [f (last (nth (vals (:restarts level-info)) n))]
-    (f))
+    (f connection))
   (.uniqueID (:thread level-info)))
 
 (def stm-types #{"clojure.lang.Atom"})
@@ -761,10 +778,28 @@
        (pr-str e)
        (core/stack-trace-string e)))))
 
-(defn caught? [exception-event]
-  (when-let [location (.catchLocation exception-event)]
-    (logging/trace "caught? %s" (jpda/location-type-name location))
-    (not (.startsWith (jpda/location-type-name location) "swank_clj.swank"))))
+(defn caught?
+  "Predicate for testing if the given exception is caught outside of swank-clj"
+  [exception-event]
+  (when-let [location (jpda/catch-location exception-event)]
+    (let [location-name (jpda/location-type-name location)]
+      (logging/trace
+       "caught? %s %s"
+       (not (.startsWith location-name "swank_clj.swank"))
+       location-name)
+      (not (.startsWith location-name "swank_clj.swank")))))
+
+(defn in-swank-clj?
+  "Predicate for testing if the given thread is inside of swank-clj"
+  [thread]
+  (when-let [frame (first (.frames thread))]
+    (when-let [location (.location frame)]
+      (let [location-name (jpda/location-type-name location)]
+        (logging/trace
+         "in-swank-clj? %s %s"
+         (.startsWith location-name "swank_clj.swank")
+         location-name)
+        (.startsWith location-name "swank_clj.swank")))))
 
 (defn connection-and-id-from-thread
   "Walk the stack frames to find the eval-for-emacs call and extract
@@ -807,15 +842,16 @@
   (let [exception (.exception event)
         thread (jpda/event-thread event)]
     (when (and (:control-thread vm) (:RT vm))
-      (logging/trace "EXCEPTION %s" event)
+      ;; (logging/trace "EXCEPTION %s" event)
       ;; assume a single connection for now
-      (if (caught? event)
+      (if (or (caught? event) (in-swank-clj? thread))
         (do
-          (logging/trace "Not activating sldb (caught-exception)")
-          (logging/trace (string/join (exception-stacktrace thread))))
+          (logging/trace "Not activating sldb (caught)")
+          ;; (logging/trace (string/join (exception-stacktrace thread)))
+          )
         (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
           (logging/trace "EXCEPTION %s" (exception-message exception thread))
-          (logging/trace "exception-event: %s %s" id connection)
+          ;; (logging/trace "exception-event: %s %s" id connection)
           (let [connection (ffirst @connections)]
             ;; ensure we have started - id and connection need to go
             (if (and id connection)
@@ -825,7 +861,8 @@
                   (logging/trace "Activating sldb")
                   (invoke-sldb connection exception thread)))
               (do (logging/trace "Not activating sldb (no id, connection)")
-                  (logging/trace (string/join (exception-stacktrace thread)))))))))
+                  ;; (logging/trace (string/join (exception-stacktrace thread)))
+                  ))))))
     (when-not (:control-thread vm)
       (maybe-acquire-control-thread exception thread))
     (when (:control-thread vm)

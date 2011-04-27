@@ -5,10 +5,11 @@
    not be accurate depending on the JVM in which clojure is running
    off of."
   []
-  (first
-   (.. java.lang.management.ManagementFactory (getRuntimeMXBean) (getName)
-       (split "@")))
-  (System/getProperty "pid"))
+  (or
+   (first
+    (.. java.lang.management.ManagementFactory (getRuntimeMXBean) (getName)
+        (split "@")))
+   (System/getProperty "pid")))
 
 (defn user-home-path []
   (System/getProperty "user.home"))

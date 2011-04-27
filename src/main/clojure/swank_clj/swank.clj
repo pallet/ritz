@@ -28,16 +28,26 @@
     (let [f (commands/slime-fn (name (first form)))
           handler (or (connection/swank-handler connection) default-pipeline)
           result (handler connection form buffer-package id f)]
-      (condp = result
-          ::abort (do
-                    (messages/abort id)
-                    (connection/remove-pending-id connection id))
-          ::pending (logging/trace "swank/eval-for-emacs: pending %s" id)
-          (do
-            (hooks/run-hook core/*pre-reply-hook*)
-            (connection/remove-pending-id connection id)
-            (logging/trace "swank/eval-for-emacs: result %s %s" result id)
-            (connection/send-to-emacs connection (messages/ok result id)))))
+      (cond
+       (= ::abort result) (do
+                            (connection/send-to-emacs
+                             connection (messages/abort id))
+                            (connection/remove-pending-id connection id))
+       (and
+        (vector? result)
+        (= ::abort (first result))) (do
+                                      (connection/send-to-emacs
+                                       connection
+                                       (messages/abort id (second result)))
+                                      (connection/remove-pending-id
+                                       connection id))
+       (= ::pending result) (logging/trace
+                             "swank/eval-for-emacs: pending %s" id)
+       :else (do
+               (hooks/run-hook core/*pre-reply-hook*)
+               (connection/remove-pending-id connection id)
+               (logging/trace "swank/eval-for-emacs: result %s %s" result id)
+               (connection/send-to-emacs connection (messages/ok result id)))))
     (catch Throwable t
       ;; Thread/interrupted clears this thread's interrupted status; if
       ;; Thread.stop was called on us it may be set and will cause an
@@ -47,7 +57,7 @@
        (pr-str t)
        (core/stack-trace-string t))
       ;;(Thread/interrupted)
-      (connection/send-to-emacs connection (messages/abort id))
+      (connection/send-to-emacs connection (messages/abort id t))
       ;; (finally
       ;;  (connection/remove-pending-id connection id))
       )))

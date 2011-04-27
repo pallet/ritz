@@ -22,8 +22,8 @@
 
 (defslimefn invoke-nth-restart-for-emacs [connection level n]
   (let [level-info (connection/sldb-level-info connection level)
-        thread-id (debug/invoke-restart level-info n)]
-    (connection/sldb-drop-level connection n)
+        thread-id (debug/invoke-restart connection level-info n)]
+    ;;(connection/sldb-drop-level connection n)
     (connection/send-to-emacs
      connection (messages/debug-return thread-id level))
     nil))

@@ -31,7 +31,10 @@
   "Evaluate form. maintaining recent result history."
   [connection form]
   (logging/trace "eval-form %s" form)
-  (let [[value last-form] (eval-region form)]
+  (let [[value last-form exception] (try
+                                      (eval-region form)
+                                      (catch Exception e
+                                        [nil nil e]))]
     (logging/trace "eval-form: value %s" value)
     (when (and last-form (not (#{'*1 '*2 '*3 '*e} last-form)))
       (let [history (drop
@@ -39,7 +42,9 @@
         (set! *3 (fnext history))
         (set! *2 (first history))
         (set! *1 value)))
-    value))
+    (when exception
+      (set! *e exception))
+    [value exception]))
 
 
 (defn compile-region
