@@ -42,7 +42,7 @@
      "%s: exception occured: %s %s"
      name (pr-str cause)
      (with-out-str
-       (.printStackTrace cause)))))
+       (.printStackTrace cause *out*)))))
 
 (defn- root-cause
   "Return the deepest root cause of a Throwable"
@@ -61,7 +61,9 @@
   (execute
    (fn []
      (if-let [msg (try
-                    (logging/trace "executor/execute-loop %s" name)
+                    (logging/trace
+                     "executor/execute-loop %s %s"
+                     name (.getName (Thread/currentThread)))
                     (f)
                     (logging/trace "executor/execute-loop %s did one" name)
                     nil

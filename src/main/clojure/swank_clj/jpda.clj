@@ -7,7 +7,7 @@
   (:import
    (com.sun.jdi
     VirtualMachine Bootstrap VMDisconnectedException
-    ObjectReference StringReference)
+    ObjectReference StringReference ThreadReference)
    (com.sun.jdi.event VMDisconnectEvent LocatableEvent)))
 
 (def connector-names
@@ -73,7 +73,7 @@
            (logging/trace
             "VM-EVENT, exeception %s\n%s"
             e
-            (with-out-str (.printStackTrace e))))))
+            (with-out-str (.printStackTrace e *out*))))))
      (.resume event-set))))
 
 (defn run-events
@@ -202,3 +202,16 @@
    #(string/replace %1 (val %2) (str (key %2)))
    (string/replace munged-name "$" "/")
    clojure.lang.Compiler/CHAR_MAP))
+
+(defn threads
+  [vm]
+  (.allThreads vm))
+
+(def thread-states
+  {ThreadReference/THREAD_STATUS_MONITOR :monitor
+   ThreadReference/THREAD_STATUS_NOT_STARTED :not-started
+   ThreadReference/THREAD_STATUS_RUNNING :running
+   ThreadReference/THREAD_STATUS_SLEEPING :sleeping
+   ThreadReference/THREAD_STATUS_UNKNOWN :unknown
+   ThreadReference/THREAD_STATUS_WAIT :wait
+   ThreadReference/THREAD_STATUS_ZOMBIE :zombie})

@@ -366,12 +366,6 @@
      (display-values inspector 0 (:end-index @inspector 500)))
   ([inspector start end]
      (logging/trace "display-values")
-     (let [x (inspectee-title inspector)
-           _ (logging/trace "display-values: x %s" x)
-           y (inspectee-index inspector)
-           _ (logging/trace "display-values: y %s" y)
-           z (content-range inspector start end)
-           _ (logging/trace "display-values: z %s" z)])
      [(inspectee-title inspector)
       (inspectee-index inspector)
       (content-range inspector start end)]))

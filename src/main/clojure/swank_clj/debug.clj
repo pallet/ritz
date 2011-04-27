@@ -26,6 +26,12 @@
 
 (def control-thread-name "swank-clj-debug-thread-implementation")
 
+(defn format-thread
+  [thread-reference]
+  (format
+   "%s %s"
+   (.name thread-reference)
+   (jpda/thread-states (.status thread-reference))))
 
 ;;;
 
@@ -43,7 +49,7 @@
   (logging/trace
    "Caught exception %s %s"
    (pr-str e)
-   (with-out-str (.printStackTrace e))))
+   (core/stack-trace-string e)))
 
 (defmacro with-caught-jdpa-exceptions
   [& body]
@@ -190,6 +196,9 @@
       (logging/trace
        "debugger/forward-command: forwarding %s to proxied connection"
        (first form))
+      (logging/trace
+       "VM threads:\n%s"
+       (string/join "\n" (map format-thread (jpda/threads (:vm vm)))))
       (executor/execute-request
        (partial
         connection/send-to-emacs
@@ -457,10 +466,71 @@
 (defn make-restart [kw name description f]
   [kw [name description f]])
 
-(defn calculate-restarts [thrown thread]
+;; (defn abort-level
+;;   "Mark the current level-info as aborted."
+;;   [connection]
+;;   (swap! connection
+;;          (fn [current]
+;;            (update-in
+;;             current [:sldb-levels]
+;;             (fn [levels]
+;;               (conj (pop levels) (assoc (last levels) :abort true)))))))
+
+;; (defn abort-all-levels
+;;   "Mark the all level-info as aborted, and resume threads."
+;;   [connection]
+;;   (swap! connection
+;;          (fn [current]
+;;            (update-in
+;;             current [:sldb-levels]
+;;             (fn [levels]
+;;               (vec (map #(assoc % :abort true) levels)))))))
+
+(defn abort-level
+  ([connection]
+     (swap!
+      connection
+      (fn [current]
+        (assoc :abort-to-level (dec (count (:sldb-levels current)))))))
+  ([connection level]
+     (swap! connection assoc :abort-to-level level)))
+
+(defn abort-all-levels
+  [connection]
+  (abort-level connection 0)
+  (swap! connection update-in [:sldb-levels]
+         (fn [levels]
+           (doseq  [level (:sldb-levels @connection)]
+             (.resume (:thread level)))
+           [])))
+
+(defn aborting-level?
+  "Aborting predicate."
+  [connection]
+  (connection/aborting-level? connection))
+
+
+(defn calculate-restarts [connection thrown thread]
   (logging/trace "calculate-restarts")
-  (let [restarts [(make-restart :quit "CONTINUE" "Pass exception to program"
-                               (fn [] (.resume thread)))]]
+  (let [restarts (filter
+                  identity
+                  [(make-restart
+                    :continue "CONTINUE" "Pass exception to program"
+                    (fn []
+                      (logging/trace "restart Continuing")
+                      (.resume thread)))
+                   (make-restart
+                    :abort "ABORT" "Return to SLIME's top level."
+                    (fn []
+                      (logging/trace "restart Aborting to top level")
+                      (abort-all-levels connection)))
+                   (when (> (count (:sldb-levels @connection)) 1)
+                     (make-restart
+                      :quit "QUIT" "Return to previous level."
+                      (fn []
+                        (logging/trace "restart Quiting to previous level")
+                        (abort-level connection)
+                        (.resume thread))))])]
     (apply array-map (apply concat restarts))))
 
 (defn build-debugger-info-for-emacs [exception level-info start end conts]
@@ -473,7 +543,7 @@
   [connection exception thread]
   (logging/trace "invoke-sldb")
   (let [thread-id (.uniqueID thread)
-        restarts (calculate-restarts exception thread)
+        restarts (calculate-restarts connection exception thread)
         level-info {:restarts restarts :thread thread}
         level (connection/next-sldb-level connection level-info)]
     (logging/trace "invoke-sldb: call emacs")
@@ -672,6 +742,10 @@
    If found, swap the exception event request for uncaught exceptions."
   [exception thread]
   (try
+    (let [status (jpda/thread-states (.status thread))]
+      (when (not= status :running)
+        (logging/trace
+         "maybe-acquire-control-thread: thread status %s" status)))
     (when-let [message (exception-message exception thread)]
       (when (= message control-thread-name)
         (.suspend thread)
@@ -685,7 +759,7 @@
       (logging/trace
        "control thread acquistion error %s %s"
        (pr-str e)
-       (with-out-str (.printStackTrace e))))))
+       (core/stack-trace-string e)))))
 
 (defn caught? [exception-event]
   (when-let [location (.catchLocation exception-event)]
@@ -736,21 +810,30 @@
       (logging/trace "EXCEPTION %s" event)
       ;; assume a single connection for now
       (if (caught? event)
-        (do (logging/trace "Not activating sldb")
-                (logging/trace (string/join (exception-stacktrace thread))))
+        (do
+          (logging/trace "Not activating sldb (caught-exception)")
+          (logging/trace (string/join (exception-stacktrace thread))))
         (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
           (logging/trace "EXCEPTION %s" (exception-message exception thread))
           (logging/trace "exception-event: %s %s" id connection)
           (let [connection (ffirst @connections)]
             ;; ensure we have started - id and connection need to go
             (if (and id connection)
-              (do
-                (logging/trace "Activating sldb")
-                (invoke-sldb connection exception thread))
-              (do (logging/trace "Not activating sldb")
+              (if (aborting-level? connection)
+                (logging/trace "Not activating sldb (aborting)")
+                (do
+                  (logging/trace "Activating sldb")
+                  (invoke-sldb connection exception thread)))
+              (do (logging/trace "Not activating sldb (no id, connection)")
                   (logging/trace (string/join (exception-stacktrace thread)))))))))
     (when-not (:control-thread vm)
-      (maybe-acquire-control-thread exception thread))))
+      (maybe-acquire-control-thread exception thread))
+    (when (:control-thread vm)
+      (logging/trace
+       "Current thread: %s" (.name thread))
+      (logging/trace
+       "Threads:\n%s"
+       (string/join "\n" (map format-thread (jpda/threads (:vm vm))))))))
 
 ;; (defmethod jpda/handle-event VMStartEvent
 ;;   [event connected]

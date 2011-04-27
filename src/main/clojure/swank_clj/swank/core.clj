@@ -60,3 +60,9 @@
     (if f
       (execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
+
+(defn stack-trace-string
+  [throwable]
+  (with-out-str
+    (with-open [out-writer (java.io.PrintWriter. *out*)]
+      (.printStackTrace throwable out-writer))))

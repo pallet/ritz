@@ -48,7 +48,8 @@
     (let [writer (:writer connection)]
       (locking (:write-monitor connection)
         (rpc/encode-message writer msg)
-        (.flush writer)))
+        (.flush writer))
+      (logging/trace "rpc-socket-connection/write-message completed"))
     (catch SocketException e
       (logging/trace "Caught exception while writing %s" (str e))
       (when (.isOutputShutdown (:socket connection))

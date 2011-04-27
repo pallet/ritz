@@ -42,11 +42,10 @@
       ;; Thread/interrupted clears this thread's interrupted status; if
       ;; Thread.stop was called on us it may be set and will cause an
       ;; InterruptedException in one of the send-to-emacs calls below
-      (.printStackTrace t)
       (logging/trace
        "swank/eval-for-emacs: exception %s %s"
        (pr-str t)
-       (with-out-str (.printStackTrace t)))
+       (core/stack-trace-string t))
       ;;(Thread/interrupted)
       (connection/send-to-emacs connection (messages/abort id))
       ;; (finally
@@ -60,9 +59,9 @@
 (defn emacs-interrupt [connection thread-id args]
   (logging/trace "swank/interrupt: %s %s" thread-id args)
   (if forward-rpc
-    (forward-rpc connection `(:emacs-interrupt ~thread-id ~@args))
-    (doseq [future @repl-futures]
-      (.cancel future true))))
+    (forward-rpc connection `(:emacs-interrupt ~thread-id ~@args)))
+  (doseq [future @repl-futures]
+    (.cancel future true)))
 
 (defn emacs-return-string [connection thread-id tag value]
   (logging/trace "swank/read-string: %s %s" thread-id tag value)
@@ -162,6 +161,5 @@
   (logging/trace "swank/handle-message %s" message)
   (let [future (executor/execute #(dispatch-event message connection))]
     (swap! repl-futures (fn [futures]
-                          (conj futures future)
-                          (remove #(.isDone %) futures)))
+                          (conj (remove #(.isDone %) futures) future)))
     (executor/execute #(response future message connection))))

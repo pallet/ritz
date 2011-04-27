@@ -191,9 +191,14 @@
   [connection level-info]
   (logging/trace "next-sldb-level")
   (-> (swap!
-       connection update-in [:sldb-levels]
-       (fn [levels]
-         (conj (or levels []) level-info)))
+       connection
+       (fn [current]
+         (->
+          current
+          (update-in [:sldb-levels]
+                     (fn [levels]
+                       (conj (or levels []) level-info)))
+          (dissoc :abort-to-level))))
       :sldb-levels
       count))
 
@@ -209,6 +214,13 @@
      (last (:sldb-levels @connection)))
   ([connection level]
      (nth (:sldb-levels @connection) (dec level))))
+
+(defn aborting-level?
+  "Aborting predicate."
+  [connection]
+  (let [connection @connection]
+    (if-let [abort-to-level (:abort-to-level connection)]
+      (>= (count (:sldb-levels connection)) abort-to-level))))
 
 (defn inspector
   "Return the connection's inspector information."
@@ -227,3 +239,9 @@
           (fn [history]
             (take 3 (conj history result))))
    :result-history))
+
+(defn connection-type
+  [connection]
+  (if (:proxy-to @connection)
+    :proxy
+    :repl))
