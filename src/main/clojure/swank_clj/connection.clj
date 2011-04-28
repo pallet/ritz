@@ -1,4 +1,5 @@
 (ns swank-clj.connection
+  "A connection is a map in an atom."
   (:require
    [swank-clj.logging :as logging]
    [clojure.java.io :as java-io])

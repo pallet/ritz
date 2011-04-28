@@ -7,4 +7,5 @@
     (doseq [k (if (seq? keys) keys (list keys))]
       (try
        (require (symbol (str "swank-clj.commands.contrib." (name k))))
-       (catch java.io.FileNotFoundException fne nil)))))
+       (catch java.io.FileNotFoundException _ nil)
+       (catch Exception _ nil)))))

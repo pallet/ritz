@@ -1,4 +1,5 @@
 (ns swank-clj.inspect
+  "The inspector is an atom, containing parts"
   (:require
    [swank-clj.commands :as commands]
    [swank-clj.logging :as logging]

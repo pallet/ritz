@@ -8,7 +8,8 @@
    (com.sun.jdi
     VirtualMachine Bootstrap VMDisconnectedException
     ObjectReference StringReference ThreadReference)
-   (com.sun.jdi.event VMDisconnectEvent LocatableEvent ExceptionEvent)))
+   (com.sun.jdi.event VMDisconnectEvent LocatableEvent ExceptionEvent)
+   (com.sun.jdi.request ExceptionRequest EventRequestManager)))
 
 (def connector-names
      {:command-line "com.sun.jdi.CommandLineLaunch"
@@ -124,6 +125,24 @@
 (defn object-reference
   [obj-ref]
   (format "ObjectReference %s" (.. obj-ref referenceType name)))
+
+(defn ^ExceptionRequest exception-request
+  "Create an exception request"
+  [^EventRequestManager manager ^ReferenceType ref-type
+   notify-caught notify-uncaught]
+  (.createExceptionRequest
+   manager ref-type (boolean notify-caught) (boolean notify-uncaught)))
+
+(def exception-request-policies
+  {:suspend-all ExceptionRequest/SUSPEND_ALL
+   :suspend-event-thread ExceptionRequest/SUSPEND_EVENT_THREAD
+   :suspend-none ExceptionRequest/SUSPEND_NONE})
+
+(defn suspend-policy
+  "Set the suspend policy for an exeception request.
+   policy is one of :suspend-all, :suspend-event-thread, or :suspend-none"
+  [^ExceptionRequest request policy]
+  (.setSuspendPolicy request (policy exception-request-policies)))
 
 (defn catch-location
   [^ExceptionEvent event]

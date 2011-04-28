@@ -53,3 +53,20 @@
       (inspect/inspect-object inspector object)
       (messages/inspector
        (inspect/display-values inspector)))))
+
+;;; Threads
+(defslimefn list-threads
+  "Return a list (LABELS (ID NAME STATUS ATTRS ...) ...).
+LABELS is a list of attribute names and the remaining lists are the
+corresponding attribute values per thread."
+  [connection]
+  (let [threads (debug/thread-list connection)
+        labels '(:id :name :state :suspends)]
+    (cons labels threads)))
+
+;;; TODO: Find a better way, as Thread.stop is deprecated
+(defslimefn kill-nth-thread [connection index]
+  (when index
+    (when-let [thread (debug/nth-thread connection index)]
+      (println "Thread: " thread)
+      (debug/stop-thread (first thread)))))

@@ -9,8 +9,10 @@
 ;; Thanks the CL implementation authors for that useful software.
 
 (ns swank-clj.commands.contrib.swank-fuzzy
-  (:use (swank util core commands))
-  (:use (swank.util clojure)))
+  (:use
+   [swank-clj.util.clojure :as clj]
+   [swank-clj.swank.core :as core]
+   [swank-clj.commands :as commands]))
 
 (def *fuzzy-recursion-soft-limit* 30)
 (defn- compute-most-completions [short full]
@@ -139,7 +141,7 @@
   :var :ns :symbol :ns-name :score :ns-chunks :var-chunks)
 
 (defn- fuzzy-extract-matching-info [matching string]
-  (let [[user-ns-name _] (symbol-name-parts string)]
+  (let [[user-ns-name _] (clj/symbol-name-parts string)]
     (cond
       (:var matching)
       [(str (:symbol matching))
@@ -191,7 +193,7 @@
 (defn- fuzzy-generate-matchings
   [string default-ns timed-out?]
   (let [take* (partial take-while (fn [_] (not (timed-out?))))
-        [parsed-ns-name parsed-symbol-name] (symbol-name-parts string)
+        [parsed-ns-name parsed-symbol-name] (clj/symbol-name-parts string)
         find-vars
         (fn find-vars
           ([designator ns]
@@ -229,7 +231,7 @@
           (cond
             (nil? parsed-ns-name)
             (concat
-             (find-vars parsed-symbol-name (maybe-ns default-ns))
+             (find-vars parsed-symbol-name (core/maybe-ns default-ns))
              (find-nss parsed-symbol-name))
             ;; (apply concat
             ;;        (let [ns *ns*]
@@ -239,7 +241,7 @@
             ;;                  #(binding [*ns* ns]
             ;;                     (find-nss parsed-symbol-name)))))
             (= "" parsed-ns-name)
-            (find-vars parsed-symbol-name (maybe-ns default-ns))
+            (find-vars parsed-symbol-name (core/maybe-ns default-ns))
             :else
             (let [found-nss (find-nss parsed-ns-name)
                   find-vars1 (fn [ns-matching]
@@ -317,7 +319,7 @@
                         matchings)))
      interrupted?]))
 
-(defslimefn fuzzy-completions
+(commands/defslimefn fuzzy-completions
   [string default-package-name
    _limit limit _time-limit-in-msec time-limit-in-msec]
   (let [[xs x] (fuzzy-completion-set string default-package-name
@@ -328,7 +330,7 @@
           xs)
      (when x 't))))
 
-(defslimefn fuzzy-completion-selected [_ _] nil)
+(commands/defslimefn fuzzy-completion-selected [_ _] nil)
 
 (comment
   (do

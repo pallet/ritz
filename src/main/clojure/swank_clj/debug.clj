@@ -24,14 +24,43 @@
 
 (defonce vm nil)
 
+(def exception-suspend-policy :suspend-all)
 (def control-thread-name "swank-clj-debug-thread-implementation")
 
 (defn format-thread
   [thread-reference]
   (format
-   "%s %s"
+   "%s %s (suspend count %s)"
    (.name thread-reference)
-   (jpda/thread-states (.status thread-reference))))
+   (jpda/thread-states (.status thread-reference))
+   (.suspendCount thread-reference)))
+
+(defn threads
+  []
+  (jpda/threads (:vm vm)))
+
+(defn thread-list
+  [connection]
+  (let [threads (map
+                 (fn [thread]
+                   (list
+                    (.uniqueID thread)
+                    (.name thread)
+                    (jpda/thread-states (.status thread))
+                    (.suspendCount thread)))
+                 (threads))]
+    (swap! connection assoc :threads threads)
+    threads))
+
+(defn nth-thread
+  [connection index]
+  (nth (:threads @connection) index nil))
+
+(defn stop-thread
+  [thread-id]
+  (when-let [thread (some #(= thread-id (.uniqueID %)) (threads))]
+    ;; to do - realy stop the thread
+    (.interrupt thread)))
 
 ;;;
 
@@ -200,7 +229,7 @@
        (first form))
       (logging/trace
        "VM threads:\n%s"
-       (string/join "\n" (map format-thread (jpda/threads (:vm vm)))))
+       (string/join "\n" (map format-thread (threads))))
       (when (= 'swank/listener-eval (first form))
         (clear-abort-for-current-level connection))
       (executor/execute-request
@@ -462,51 +491,45 @@
    (take (- end start)
          (drop start (exception-stacktrace (:thread level-info))))))
 
-
-;; (defonce *debug-quit-exception* (Exception. "Debug quit"))
-;; (defonce *debug-continue-exception* (Exception. "Debug continue"))
-;; (defonce *debug-abort-exception* (Exception. "Debug abort"))
-
 (defn make-restart [kw name description f]
   [kw [name description f]])
 
-;; (defn abort-level
-;;   "Mark the current level-info as aborted."
-;;   [connection]
-;;   (swap! connection
-;;          (fn [current]
-;;            (update-in
-;;             current [:sldb-levels]
-;;             (fn [levels]
-;;               (conj (pop levels) (assoc (last levels) :abort true)))))))
+(defn resume
+  [thread-ref]
+  (case exception-suspend-policy
+    :suspend-all (.resume (.virtualMachine thread-ref))
+    :suspend-event-thread (.resume thread-ref)
+    nil))
 
-;; (defn abort-all-levels
-;;   "Mark the all level-info as aborted, and resume threads."
-;;   [connection]
-;;   (swap! connection
-;;          (fn [current]
-;;            (update-in
-;;             current [:sldb-levels]
-;;             (fn [levels]
-;;               (vec (map #(assoc % :abort true) levels)))))))
-
-(defn abort-level
-  ([connection]
-     (swap!
-      connection
-      (fn [current]
-        (assoc :abort-to-level (dec (count (:sldb-levels current)))))))
-  ([connection level]
-     (swap! connection assoc :abort-to-level level)))
+(defn- abort-level
+  "Abort the current level"
+  [connection]
+  (swap!
+   connection
+   (fn [current]
+     (->
+      current
+      (assoc :abort-to-level (dec (count (:sldb-levels current))))
+      (update-in
+       [:sldb-levels]
+       (fn [levels]
+         (when-let [level (last levels)]
+           (resume (:thread level)))
+         (subvec levels 0 (dec (count levels)))))))))
 
 (defn abort-all-levels
   [connection]
-  (abort-level connection 0)
-  (swap! connection update-in [:sldb-levels]
-         (fn [levels]
-           (doseq  [level (:sldb-levels @connection)]
-             (.resume (:thread level)))
-           [])))
+  (swap! connection
+         (fn [connection]
+           (->
+            connection
+            (update-in
+             [:sldb-levels]
+             (fn [levels]
+               (doseq [level (reverse (:sldb-levels connection))]
+                 (resume (:thread level)))
+               []))
+            (assoc :abort-to-level 0)))))
 
 (defn aborting-level?
   "Aborting predicate."
@@ -578,6 +601,7 @@
 (defn invoke-restart
   [connection level-info n]
   (when-let [f (last (nth (vals (:restarts level-info)) n))]
+    (inspect/reset-inspector (:inspector @connection))
     (f connection))
   (.uniqueID (:thread level-info)))
 
@@ -742,11 +766,10 @@
     vm
     (do (logging/trace "add-exception-event-request: adding request")
         (assoc vm
-          :exception-request (doto (.createExceptionRequest
+          :exception-request (doto (jpda/exception-request
                                     (:event-request-manager vm)
                                     nil true true)
-                               (.setSuspendPolicy
-                                ExceptionRequest/SUSPEND_ALL)
+                               (jpda/suspend-policy exception-suspend-policy)
                                (.enable))))))
 
 (defn ensure-exception-event-request
@@ -799,7 +822,8 @@
          "in-swank-clj? %s %s"
          (.startsWith location-name "swank_clj.swank")
          location-name)
-        (.startsWith location-name "swank_clj.swank")))))
+        (or (.startsWith location-name "swank_clj.swank")
+            (.startsWith location-name "swank_clj.commands.contrib"))))))
 
 (defn connection-and-id-from-thread
   "Walk the stack frames to find the eval-for-emacs call and extract
