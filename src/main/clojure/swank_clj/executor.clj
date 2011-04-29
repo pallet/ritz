@@ -60,6 +60,7 @@
              name (pr-str f)}}]
   (execute
    (fn []
+     (.setName (Thread/currentThread) name)
      (if-let [msg (try
                     (logging/trace
                      "executor/execute-loop %s %s"

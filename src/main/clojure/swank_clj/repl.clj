@@ -12,6 +12,7 @@
   "Serve connection for proxy rpc functions"
   []
   (logging/trace "repl/serve-connection")
+  (.setName (Thread/currentThread) "REPL")
   @debug/require-control-thread
   (fn repl-connection-handler
     [socket options]

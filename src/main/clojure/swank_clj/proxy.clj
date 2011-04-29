@@ -32,6 +32,7 @@
   "Serve connection for proxy rpc functions"
   []
   (logging/trace "proxy/serve-connection")
+  (.setName (Thread/currentThread) "REPL Proxy")
   (fn proxy-connection-handler
     [io-connection options]
     (logging/trace "proxy/proxy-connection-handler")

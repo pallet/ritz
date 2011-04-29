@@ -9,6 +9,7 @@
    [swank-clj.inspect :as inspect]
    [swank-clj.rpc-socket-connection :as rpc-socket-connection]
    [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
    [clojure.string :as string])
   (:import
    java.io.File
@@ -28,43 +29,12 @@
 
 (def exception-suspend-policy :suspend-all)
 (def breakpoint-suspend-policy :suspend-all)
-(def control-thread-name "swank-clj-debug-thread-implementation")
+(def exclude-exceptions
+  (atom ["java.net.URLClassLoader*"
+         "java.lang.ClassLoader*"
+         "*ClassLoader.java"]))
 
-;;; threads
-(defn format-thread
-  [thread-reference]
-  (format
-   "%s %s (suspend count %s)"
-   (.name thread-reference)
-   (jpda/thread-states (.status thread-reference))
-   (.suspendCount thread-reference)))
-
-(defn threads
-  []
-  (jpda/threads (:vm vm)))
-
-(defn thread-list
-  [connection]
-  (let [threads (map
-                 (fn [thread]
-                   (list
-                    (.uniqueID thread)
-                    (.name thread)
-                    (jpda/thread-states (.status thread))
-                    (.suspendCount thread)))
-                 (threads))]
-    (swap! connection assoc :threads threads)
-    threads))
-
-(defn nth-thread
-  [connection index]
-  (nth (:threads @connection) index nil))
-
-(defn stop-thread
-  [thread-id]
-  (when-let [thread (some #(= thread-id (.uniqueID %)) (threads))]
-    ;; to do - realy stop the thread
-    (.interrupt thread)))
+(def control-thread-name "swank-clj-debug-thread")
 
 ;;;
 
@@ -222,7 +192,7 @@
       (core/execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
 
-(declare clear-abort-for-current-level)
+(declare clear-abort-for-current-level format-thread threads)
 
 (defn forward-command
   [handler]
@@ -393,22 +363,54 @@
     (jpda/invoke-method
      m method (:control-thread vm) jpda/invoke-multi-threaded [kw])))
 
-;; objectref(Integer)
 
-;; (defn vm-var
-;;   [thread namespace name]
-;;   (if-let [var-method (or (:var vm)
-;;                           (:vm (alter-var-root #'vm vm-rt-eval-method)))]
-;;     (.invoke (:rt vm) tread (:var vm) (map remote-value [namespace name]) 0)))
+;;; threads
+(defn format-thread
+  [thread-reference]
+  (format
+   "%s %s (suspend count %s)"
+   (.name thread-reference)
+   (jpda/thread-states (.status thread-reference))
+   (.suspendCount thread-reference)))
 
-;; (defmethod jpda/handle-event VMStartEvent
-;;   [event connected]
-;;   (println event)
-;;   ;; (let [thread (.thread event)]
-;;   ;;   (logging/trace "jpda/handle-event execpetion")
-;;   ;;   (executor/execute
-;;   ;;    #(alter-var-root #'vm assoc :control-thread thread)))
-;;   )
+(defn threads
+  []
+  (jpda/threads (:vm vm)))
+
+(defn transform-thread-group
+  [pfx [group groups threads]]
+  [(->
+    group
+    (dissoc :id)
+    (update-in [:name] (fn [s] (str pfx s))))
+   (map #(transform-thread-group (str pfx "  ") %) groups)
+   (map #(update-in % [:name] (fn [s] (str pfx "  " s))) threads)])
+
+(defn thread-list
+  "Provide a list of threads. The list is cached in the connection
+   to allow it to be retrieveb by index."
+  [connection]
+  (let [threads (flatten
+                 (map
+                  #(transform-thread-group "" %)
+                  (jpda/thread-groups (:vm vm))))]
+    (swap! connection assoc :threads threads)
+    threads))
+
+(defn nth-thread
+  [connection index]
+  (nth (:threads @connection) index nil))
+
+(defn stop-thread
+  [thread-id]
+  (when-let [thread (some
+                     #(and (= thread-id (.uniqueID %)) %)
+                     (threads))]
+    ;; to do - realy stop the thread
+    (.stop thread (remote-eval*
+                   vm (:control-thread vm)
+                   `(new java.lang.Throwable "Stopped by swank")
+                   jpda/invoke-single-threaded))))
 
 ;;; debugee functions for starting a thread that may be used from the proxy
 (defn start-control-thread
@@ -482,9 +484,10 @@
       connection
       [:breakpoints]
       (fn [breakpoints]
-        (let [request (.request event)]
+        (when-let [request (.request event)]
           (.disable request)
-          (.deleteEventRequest (.eventRequestManager (:vm connection)) request)
+          (.deleteEventRequest
+           (.eventRequestManager (.virtualMachine event)) request)
           (remove #(= % request) breakpoints)))))))
 
 ;;; debug methods

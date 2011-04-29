@@ -74,27 +74,41 @@
        (inspect/display-values inspector)))))
 
 ;;; Threads
+(def ^{:private true} thread-data-fn
+  (comp
+   seq
+   (juxt #(:id % "")
+         :name
+         #(:status % "")
+         #(:at-breakpoint? % "")
+         #(:suspended? % "")
+         #(:suspend-count % ""))))
+
 (defslimefn list-threads
   "Return a list (LABELS (ID NAME STATUS ATTRS ...) ...).
 LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
   [connection]
   (let [threads (debug/thread-list connection)
-        labels '(:id :name :state :suspends)]
-    (cons labels threads)))
+        labels '(:id :name :state :at-breakpoint? :suspended? :suspends)]
+    (cons labels (map thread-data-fn threads))))
 
 ;;; TODO: Find a better way, as Thread.stop is deprecated
-(defslimefn kill-nth-thread [connection index]
+(defslimefn kill-nth-thread
+  [connection index]
   (when index
     (when-let [thread (debug/nth-thread connection index)]
-      (println "Thread: " thread)
-      (debug/stop-thread (first thread)))))
+      (debug/stop-thread (:id thread)))))
 
 ;;; Breakpoints
 ;;; These are non-standard slime functions
 (defslimefn line-breakpoint
   [connection namespace filename line]
   (debug/line-breakpoint connection namespace filename line))
+
+(defslimefn break-on-exceptions
+  "Control which expressions are caught"
+  [connection filter-caught? filter-caught-ns-list])
 
 ;;; stepping
 (defslimefn sldb-step [connection]

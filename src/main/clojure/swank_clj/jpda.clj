@@ -10,7 +10,9 @@
    (com.sun.jdi
     VirtualMachine PathSearchingVirtualMachine
     Bootstrap VMDisconnectedException
-    ObjectReference StringReference ThreadReference ReferenceType)
+    ObjectReference StringReference
+    ThreadReference ThreadGroupReference
+    ReferenceType)
    (com.sun.jdi.event
     VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent)
    (com.sun.jdi.request
@@ -395,3 +397,23 @@
    ThreadReference/THREAD_STATUS_UNKNOWN :unknown
    ThreadReference/THREAD_STATUS_WAIT :wait
    ThreadReference/THREAD_STATUS_ZOMBIE :zombie})
+
+(defn thread-data
+  "Returns thread data"
+  [thread]
+  {:id (.uniqueID thread)
+   :name (.name thread)
+   :status (thread-states (.status thread))
+   :suspend-count (.suspendCount thread)
+   :suspended? (.isSuspended thread)
+   :at-breakpoint? (.isAtBreakpoint thread)})
+
+
+(defn thread-groups
+  "Build a thread group tree"
+  [vm]
+  (let [f (fn thread-group-f [group]
+            [{:name (.name group) :id (.uniqueID group)}
+             (map thread-group-f (.threadGroups group))
+             (map thread-data (.threads group))])]
+    (map f (.topLevelThreadGroups vm))))
