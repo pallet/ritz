@@ -11,8 +11,10 @@
     VirtualMachine PathSearchingVirtualMachine
     Bootstrap VMDisconnectedException
     ObjectReference StringReference ThreadReference ReferenceType)
-   (com.sun.jdi.event VMDisconnectEvent LocatableEvent ExceptionEvent)
-   (com.sun.jdi.request ExceptionRequest EventRequest EventRequestManager)))
+   (com.sun.jdi.event
+    VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent)
+   (com.sun.jdi.request
+    ExceptionRequest EventRequest StepRequest EventRequestManager)))
 
 (def connector-names
      {:command-line "com.sun.jdi.CommandLineLaunch"
@@ -141,16 +143,39 @@
   (.createExceptionRequest
    manager ref-type (boolean notify-caught) (boolean notify-uncaught)))
 
-(def exception-request-policies
-  {:suspend-all ExceptionRequest/SUSPEND_ALL
-   :suspend-event-thread ExceptionRequest/SUSPEND_EVENT_THREAD
-   :suspend-none ExceptionRequest/SUSPEND_NONE})
+(def event-request-policies
+  {:suspend-all EventRequest/SUSPEND_ALL
+   :suspend-event-thread EventRequest/SUSPEND_EVENT_THREAD
+   :suspend-none EventRequest/SUSPEND_NONE})
 
 (defn suspend-policy
   "Set the suspend policy for an exeception request.
    policy is one of :suspend-all, :suspend-event-thread, or :suspend-none"
-  [^ExceptionRequest request policy]
-  (.setSuspendPolicy request (policy exception-request-policies)))
+  [^EventRequest request policy]
+  (.setSuspendPolicy request (policy event-request-policies)))
+
+(def step-sizes
+  {:min StepRequest/STEP_MIN
+   :line StepRequest/STEP_LINE})
+
+(def step-depths
+  {:into StepRequest/STEP_INTO
+   :over StepRequest/STEP_OVER
+   :out StepRequest/STEP_OUT})
+
+(defn ^StepRequest step-request
+  "Create an step request
+   `size` is one of :min or :line
+   `depth` is one of :into, :over or :out"
+  [^ThreadReference thread size depth]
+  (..
+   thread
+   (virtualMachine)
+   (eventRequestManager)
+   (createStepRequest
+    thread
+    (size step-sizes StepRequest/STEP_LINE)
+    (depth step-depths StepRequest/STEP_OVER))))
 
 (defn catch-location
   [^ExceptionEvent event]
@@ -288,11 +313,6 @@
     (catch com.sun.jdi.AbsentInformationException _
       (logging/trace "not found")
       nil)))
-
-(def event-request-policies
-  {:suspend-all EventRequest/SUSPEND_ALL
-   :suspend-event-thread EventRequest/SUSPEND_EVENT_THREAD
-   :suspend-none EventRequest/SUSPEND_NONE})
 
 (defn breakpoint
   "Create a breakpoint"

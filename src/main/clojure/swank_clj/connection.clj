@@ -190,7 +190,6 @@
 
 (defn next-sldb-level
   [connection level-info]
-  (logging/trace "next-sldb-level")
   (-> (swap!
        connection
        (fn [current]
@@ -198,17 +197,24 @@
           current
           (update-in [:sldb-levels]
                      (fn [levels]
+                       (logging/trace "next-sldb-level %s" (count levels))
                        (conj (or levels []) level-info)))
           (dissoc :abort-to-level))))
       :sldb-levels
       count))
 
-(defn sldb-drop-level [connection n]
-  (logging/trace
-   "sldb-drop-level: :levels %s :level %s"
-   (count (:sldb-levels @connection))
-   n)
-  (swap! connection update-in [:sldb-levels] subvec 0 n))
+(defn sldb-drop-level
+  ([connection]
+     (logging/trace
+      "sldb-drop-level: :levels %s" (count (:sldb-levels @connection)))
+     (swap! connection update-in [:sldb-levels]
+            subvec 0 (dec (count (:sldb-levels @connection)))))
+  ([connection n]
+     (logging/trace
+      "sldb-drop-level: :levels %s :level %s"
+      (count (:sldb-levels @connection))
+      n)
+     (swap! connection update-in [:sldb-levels] subvec 0 n)))
 
 (defn sldb-level
   [connection]

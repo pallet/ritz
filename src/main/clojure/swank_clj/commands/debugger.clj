@@ -20,12 +20,31 @@
     (debug/build-backtrace level-info start end)))
 
 (defslimefn invoke-nth-restart-for-emacs [connection level n]
-  (let [level-info (connection/sldb-level-info connection level)
-        thread-id (debug/invoke-restart connection level-info n)]
+  (let [level-info (connection/sldb-level-info connection level)]
     ;;(connection/sldb-drop-level connection n)
     (connection/send-to-emacs
-     connection (messages/debug-return thread-id level))
+     connection
+     (messages/debug-return (debug/level-info-thread-id level-info) level))
+    (debug/invoke-restart connection level-info n)
     nil))
+
+(defn invoke-named-restart
+  [connection kw]
+  (let [level (connection/sldb-level connection)
+        level-info (connection/sldb-level-info connection)]
+    (connection/send-to-emacs
+     connection
+     (messages/debug-return (debug/level-info-thread-id level-info) level))
+    (debug/invoke-named-restart connection kw)))
+
+(defslimefn throw-to-toplevel [connection]
+  (invoke-named-restart connection :quit))
+
+(defslimefn sldb-continue [connection]
+  (invoke-named-restart connection :continue))
+
+(defslimefn sldb-abort [connection]
+  (invoke-named-restart connection :abort))
 
 (defslimefn frame-catch-tags-for-emacs [connection n]
   nil)
@@ -73,3 +92,12 @@ corresponding attribute values per thread."
 ;;; Breakpoints
 (defslimefn line-breakpoint [connection namespace filename line]
   (debug/line-breakpoint connection namespace filename line))
+
+(defslimefn sldb-step [connection]
+  (invoke-named-restart connection :step-into))
+
+(defslimefn sldb-next [connection]
+  (invoke-named-restart connection :step-next))
+
+(defslimefn sldb-out [connection]
+  (invoke-named-restart connection :step-out))

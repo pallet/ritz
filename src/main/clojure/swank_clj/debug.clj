@@ -17,6 +17,7 @@
    java.net.InetAddress
    com.sun.jdi.event.BreakpointEvent
    com.sun.jdi.event.ExceptionEvent
+   com.sun.jdi.event.StepEvent
    com.sun.jdi.request.ExceptionRequest
    com.sun.jdi.event.VMStartEvent
    com.sun.jdi.event.VMDeathEvent
@@ -457,6 +458,7 @@
 
 
 ;;; breakpoints
+;;; todo - use the event manager's event list
 (defn line-breakpoint
   "Set a line breakpoint."
   [connection namespace filename line]
@@ -531,7 +533,9 @@
 (defn resume
   [thread-ref suspend-policy]
   (case suspend-policy
-    :suspend-all (.resume (.virtualMachine thread-ref))
+    :suspend-all (do
+                   (.suspend (:control-thread vm))
+                   (.resume (.virtualMachine thread-ref)))
     :suspend-event-thread (.resume thread-ref)
     nil))
 
@@ -607,23 +611,53 @@
                         (.resume thread))))])]
     (apply array-map (apply concat restarts))))
 
-(defn calculate-breakpoint-restarts [connection event thread]
+(defn step-request
+  [thread size depth]
+  (doto (jpda/step-request thread size depth)
+    (.addCountFilter 1)
+    (jpda/suspend-policy breakpoint-suspend-policy)
+    (.enable)))
+
+(defn calculate-event-restarts
+  [event-type connection event thread]
   (logging/trace "calculate-breakpoint-restarts")
   (let [restarts (filter
                   identity
                   [(make-restart
                     :continue "CONTINUE" "Continue from breakpoint"
-                    (fn [_]
+                    (fn [connection]
                       (logging/trace "restart Continuing")
-                      (.. event request enable)
-                      (.resume thread)
+                      (connection/sldb-drop-level connection)
+                      (resume thread breakpoint-suspend-policy)))
+                   (when (= event-type :breakpoint)
+                     (make-restart
+                      :continue-clear "CONTINUE-CLEAR"
+                      "Continue and clear breakpoint"
+                      (fn [connection]
+                        (logging/trace "restart Continue clear")
+                        (remove-breakpoint connection event)
+                        (connection/sldb-drop-level connection)
+                        (resume thread breakpoint-suspend-policy))))
+                   (make-restart
+                    :step-into "STEP" "Step into the next line"
+                    (fn [connection]
+                      (logging/trace "restart step into")
+                      (step-request thread :line :into)
+                      (connection/sldb-drop-level connection)
                       (resume thread breakpoint-suspend-policy)))
                    (make-restart
-                    :abort "CONTINUE-CLEAR" "Continue and clear breakpoint"
+                    :step-next "STEP-NEXT" "Step to the next line"
                     (fn [connection]
-                      (logging/trace "restart Aborting to top level")
-                      (remove-breakpoint connection event)
-                      (.resume thread)
+                      (logging/trace "restart step over")
+                      (step-request thread :line :over)
+                      (connection/sldb-drop-level connection)
+                      (resume thread breakpoint-suspend-policy)))
+                   (make-restart
+                    :step-out "STEP-OUT" "Step out of current frame"
+                    (fn [connection]
+                      (logging/trace "restart step out")
+                      (step-request thread :line :out)
+                      (connection/sldb-drop-level connection)
                       (resume thread breakpoint-suspend-policy)))])]
     (apply array-map (apply concat restarts))))
 
@@ -655,11 +689,16 @@
      `(:debug-activate ~thread-id ~level nil))
     (.suspend thread)))
 
+(def breakpoint-messages
+  {:breakpoint "BREAKPOINT"
+   :step "STEPPING"})
+
 (defn invoke-breakpoint
-  [connection exception thread]
-  (logging/trace "invoke-breakpoint")
+  [event-type connection exception thread]
+  (logging/trace "invoke-breakpoint %s" event-type)
   (let [thread-id (.uniqueID thread)
-        restarts (calculate-breakpoint-restarts connection exception thread)
+        restarts (calculate-event-restarts
+                  event-type connection exception thread)
         level-info {:restarts restarts :thread thread}
         level (connection/next-sldb-level connection level-info)]
     (logging/trace "invoke-breakpoint: call emacs")
@@ -667,7 +706,7 @@
      connection
      (list* :debug thread-id level
             (build-debugger-info-for-emacs
-             exception (list "BREAKPOINT" "" nil)
+             exception (list (breakpoint-messages event-type) "" nil)
              level-info 0 *sldb-initial-frames*
              (list* (connection/pending connection)))))
     (connection/send-to-emacs
@@ -675,12 +714,25 @@
      `(:debug-activate ~thread-id ~level nil))
     (.suspend thread)))
 
+(defn level-info-thread-id
+  [level-info]
+  (.uniqueID (:thread level-info)))
+
 (defn invoke-restart
   [connection level-info n]
+  (logging/trace "invoke-restart %s of %s" n (count (:restarts level-info)))
   (when-let [f (last (nth (vals (:restarts level-info)) n))]
     (inspect/reset-inspector (:inspector @connection))
     (f connection))
-  (.uniqueID (:thread level-info)))
+  (level-info-thread-id level-info))
+
+(defn invoke-named-restart
+  [connection kw]
+  (when-let [level-info (connection/sldb-level-info connection)]
+    (when-let [f (last (kw (:restarts level-info)))]
+      (inspect/reset-inspector (:inspector @connection))
+      (f connection))
+    (.uniqueID (:thread level-info))))
 
 (def stm-types #{"clojure.lang.Atom"})
 
@@ -948,8 +1000,7 @@
       (if (or (caught? event) (in-swank-clj? thread))
         (do
           (logging/trace "Not activating sldb (caught)")
-          ;; (logging/trace (string/join (exception-stacktrace thread)))
-          )
+          (logging/trace (string/join (exception-stacktrace thread))))
         (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
           (logging/trace "EXCEPTION %s" (exception-message exception thread))
           ;; (logging/trace "exception-event: %s %s" id connection)
@@ -984,7 +1035,25 @@
           (if (and id connection)
             (do
               (logging/trace "Activating sldb for breakpoint")
-              (invoke-breakpoint connection event thread))
+              (invoke-breakpoint :breakpoint connection event thread))
+            (logging/trace "Not activating sldb (no id, connection)")))))))
+
+(defmethod jpda/handle-event StepEvent
+  [event connected]
+  (let [thread (jpda/event-thread event)]
+    (when (and (:control-thread vm) (:RT vm))
+      (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
+        (logging/trace "STEP")
+        (let [connection (ffirst @connections)]
+          ;; ensure we have started - id and connection need to go
+          (if (and id connection)
+            (do
+              (let [request (.. event request)]
+                (.disable request)
+                (.. event (virtualMachine) (eventRequestManager)
+                    (deleteEventRequest request)))
+              (logging/trace "Activating sldb for stepping")
+              (invoke-breakpoint :step connection event thread))
             (logging/trace "Not activating sldb (no id, connection)")))))))
 
 (defmethod jpda/handle-event VMDeathEvent
