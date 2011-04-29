@@ -35,7 +35,8 @@
     (connection/send-to-emacs
      connection
      (messages/debug-return (debug/level-info-thread-id level-info) level))
-    (debug/invoke-named-restart connection kw)))
+    (debug/invoke-named-restart connection kw)
+    nil))
 
 (defslimefn throw-to-toplevel [connection]
   (invoke-named-restart connection :quit))
@@ -90,9 +91,12 @@ corresponding attribute values per thread."
       (debug/stop-thread (first thread)))))
 
 ;;; Breakpoints
-(defslimefn line-breakpoint [connection namespace filename line]
+;;; These are non-standard slime functions
+(defslimefn line-breakpoint
+  [connection namespace filename line]
   (debug/line-breakpoint connection namespace filename line))
 
+;;; stepping
 (defslimefn sldb-step [connection]
   (invoke-named-restart connection :step-into))
 

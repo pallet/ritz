@@ -596,19 +596,20 @@
                     :continue "CONTINUE" "Pass exception to program"
                     (fn [_]
                       (logging/trace "restart Continuing")
-                      (.resume thread)))
+                      (resume thread exception-suspend-policy)))
                    (make-restart
                     :abort "ABORT" "Return to SLIME's top level."
                     (fn [connection]
                       (logging/trace "restart Aborting to top level")
-                      (abort-all-levels connection)))
-                   (when (> (count (:sldb-levels @connection)) 1)
+                      (abort-all-levels connection)
+                      (resume thread exception-suspend-policy)))
+                   (when (> (count (:sldb-levels @connection)) 0)
                      (make-restart
                       :quit "QUIT" "Return to previous level."
                       (fn [connection]
                         (logging/trace "restart Quiting to previous level")
                         (abort-level connection)
-                        (.resume thread))))])]
+                        (resume thread exception-suspend-policy))))])]
     (apply array-map (apply concat restarts))))
 
 (defn step-request
