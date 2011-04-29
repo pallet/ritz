@@ -26,6 +26,7 @@
 (defonce vm nil)
 
 (def exception-suspend-policy :suspend-all)
+(def breakpoint-suspend-policy :suspend-all)
 (def control-thread-name "swank-clj-debug-thread-implementation")
 
 ;;; threads
@@ -454,6 +455,36 @@
         (Thread/sleep 200)
         (recur)))))
 
+
+;;; breakpoints
+(defn line-breakpoint
+  "Set a line breakpoint."
+  [connection namespace filename line]
+  (let [breakpoints (jpda/line-breakpoints
+                     (:vm vm) breakpoint-suspend-policy
+                     namespace filename line)]
+    (swap!
+     connection
+     update-in
+     [:breakpoints]
+     #(concat % breakpoints))
+    (format "Set %d breakpoints" (count breakpoints))))
+
+(defn remove-breakpoint
+  "Set a line breakpoint."
+  [connection event]
+  (swap!
+   connection
+   (fn [connection]
+     (update-in
+      connection
+      [:breakpoints]
+      (fn [breakpoints]
+        (let [request (.request event)]
+          (.disable request)
+          (.deleteEventRequest (.eventRequestManager (:vm connection)) request)
+          (remove #(= % request) breakpoints)))))))
+
 ;;; debug methods
 (defn debugger-condition-for-emacs [exception thread]
   (logging/trace "debugger-condition-for-emacs")
@@ -498,8 +529,8 @@
   [kw [name description f]])
 
 (defn resume
-  [thread-ref]
-  (case exception-suspend-policy
+  [thread-ref suspend-policy]
+  (case suspend-policy
     :suspend-all (.resume (.virtualMachine thread-ref))
     :suspend-event-thread (.resume thread-ref)
     nil))
@@ -517,7 +548,7 @@
        [:sldb-levels]
        (fn [levels]
          (when-let [level (last levels)]
-           (resume (:thread level)))
+           (resume (:thread level) exception-suspend-policy))
          (subvec levels 0 (dec (count levels)))))))))
 
 (defn abort-all-levels
@@ -530,7 +561,7 @@
              [:sldb-levels]
              (fn [levels]
                (doseq [level (reverse (:sldb-levels connection))]
-                 (resume (:thread level)))
+                 (resume (:thread level) exception-suspend-policy))
                []))
             (assoc :abort-to-level 0)))))
 
@@ -576,6 +607,26 @@
                         (.resume thread))))])]
     (apply array-map (apply concat restarts))))
 
+(defn calculate-breakpoint-restarts [connection event thread]
+  (logging/trace "calculate-breakpoint-restarts")
+  (let [restarts (filter
+                  identity
+                  [(make-restart
+                    :continue "CONTINUE" "Continue from breakpoint"
+                    (fn [_]
+                      (logging/trace "restart Continuing")
+                      (.. event request enable)
+                      (.resume thread)
+                      (resume thread breakpoint-suspend-policy)))
+                   (make-restart
+                    :abort "CONTINUE-CLEAR" "Continue and clear breakpoint"
+                    (fn [connection]
+                      (logging/trace "restart Aborting to top level")
+                      (remove-breakpoint connection event)
+                      (.resume thread)
+                      (resume thread breakpoint-suspend-policy)))])]
+    (apply array-map (apply concat restarts))))
+
 (defn build-debugger-info-for-emacs
   [exception condition level-info start end conts]
   (list condition
@@ -608,7 +659,7 @@
   [connection exception thread]
   (logging/trace "invoke-breakpoint")
   (let [thread-id (.uniqueID thread)
-        restarts (calculate-restarts connection exception thread)
+        restarts (calculate-breakpoint-restarts connection exception thread)
         level-info {:restarts restarts :thread thread}
         level (connection/next-sldb-level connection level-info)]
     (logging/trace "invoke-breakpoint: call emacs")
@@ -942,15 +993,3 @@
     (connection/close proxied-connection)
     (connection/close connection))
   (System/exit 0))
-
-;;; breakpoints
-(defn line-breakpoint
-  "Set a line breakpoint."
-  [connection namespace filename line]
-  (let [breakpoints (jpda/line-breakpoints (:vm vm) namespace filename line)]
-    (swap!
-     connection
-     update-in
-     [:breakpoints]
-     #(conj % breakpoints))
-    (format "Set %d breakpoints" (count breakpoints))))

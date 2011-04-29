@@ -296,19 +296,20 @@
 
 (defn breakpoint
   "Create a breakpoint"
-  [^VirtualMachine vm ^Location location]
+  [^VirtualMachine vm suspend-policy ^Location location]
   (doto (.createBreakpointRequest (.eventRequestManager vm) location)
-    (.setSuspendPolicy EventRequest/SUSPEND_EVENT_THREAD)
+    (.setSuspendPolicy (suspend-policy event-request-policies))
     (.enable)))
 
 (defn line-breakpoints
-  [vm namespace filename line]
+  "Create breakpoints at the given location"
+  [vm suspend-policy namespace filename line]
   (logging/trace "line-breakpoints %s %s %s" namespace filename line)
   (->>
    (or (and namespace (namespace-classes vm namespace))
        (file-classes vm filename))
    (mapcat #(class-line-locations % line))
-   (map #(breakpoint vm %))))
+   (map #(breakpoint vm suspend-policy %))))
 
 ;;; from cdt
 (defn clojure-frame?
