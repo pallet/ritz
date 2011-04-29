@@ -33,6 +33,7 @@
               (exception-causes cause)))))
 
 (defn maybe-ns [package]
+  (logging/trace "maybe-ns %s" (pr-str package))
   (cond
    (symbol? package) (or (find-ns package) (maybe-ns 'user))
    (string? package) (maybe-ns (symbol package))

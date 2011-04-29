@@ -1,15 +1,18 @@
 (ns swank-clj.jpda
-  "JPDA/JDI wrapper"
+  "JPDA/JDI wrapper.
+   The aim here is to work towards a clojure interface for JDI,
+   but is currently mainly a set of light wrapper functions."
   (:refer-clojure :exclude [methods])
   (:require
    [swank-clj.logging :as logging]
    [clojure.string :as string])
   (:import
    (com.sun.jdi
-    VirtualMachine Bootstrap VMDisconnectedException
-    ObjectReference StringReference ThreadReference)
+    VirtualMachine PathSearchingVirtualMachine
+    Bootstrap VMDisconnectedException
+    ObjectReference StringReference ThreadReference ReferenceType)
    (com.sun.jdi.event VMDisconnectEvent LocatableEvent ExceptionEvent)
-   (com.sun.jdi.request ExceptionRequest EventRequestManager)))
+   (com.sun.jdi.request ExceptionRequest EventRequest EventRequestManager)))
 
 (def connector-names
      {:command-line "com.sun.jdi.CommandLineLaunch"
@@ -56,6 +59,11 @@
   "The event's thread reference"
   [^LocatableEvent e]
   (.thread e))
+
+(defn location
+  "A location"
+  [e]
+  (.location e))
 
 (defmulti handle-event (fn [event _] (class event)))
 (defmethod handle-event :default [event connected]
@@ -174,8 +182,135 @@
     (.lineNumber location)
     (catch Exception _ -1)))
 
+;;; classpath
 
-;; from cdt
+(defn classpath
+  [^PathSearchingVirtualMachine vm]
+  (.classPath vm))
+
+(defn base-directory
+  [^PathSearchingVirtualMachine vm]
+  (.baseDirectory vm))
+
+(defn jar-file?
+  "Returns true if file is a normal file with a .jar or .JAR extension."
+  [^java.io.File file]
+  (and (.isFile file)
+       (or (.endsWith (.getName file) ".jar")
+           (.endsWith (.getName file) ".JAR"))))
+
+(defn filepaths-from-jar
+  "Returns a sequence of Strings naming the non-directory entries in jar-file."
+  [^java.util.jar.JarFile jar-file]
+  (->>
+   (.entries jar-file)
+   enumeration-seq
+   (filter #(not (.isDirectory %)))
+   (map #(.getName %))))
+
+(defn filepaths
+  "Returns a sequence of JarFile objects for the jar files on classpath."
+  [classpath]
+  (filter
+   identity
+   (map
+    (fn [file]
+      (if (jar-file? file)
+        (try
+          (->
+           file
+           (java.util.jar.JarFile.)
+           filepaths-from-jar)
+          (catch Exception _))
+        (str file)))
+    (map #(java.io.File. %) classpath))))
+
+(defn matching-classpath-files
+  "Return a sequence of class paths that the specified filepath matches."
+  [classpath filepath]
+  (logging/trace "matching-classpath-files %s" filepath)
+  ;;(logging/trace "matching-classpath-files %s" (vec (filepaths classpath)))
+  (some #(= filepath %) (filepaths classpath)))
+
+(defn namespace-for-path
+  "Takes a path and builds a namespace string from it"
+  [path]
+  (logging/trace "namespace-for-path %s" path)
+  (when path
+    (string/replace path java.io.File/separator ".")))
+
+(defn file-namespace
+  "Get the top level namespace for the given file path"
+  [classpath filepath]
+  (->>
+   (-> filepath (.split "\\.jar:") last (.split "\\.") first)
+   (matching-classpath-files classpath)
+   (namespace-for-path)))
+
+(defn classname-re
+  "Return a regular expression pattern for matching all classes in the
+   given namespace name"
+  [ns]
+  (re-pattern (str (string/replace ns "-" "_") "\\$")))
+
+(defn namespace-classes
+  "Return all classes for the given namespace"
+  [vm namespace]
+  (logging/trace "namespace-classes %s" namespace)
+  (when-not (string/blank? namespace)
+    (let [re (classname-re namespace)]
+      (logging/trace "Looking for re %s" re)
+      (filter
+       (fn [class-ref]
+         (re-find re (.name class-ref)))
+       (.allClasses vm)))))
+
+(defn file-classes
+  "Return all classes for the given path"
+  [vm filename]
+  (let [file-ns (file-namespace (classpath vm) filename)]
+    (logging/trace
+       "Looking for %s in %s using %s"
+       filename (vec (map #(.name %) (take 10 (.allClasses vm))))
+       (vec file-ns))
+    (namespace-classes (first file-ns))))
+
+;;; breakpoints
+
+(defn class-line-locations
+  "Return all locations at the given line for the given class.
+   If the line doesn't exist for the given class, returns nil."
+  [^ReferenceType class line]
+  (logging/trace
+   "Looking for line %s in %s" line (.name class))
+  (try
+    (.locationsOfLine class line)
+    (catch com.sun.jdi.AbsentInformationException _
+      (logging/trace "not found")
+      nil)))
+
+(def event-request-policies
+  {:suspend-all EventRequest/SUSPEND_ALL
+   :suspend-event-thread EventRequest/SUSPEND_EVENT_THREAD
+   :suspend-none EventRequest/SUSPEND_NONE})
+
+(defn breakpoint
+  "Create a breakpoint"
+  [^VirtualMachine vm ^Location location]
+  (doto (.createBreakpointRequest (.eventRequestManager vm) location)
+    (.setSuspendPolicy EventRequest/SUSPEND_EVENT_THREAD)
+    (.enable)))
+
+(defn line-breakpoints
+  [vm namespace filename line]
+  (logging/trace "line-breakpoints %s %s %s" namespace filename line)
+  (->>
+   (or (and namespace (namespace-classes vm namespace))
+       (file-classes vm filename))
+   (mapcat #(class-line-locations % line))
+   (map #(breakpoint vm %))))
+
+;;; from cdt
 (defn clojure-frame?
   "Predicate to test if a frame is a clojure frame. Checks the for the extension
    of the frame location's source name, or for the presence of well know clojure

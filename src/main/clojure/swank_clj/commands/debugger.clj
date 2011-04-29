@@ -8,8 +8,7 @@
    [swank-clj.inspect :as inspect]
    [swank-clj.messages :as messages]
    [swank-clj.swank.core :as core]
-   [clojure.java.io :as io]
-   )
+   [clojure.java.io :as io])
   (:use
    [swank-clj.commands :only [defslimefn]]))
 
@@ -70,3 +69,7 @@ corresponding attribute values per thread."
     (when-let [thread (debug/nth-thread connection index)]
       (println "Thread: " thread)
       (debug/stop-thread (first thread)))))
+
+;;; Breakpoints
+(defslimefn line-breakpoint [connection namespace filename line]
+  (debug/line-breakpoint connection namespace filename line))

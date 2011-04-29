@@ -1,5 +1,5 @@
 (ns swank-clj.debug
-  "Debug functions"
+  "Debug functions, used to implement debugger commands via jpda."
   (:require
    [swank-clj.logging :as logging]
    [swank-clj.swank.core :as core]
@@ -15,6 +15,7 @@
    java.net.Socket
    java.net.InetSocketAddress
    java.net.InetAddress
+   com.sun.jdi.event.BreakpointEvent
    com.sun.jdi.event.ExceptionEvent
    com.sun.jdi.request.ExceptionRequest
    com.sun.jdi.event.VMStartEvent
@@ -27,6 +28,7 @@
 (def exception-suspend-policy :suspend-all)
 (def control-thread-name "swank-clj-debug-thread-implementation")
 
+;;; threads
 (defn format-thread
   [thread-reference]
   (format
@@ -454,6 +456,7 @@
 
 ;;; debug methods
 (defn debugger-condition-for-emacs [exception thread]
+  (logging/trace "debugger-condition-for-emacs")
   (list (or (exception-message exception thread) "No message.")
         (str "  [Thrown " (.. exception referenceType name) "]")
         nil))
@@ -573,8 +576,9 @@
                         (.resume thread))))])]
     (apply array-map (apply concat restarts))))
 
-(defn build-debugger-info-for-emacs [exception level-info start end conts]
-  (list (debugger-condition-for-emacs exception (:thread level-info))
+(defn build-debugger-info-for-emacs
+  [exception condition level-info start end conts]
+  (list condition
         (format-restarts-for-emacs (:restarts level-info))
         (build-backtrace level-info start end)
         conts))
@@ -591,7 +595,29 @@
      connection
      (list* :debug thread-id level
             (build-debugger-info-for-emacs
-             exception level-info 0 *sldb-initial-frames*
+             exception
+             (debugger-condition-for-emacs exception (:thread level-info))
+             level-info 0 *sldb-initial-frames*
+             (list* (connection/pending connection)))))
+    (connection/send-to-emacs
+     connection
+     `(:debug-activate ~thread-id ~level nil))
+    (.suspend thread)))
+
+(defn invoke-breakpoint
+  [connection exception thread]
+  (logging/trace "invoke-breakpoint")
+  (let [thread-id (.uniqueID thread)
+        restarts (calculate-restarts connection exception thread)
+        level-info {:restarts restarts :thread thread}
+        level (connection/next-sldb-level connection level-info)]
+    (logging/trace "invoke-breakpoint: call emacs")
+    (connection/send-to-emacs
+     connection
+     (list* :debug thread-id level
+            (build-debugger-info-for-emacs
+             exception (list "BREAKPOINT" "" nil)
+             level-info 0 *sldb-initial-frames*
              (list* (connection/pending connection)))))
     (connection/send-to-emacs
      connection
@@ -896,11 +922,19 @@
        "Threads:\n%s"
        (string/join "\n" (map format-thread (jpda/threads (:vm vm))))))))
 
-;; (defmethod jpda/handle-event VMStartEvent
-;;   [event connected]
-;;   (println event)
-;;     (logging/trace "jpda/handle-event vmstart")
-;;     )
+(defmethod jpda/handle-event BreakpointEvent
+  [event connected]
+  (let [thread (jpda/event-thread event)]
+    (when (and (:control-thread vm) (:RT vm))
+      (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
+        (logging/trace "BREAKPOINT")
+        (let [connection (ffirst @connections)]
+          ;; ensure we have started - id and connection need to go
+          (if (and id connection)
+            (do
+              (logging/trace "Activating sldb for breakpoint")
+              (invoke-breakpoint connection event thread))
+            (logging/trace "Not activating sldb (no id, connection)")))))))
 
 (defmethod jpda/handle-event VMDeathEvent
   [event connected]
@@ -909,35 +943,14 @@
     (connection/close connection))
   (System/exit 0))
 
-    ;; (when (= (.getMessage exception) control-thread-name)
-    ;;   (logging/trace "jpda/handle-event execpetion control-thread-name")
-    ;;   #(alter-var-root
-    ;;     #'vm assoc :control-thread thread
-    ;;     ;; :port (remote-eval
-    ;;     ;;        (:vm vm) thread
-    ;;     ;;        (deref swank-clj.socket-server/local-port))
-    ;;     )
-    ;;   (control-thread-acquired!)
-    ;;   (.resume thread))
-
-  ;; (let [remote-port
-  ;;       (remote-eval
-  ;;        vm
-  ;;        (.thread event)
-  ;;        (connection/local-port
-  ;;         (core/*current-connection)))]
-  ;;   (logging/trace "Exception on remote connection with port %s" remote-port))
-
-  ;; (let [exception (.exception event)
-  ;;       thread (.thread event)
-  ;;       {:keys [connection id]} (connection-and-id-from-thread thread)]
-
-  ;;   ;; ;;
-  ;;   ;; (connection/send-to-emacs
-  ;;   ;;  core/*current-connection*
-  ;;   ;;  (list* :debug true 0
-  ;;   ;;         (build-debugger-info-for-emacs exception 0 *sldb-initial-frames*)))
-  ;;   ;; (connection/send-to-emacs
-  ;;   ;;  core/*current-connection*
-  ;;   ;;  `(:debug-activate true 1 nil))
-  ;;   )
+;;; breakpoints
+(defn line-breakpoint
+  "Set a line breakpoint."
+  [connection namespace filename line]
+  (let [breakpoints (jpda/line-breakpoints (:vm vm) namespace filename line)]
+    (swap!
+     connection
+     update-in
+     [:breakpoints]
+     #(conj % breakpoints))
+    (format "Set %d breakpoints" (count breakpoints))))

@@ -107,22 +107,22 @@
    simple an alias for load file w/ timing and messages. This function
    is to reply with the following:
      (:swank-compilation-unit notes results durations)"
-  ([file-name]
-     (let [start (System/nanoTime)]
-       (try
-         (let [ret (clojure.core/load-file file-name)
-               delta (- (System/nanoTime) start)]
-           `(:compilation-result nil ~(pr-str ret) ~(/ delta 1000000000.0)))
-         (catch Throwable t
-           (let [delta (- (System/nanoTime) start)
-                 causes (core/exception-causes t)
-                 num (count causes)]
-             (.printStackTrace t) ;; prints to *inferior-lisp*
-             `(:compilation-result
-               ~(map exception-to-message causes) ;; notes
-               nil ;; results
-               ~(/ delta 1000000000.0) ;; durations
-               )))))))
+  [file-name]
+  (let [start (System/nanoTime)]
+    (try
+      (let [ret (clojure.core/load-file file-name)
+            delta (- (System/nanoTime) start)]
+        `(:compilation-result nil ~(pr-str ret) ~(/ delta 1000000000.0)))
+      (catch Throwable t
+        (let [delta (- (System/nanoTime) start)
+              causes (core/exception-causes t)
+              num (count causes)]
+          (.printStackTrace t) ;; prints to *inferior-lisp*
+          `(:compilation-result
+            ~(map exception-to-message causes) ;; notes
+            nil                                ;; results
+            ~(/ delta 1000000000.0)            ;; durations
+            ))))))
 
 (defslimefn compile-file-for-emacs
   [connection file-name load? & compile-options]
