@@ -2,6 +2,12 @@
 
 Refactored swank-clojure. Added jpda connection.
 
+This is alpha quality.
+
+## Install
+
+Add `[swank-clj "0.1.0-SNAPSHOT"]` to your project.clj `:dev-dependencies`.
+
 ## Usage
 
 To run without jpda:
@@ -12,13 +18,11 @@ To run with jpda:
 
     lein swank-clj
 
-
-## Installation
-
-Build and install locally.
+To set a breakpoint, eval `swank-clj.el` from src/main/elisp, put the cursor
+on the line where you want a breakpoint, and `M-x (slime-line-breakpoint)`.
 
 ## License
 
-Copyright (C) 2010 FIXME
+Copyright (C) 2010, 2011 Hugo Duncan
 
-Distributed under the Eclipse Public License, the same as Clojure.
+Distributed under the Eclipse Public License.
