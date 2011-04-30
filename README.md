@@ -1,8 +1,11 @@
 # swank-clj
 
-Refactored swank-clojure. Added jpda connection.
+Refactored swank-clojure, with jpda debugging support.
 
 This is alpha quality.
+
+- Breaks on uncaught exceptions and breakpoints.
+- Allows stepping from breakpoints
 
 ## Install
 
@@ -18,8 +21,12 @@ To run with jpda:
 
     lein swank-clj
 
+### Breakpoints
+
 To set a breakpoint, eval `swank-clj.el` from src/main/elisp, put the cursor
 on the line where you want a breakpoint, and `M-x (slime-line-breakpoint)`.
+
+Note that breakpoints disappear on recompilation at the moment.
 
 ## License
 
