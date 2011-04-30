@@ -1,5 +1,5 @@
 (ns swank-clj.commands.debugger
-  "Debugger commands.  Everything that the proxy responds to"
+  "Debugger commands.  Everything that the proxy responds to."
   (:require
    [swank-clj.logging :as logging]
    [swank-clj.jpda :as jpda]
@@ -16,8 +16,8 @@
   ((nth restart 2)))
 
 (defslimefn backtrace [connection start end]
-  (let [level-info (connection/sldb-level-info connection)]
-    (debug/build-backtrace level-info start end)))
+  (messages/stacktrace-frames
+   (debug/backtrace connection start end) start))
 
 (defslimefn invoke-nth-restart-for-emacs [connection level n]
   (let [level-info (connection/sldb-level-info connection level)]
@@ -59,9 +59,9 @@
   (list (frame-locals-for-emacs connection n)
         (frame-catch-tags-for-emacs connection n)))
 
-(defslimefn frame-source-location [connection n]
-  (let [level-info (connection/sldb-level-info connection)]
-    (debug/source-location-for-frame level-info n)))
+(defslimefn frame-source-location [connection frame-number]
+  (messages/location
+   (debug/frame-source-location connection frame-number)))
 
 (defslimefn inspect-frame-var [connection frame index]
   (let [inspector (connection/inspector connection)
@@ -107,8 +107,8 @@ corresponding attribute values per thread."
   (debug/line-breakpoint connection namespace filename line))
 
 (defslimefn break-on-exceptions
-  "Control which expressions are caught"
-  [connection filter-caught? filter-caught-ns-list])
+  "Control which expressions are trapped in the debugger"
+  [connection filter-caught? class-exclusions])
 
 ;;; stepping
 (defslimefn sldb-step [connection]
@@ -119,3 +119,7 @@ corresponding attribute values per thread."
 
 (defslimefn sldb-out [connection]
   (invoke-named-restart connection :step-out))
+
+;; eval
+(defslimefn eval-string-in-frame [connection expr n]
+  (debug/eval-string-in-frame connection expr n))

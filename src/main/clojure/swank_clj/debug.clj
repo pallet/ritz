@@ -1,5 +1,6 @@
 (ns swank-clj.debug
-  "Debug functions, used to implement debugger commands via jpda."
+  "Debug functions, used to implement debugger commands via jpda.
+   The aim is to move all return messaging back up into swank-clj.commands.*"
   (:require
    [swank-clj.logging :as logging]
    [swank-clj.swank.core :as core]
@@ -8,6 +9,7 @@
    [swank-clj.executor :as executor]
    [swank-clj.inspect :as inspect]
    [swank-clj.rpc-socket-connection :as rpc-socket-connection]
+   [swank-clj.messages :as messages] ;; TODO - remove this
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as string])
@@ -26,16 +28,20 @@
    com.sun.jdi.ObjectReference))
 
 (defonce vm nil)
+(def control-thread-name "swank-clj-debug-thread")
 
 (def exception-suspend-policy :suspend-all)
 (def breakpoint-suspend-policy :suspend-all)
-(def exclude-exceptions
-  (atom ["java.net.URLClassLoader*"
-         "java.lang.ClassLoader*"
-         "*ClassLoader.java"]))
+(def exception-policy
+  (atom {:uncaught-only true
+         :class-exclusion ["java.net.URLClassLoader*"
+                           "java.lang.ClassLoader*"
+                           "*ClassLoader.java"]
+         :system-thread-names [control-thread-name
+                               "REPL" "Accept loop"
+                               "Connection dispatch loop :repl"]}))
 
-(def control-thread-name "swank-clj-debug-thread")
-
+(def first-eval-seen (atom false))
 ;;;
 
 (def *sldb-initial-frames* 10)
@@ -459,6 +465,83 @@
         (recur)))))
 
 
+;;; stacktrace
+(defn- frame-data
+  "Extract data from a stack frame"
+  [frame]
+  (let [location (.location frame)
+        declaring-type (jpda/location-type-name location)
+        method (jpda/location-method-name location)
+        line (jpda/location-line-number location)
+        source-name (jpda/location-source-name location)]
+    (if (and (= method "invoke") (.endsWith source-name ".clj"))
+      {:function (jpda/unmunge-clojure declaring-type)
+       :source source-name
+       :line line}
+      {:function (format "%s.%s" declaring-type method)
+       :source source-name
+       :line line})))
+
+(defn- exception-stacktrace [frames]
+  (logging/trace "exception-stacktrace")
+  (map frame-data frames))
+
+(defn- build-backtrace
+  ([thread]
+     (doall (exception-stacktrace (.frames thread))))
+  ([thread start end]
+     (doall (exception-stacktrace
+             (take (- end start) (drop start (.frames thread)))))))
+
+(defn backtrace
+  "Create a backtrace for the specified frames.
+   TODO: seperate out return message generation."
+  [connection start end]
+  (when-let [level-info (connection/sldb-level-info connection)]
+    (build-backtrace (:thread level-info) start end)))
+
+
+;;; Source location
+(defn- clean-windows-path
+  "Decode file URI encoding and remove an opening slash from
+   /c:/program%20files/... in jar file URLs and file resources."
+  [#^String path]
+  (or (and (.startsWith (System/getProperty "os.name") "Windows")
+           (second (re-matches #"^/([a-zA-Z]:/.*)$" path)))
+      path))
+
+(defn- zip-resource [#^java.net.URL resource]
+  (let [jar-connection #^java.net.JarURLConnection (.openConnection resource)
+        jar-file (.getPath (.toURI (.getJarFileURL jar-connection)))]
+    {:zip [(clean-windows-path jar-file) (.getEntryName jar-connection)]}))
+
+(defn- file-resource [#^java.net.URL resource]
+  {:file (clean-windows-path (.getFile resource))})
+
+(defn- find-resource [#^String file]
+  (if-let [resource (.getResource (clojure.lang.RT/baseLoader) file)]
+    (if (= (.getProtocol resource) "jar")
+      (zip-resource resource)
+      (file-resource resource))
+    (logging/trace "Couldn't find resource %s" file)))
+
+(defn- find-file [#^String file]
+  (if (.isAbsolute (File. file))
+    {:file file}
+    (find-resource file)))
+
+(defn frame-source-location
+  "Return a source location vector [buffer position] for the specified
+   frame number."
+  [connection frame-number]
+  (let [level-info (connection/sldb-level-info connection)]
+    (when-let [frame (nth (.frames (:thread level-info)) frame-number nil)]
+      (let [location (.location frame)
+            res [(find-file (jpda/location-source-path location))
+                 {:line (jpda/location-line-number location)}]]
+        (logging/trace "f-s-l %s" (pr-str res))
+        res))))
+
 ;;; breakpoints
 ;;; todo - use the event manager's event list
 (defn line-breakpoint
@@ -490,49 +573,10 @@
            (.eventRequestManager (.virtualMachine event)) request)
           (remove #(= % request) breakpoints)))))))
 
+
 ;;; debug methods
-(defn debugger-condition-for-emacs [exception thread]
-  (logging/trace "debugger-condition-for-emacs")
-  (list (or (exception-message exception thread) "No message.")
-        (str "  [Thrown " (.. exception referenceType name) "]")
-        nil))
 
-(defn format-restarts-for-emacs [restarts]
-  (doall (map #(list (first (second %)) (second (second %))) restarts)))
-
-(defn format-frame
-  [frame]
-  (let [location (.location frame)
-        declaring-type (jpda/location-type-name location)
-        method (jpda/location-method-name location)
-        line (jpda/location-line-number location)
-        source-name (jpda/location-source-name location)]
-    (if (and (= method "invoke") (.endsWith source-name ".clj"))
-      (format
-       "%s (%s:%s)"
-       (jpda/unmunge-clojure declaring-type)
-       source-name
-       line)
-      (format
-       "%s.%s (%s:%s)"
-       declaring-type
-       method
-       source-name
-       line))))
-
-(defn exception-stacktrace [thread]
-  (map #(list %1 %2 '(:restartable nil))
-       (iterate inc 0)
-       (map format-frame (.frames thread))))
-
-(defn build-backtrace [level-info start end]
-  (doall
-   (take (- end start)
-         (drop start (exception-stacktrace (:thread level-info))))))
-
-(defn make-restart [kw name description f]
-  [kw [name description f]])
-
+;; Restarts
 (defn resume
   [thread-ref suspend-policy]
   (case suspend-policy
@@ -591,30 +635,6 @@
        (dissoc c :abort-to-level)
        c))))
 
-(defn calculate-restarts [connection thrown thread]
-  (logging/trace "calculate-restarts")
-  (let [restarts (filter
-                  identity
-                  [(make-restart
-                    :continue "CONTINUE" "Pass exception to program"
-                    (fn [_]
-                      (logging/trace "restart Continuing")
-                      (resume thread exception-suspend-policy)))
-                   (make-restart
-                    :abort "ABORT" "Return to SLIME's top level."
-                    (fn [connection]
-                      (logging/trace "restart Aborting to top level")
-                      (abort-all-levels connection)
-                      (resume thread exception-suspend-policy)))
-                   (when (> (count (:sldb-levels @connection)) 0)
-                     (make-restart
-                      :quit "QUIT" "Return to previous level."
-                      (fn [connection]
-                        (logging/trace "restart Quiting to previous level")
-                        (abort-level connection)
-                        (resume thread exception-suspend-policy))))])]
-    (apply array-map (apply concat restarts))))
-
 (defn step-request
   [thread size depth]
   (doto (jpda/step-request thread size depth)
@@ -622,100 +642,149 @@
     (jpda/suspend-policy breakpoint-suspend-policy)
     (.enable)))
 
-(defn calculate-event-restarts
-  [event-type connection event thread]
-  (logging/trace "calculate-breakpoint-restarts")
-  (let [restarts (filter
-                  identity
-                  [(make-restart
-                    :continue "CONTINUE" "Continue from breakpoint"
-                    (fn [connection]
-                      (logging/trace "restart Continuing")
-                      (connection/sldb-drop-level connection)
-                      (resume thread breakpoint-suspend-policy)))
-                   (when (= event-type :breakpoint)
-                     (make-restart
-                      :continue-clear "CONTINUE-CLEAR"
-                      "Continue and clear breakpoint"
-                      (fn [connection]
-                        (logging/trace "restart Continue clear")
-                        (remove-breakpoint connection event)
-                        (connection/sldb-drop-level connection)
-                        (resume thread breakpoint-suspend-policy))))
-                   (make-restart
-                    :step-into "STEP" "Step into the next line"
-                    (fn [connection]
-                      (logging/trace "restart step into")
-                      (step-request thread :line :into)
-                      (connection/sldb-drop-level connection)
-                      (resume thread breakpoint-suspend-policy)))
-                   (make-restart
-                    :step-next "STEP-NEXT" "Step to the next line"
-                    (fn [connection]
-                      (logging/trace "restart step over")
-                      (step-request thread :line :over)
-                      (connection/sldb-drop-level connection)
-                      (resume thread breakpoint-suspend-policy)))
-                   (make-restart
-                    :step-out "STEP-OUT" "Step out of current frame"
-                    (fn [connection]
-                      (logging/trace "restart step out")
-                      (step-request thread :line :out)
-                      (connection/sldb-drop-level connection)
-                      (resume thread breakpoint-suspend-policy)))])]
-    (apply array-map (apply concat restarts))))
+(defn make-restart
+  "Make a restart map.
+   Contains
+     :id keyword id,
+     :name short name,
+     :descritpton longer description
+     :f restart function to invoke"
+  [kw name description f]
+  ;;[kw [name description f]]
+  {:id kw :name name :description description :f f})
 
-(defn build-debugger-info-for-emacs
-  [exception condition level-info start end conts]
-  (list condition
-        (format-restarts-for-emacs (:restarts level-info))
-        (build-backtrace level-info start end)
-        conts))
+(defn- make-step-restart
+  [thread id name description size depth]
+  (make-restart
+   id name description
+   (fn [connection]
+     (logging/trace "restart %s" name)
+     (step-request thread size depth)
+     (connection/sldb-drop-level connection)
+     (resume thread breakpoint-suspend-policy))))
 
-(defn invoke-sldb
-  [connection exception thread]
-  (logging/trace "invoke-sldb")
-  (let [thread-id (.uniqueID thread)
-        restarts (calculate-restarts connection exception thread)
+(defn stepping-restarts
+  [thread]
+  [(make-step-restart
+    thread :step-into "STEP" "Step into the next line" :line :into)
+   (make-step-restart
+    thread :step-next "STEP-NEXT" "Step to the next line" :line :over)
+   (make-step-restart
+    thread :step-out "STEP-OUT" "Step out of current frame" :line :out)])
+
+(defprotocol Debugger
+  (condition-info [event])
+  (restarts [event connection]))
+
+(extend-type ExceptionEvent
+  Debugger
+
+  (condition-info
+   [event]
+   (let [exception (.exception event)]
+     {:message (or
+                (exception-message exception (jpda/event-thread event))
+                "No message.")
+      :type (str "  [Thrown " (.. exception referenceType name) "]")}))
+
+  (restarts
+   [exception connection]
+   (logging/trace "calculate-restarts exception")
+   (let [thread (jpda/event-thread exception)]
+     (filter
+      identity
+      [(make-restart
+        :continue "CONTINUE" "Pass exception to program"
+        (fn [connection]
+          (logging/trace "restart Continuing")
+          (connection/sldb-drop-level connection)
+          (resume thread exception-suspend-policy)))
+       (make-restart
+        :abort "ABORT" "Return to SLIME's top level."
+        (fn [connection]
+          (logging/trace "restart Aborting to top level")
+          (abort-all-levels connection)
+          (resume thread exception-suspend-policy)))
+       (when (pos? (connection/sldb-level connection))
+         (make-restart
+          :quit "QUIT" "Return to previous level."
+          (fn [connection]
+            (logging/trace "restart Quiting to previous level")
+            (abort-level connection)
+            (resume thread exception-suspend-policy))))]))))
+
+(extend-type BreakpointEvent
+  Debugger
+
+  (condition-info
+   [breakpoint]
+   {:message "BREAKPOINT"})
+
+  (restarts
+   [breakpoint connection]
+   (logging/trace "calculate-restarts breakpoint")
+   (let [thread (jpda/event-thread breakpoint)]
+     (concat
+      [(make-restart
+        :continue "CONTINUE" "Continue from breakpoint"
+        (fn [connection]
+          (logging/trace "restart Continuing")
+          (connection/sldb-drop-level connection)
+          (resume thread breakpoint-suspend-policy)))
+       (make-restart
+        :continue-clear "CONTINUE-CLEAR"
+        "Continue and clear breakpoint"
+        (fn [connection]
+          (logging/trace "restart Continue clear")
+          (remove-breakpoint connection breakpoint)
+          (connection/sldb-drop-level connection)
+          (resume thread breakpoint-suspend-policy)))]
+      (stepping-restarts thread)))))
+
+(extend-type StepEvent
+  Debugger
+
+  (condition-info
+   [step]
+   {:message "STEPPING"})
+
+  (restarts
+   [step-event connection]
+   (logging/trace "calculate-restarts step-event")
+   (let [thread (jpda/event-thread step-event)]
+     (concat
+      [(make-restart
+        :continue "CONTINUE" "Continue normal execution"
+        (fn [connection]
+          (logging/trace "restart Continuing")
+          (connection/sldb-drop-level connection)
+          (resume thread breakpoint-suspend-policy)))]
+      (stepping-restarts thread)))))
+
+(defn invoke-debugger
+  "Calculate debugger information and invoke"
+  [connection event]
+  (logging/trace "invoke-debugger")
+  (let [thread (jpda/event-thread event)
+        _ (logging/trace "1")
+        thread-id (.uniqueID thread)
+        _ (logging/trace "2")
+        restarts (restarts event connection)
+        _ (logging/trace "3")
         level-info {:restarts restarts :thread thread}
+        _ (logging/trace "4")
         level (connection/next-sldb-level connection level-info)]
-    (logging/trace "invoke-sldb: call emacs")
+    (logging/trace "invoke-debugger: send-to-emacs")
     (connection/send-to-emacs
      connection
-     (list* :debug thread-id level
-            (build-debugger-info-for-emacs
-             exception
-             (debugger-condition-for-emacs exception (:thread level-info))
-             level-info 0 *sldb-initial-frames*
-             (list* (connection/pending connection)))))
+     (messages/debug
+      thread-id level
+      (condition-info event)
+      restarts
+      (build-backtrace thread 0 *sldb-initial-frames*)
+      (connection/pending connection)))
     (connection/send-to-emacs
-     connection
-     `(:debug-activate ~thread-id ~level nil))
-    (.suspend thread)))
-
-(def breakpoint-messages
-  {:breakpoint "BREAKPOINT"
-   :step "STEPPING"})
-
-(defn invoke-breakpoint
-  [event-type connection exception thread]
-  (logging/trace "invoke-breakpoint %s" event-type)
-  (let [thread-id (.uniqueID thread)
-        restarts (calculate-event-restarts
-                  event-type connection exception thread)
-        level-info {:restarts restarts :thread thread}
-        level (connection/next-sldb-level connection level-info)]
-    (logging/trace "invoke-breakpoint: call emacs")
-    (connection/send-to-emacs
-     connection
-     (list* :debug thread-id level
-            (build-debugger-info-for-emacs
-             exception (list (breakpoint-messages event-type) "" nil)
-             level-info 0 *sldb-initial-frames*
-             (list* (connection/pending connection)))))
-    (connection/send-to-emacs
-     connection
-     `(:debug-activate ~thread-id ~level nil))
+     connection (messages/debug-activate thread-id level))
     (.suspend thread)))
 
 (defn level-info-thread-id
@@ -725,7 +794,7 @@
 (defn invoke-restart
   [connection level-info n]
   (logging/trace "invoke-restart %s of %s" n (count (:restarts level-info)))
-  (when-let [f (last (nth (vals (:restarts level-info)) n))]
+  (when-let [f (:f (nth (:restarts level-info) n))]
     (inspect/reset-inspector (:inspector @connection))
     (f connection))
   (level-info-thread-id level-info))
@@ -733,7 +802,7 @@
 (defn invoke-named-restart
   [connection kw]
   (when-let [level-info (connection/sldb-level-info connection)]
-    (when-let [f (last (kw (:restarts level-info)))]
+    (when-let [f (:f (some #(and (kw %) %) (:restarts level-info)))]
       (inspect/reset-inspector (:inspector @connection))
       (f connection))
     (.uniqueID (:thread level-info))))
@@ -855,41 +924,12 @@
    (nth var-index)
    :value))
 
-;;; Source location
-
-(defn- clean-windows-path [#^String path]
-  ;; Decode file URI encoding and remove an opening slash from
-  ;; /c:/program%20files/... in jar file URLs and file resources.
-  (or (and (.startsWith (System/getProperty "os.name") "Windows")
-           (second (re-matches #"^/([a-zA-Z]:/.*)$" path)))
-      path))
-
-(defn- slime-zip-resource [#^java.net.URL resource]
-  (let [jar-connection #^java.net.JarURLConnection (.openConnection resource)
-        jar-file (.getPath (.toURI (.getJarFileURL jar-connection)))]
-    (list :zip (clean-windows-path jar-file) (.getEntryName jar-connection))))
-
-(defn- slime-file-resource [#^java.net.URL resource]
-  (list :file (clean-windows-path (.getFile resource))))
-
-(defn- slime-find-resource [#^String file]
-  (if-let [resource (.getResource (clojure.lang.RT/baseLoader) file)]
-    (if (= (.getProtocol resource) "jar")
-      (slime-zip-resource resource)
-      (slime-file-resource resource))))
-
-(defn- slime-find-file [#^String file]
-  (if (.isAbsolute (File. file))
-    (list :file file)
-    (slime-find-resource file)))
-
-(defn source-location-for-frame [level-info n]
-  (when-let [frame (nth (.frames (:thread level-info)) n)]
-    (let [location (.location frame)]
-      `(:location
-        ~(slime-find-file (jpda/location-source-path location))
-        (:line ~(jpda/location-line-number location))
-        nil))))
+(defn eval-string-in-frame
+  [connection expr frame]
+  (let [level-info (connection/sldb-level-info)
+        locals (frame-locals level-info frame)]
+    ;; TODO
+    ))
 
 ;;; events
 (defn add-exception-event-request
@@ -943,7 +983,9 @@
        "caught? %s %s"
        (not (.startsWith location-name "swank_clj.swank"))
        location-name)
-      (not (.startsWith location-name "swank_clj.swank")))))
+      (not (or (.startsWith location-name "swank_clj.swank")
+               (and ; @first-eval-seen
+                    (.startsWith location-name "clojure.lang.Compiler")))))))
 
 (defn in-swank-clj?
   "Predicate for testing if the given thread is inside of swank-clj"
@@ -973,7 +1015,7 @@
                           (jpda/location-type-name location))
                        (= "invoke"
                           (jpda/location-method-name location)))
-              (logging/trace "connection-and-id-from-thread found frame")
+              ;; (logging/trace "connection-and-id-from-thread found frame")
               (let [connection (first (.getArgumentValues frame))
                     id (last (.getArgumentValues frame))
                     ;; socket (-> (invoke-clojure-fn
@@ -986,10 +1028,10 @@
                     ;;         (.referenceType socket) "getPort"))
                     ;;       thread [])
                     ]
-                (logging/trace
-                 "connection-and-id-from-thread id %s connection %s"
-                 (jpda/object-reference id)
-                 (jpda/object-reference connection))
+                ;; (logging/trace
+                ;;  "connection-and-id-from-thread id %s connection %s"
+                ;;  (jpda/object-reference id)
+                ;;  (jpda/object-reference connection))
                 {:connection connection
                  :id (read-arg thread id)}))))
         (.frames thread)))
@@ -1004,7 +1046,8 @@
       (if (or (caught? event) (in-swank-clj? thread))
         (do
           (logging/trace "Not activating sldb (caught)")
-          (logging/trace (string/join (exception-stacktrace thread))))
+          ;; (logging/trace (string/join (build-stacktrace thread)))
+          )
         (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
           (logging/trace "EXCEPTION %s" (exception-message exception thread))
           ;; (logging/trace "exception-event: %s %s" id connection)
@@ -1015,9 +1058,9 @@
                 (logging/trace "Not activating sldb (aborting)")
                 (do
                   (logging/trace "Activating sldb")
-                  (invoke-sldb connection exception thread)))
+                  (invoke-debugger connection event)))
               (do (logging/trace "Not activating sldb (no id, connection)")
-                  ;; (logging/trace (string/join (exception-stacktrace thread)))
+                  ;; (logging/trace (string/join (build-stacktrace thread)))
                   ))))))
     (when-not (:control-thread vm)
       (maybe-acquire-control-thread exception thread))
@@ -1039,7 +1082,7 @@
           (if (and id connection)
             (do
               (logging/trace "Activating sldb for breakpoint")
-              (invoke-breakpoint :breakpoint connection event thread))
+              (invoke-debugger connection event))
             (logging/trace "Not activating sldb (no id, connection)")))))))
 
 (defmethod jpda/handle-event StepEvent
@@ -1057,7 +1100,7 @@
                 (.. event (virtualMachine) (eventRequestManager)
                     (deleteEventRequest request)))
               (logging/trace "Activating sldb for stepping")
-              (invoke-breakpoint :step connection event thread))
+              (invoke-debugger connection event))
             (logging/trace "Not activating sldb (no id, connection)")))))))
 
 (defmethod jpda/handle-event VMDeathEvent

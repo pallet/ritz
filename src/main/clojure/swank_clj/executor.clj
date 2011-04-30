@@ -14,9 +14,10 @@
   #^ExecutorService executor
   (Executors/newCachedThreadPool
    (proxy [ThreadFactory] []
-     (newThread [#^Runnable r]
-                (doto (Thread. r)
-                  (.setDaemon true))))))
+     (newThread
+      [#^Runnable r]
+      (doto (Thread. r)
+        (.setDaemon true))))))
 
 (defn execute
   [#^Callable f]

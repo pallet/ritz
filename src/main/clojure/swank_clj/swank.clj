@@ -25,7 +25,11 @@
   (logging/trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
   (try
     (connection/add-pending-id connection id)
-    (let [f (commands/slime-fn (name (first form)))
+    (let [form (if (= 'cl/mapc (first form))
+                 ;; special case for cl:mapc
+                 (list* (eval (second form)) (eval (nth form 2)))
+                 form)
+          f (commands/slime-fn (name (first form)))
           handler (or (connection/swank-handler connection) default-pipeline)
           result (handler connection form buffer-package id f)]
       (cond
