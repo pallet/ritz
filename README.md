@@ -6,6 +6,7 @@ This is alpha quality.
 
 - Breaks on uncaught exceptions and breakpoints.
 - Allows stepping from breakpoints
+- Allows evaluation of expressions in the context of a stack frame
 
 ## Install
 
@@ -13,13 +14,13 @@ Add `[swank-clj "0.1.0-SNAPSHOT"]` to your project.clj `:dev-dependencies`.
 
 ## Usage
 
-To run without jpda:
-
-    lein swank-clj 4005 localhost :server-ns swank-clj.repl
-
 To run with jpda:
 
     lein swank-clj
+
+To run without jpda:
+
+    lein swank-clj 4005 localhost :server-ns swank-clj.repl
 
 ### Breakpoints
 
