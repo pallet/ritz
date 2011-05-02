@@ -220,15 +220,20 @@
   [connection]
   (count (:sldb-levels @connection)))
 
+(defn current-sldb-level-info
+  "Obtain the current level. Returns [level-info level-number]"
+  [connection]
+  (when-let [levels (seq (:sldb-levels @connection))]
+    [(last levels) (count levels)]))
+
 (defn sldb-level-info
-  ([connection]
-     (last (:sldb-levels @connection)))
-  ([connection level]
-     (logging/trace
-      "sldb-level-info: :levels %s :level %s"
-      (count (:sldb-levels @connection))
-      level)
-     (nth (:sldb-levels @connection) (dec level))))
+  "Obtain the specified level"
+  [connection level]
+  (let [levels (:sldb-levels @connection)]
+    (logging/trace
+     "sldb-level-info: :levels %s :level %s"
+     (count (:sldb-levels @connection)) level)
+    (nth levels (dec level) nil)))
 
 (defn aborting-level?
   "Aborting predicate."

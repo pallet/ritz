@@ -19,24 +19,15 @@
   (messages/stacktrace-frames
    (debug/backtrace connection start end) start))
 
+(defslimefn debugger-info-for-emacs [connection start end]
+  (debug/debugger-info-for-emacs connection start end))
+
 (defslimefn invoke-nth-restart-for-emacs [connection level n]
-  (let [level-info (connection/sldb-level-info connection level)]
-    ;;(connection/sldb-drop-level connection n)
-    (connection/send-to-emacs
-     connection
-     (messages/debug-return (debug/level-info-thread-id level-info) level))
-    (debug/invoke-restart connection level-info n)
-    nil))
+  (debug/invoke-restart connection level n))
 
 (defn invoke-named-restart
   [connection kw]
-  (let [level (connection/sldb-level connection)
-        level-info (connection/sldb-level-info connection)]
-    (connection/send-to-emacs
-     connection
-     (messages/debug-return (debug/level-info-thread-id level-info) level))
-    (debug/invoke-named-restart connection kw)
-    nil))
+  (debug/invoke-named-restart connection kw))
 
 (defslimefn throw-to-toplevel [connection]
   (invoke-named-restart connection :quit))
@@ -51,7 +42,7 @@
   nil)
 
 (defslimefn frame-locals-for-emacs [connection n]
-  (let [level-info (connection/sldb-level-info connection)]
+  (let [[level-info level] (connection/current-sldb-level-info connection)]
     (messages/frame-locals
      (debug/frame-locals-with-string-values level-info n))))
 
@@ -65,7 +56,7 @@
 
 (defslimefn inspect-frame-var [connection frame index]
   (let [inspector (connection/inspector connection)
-        level-info (connection/sldb-level-info connection)
+        [level-info level] (connection/current-sldb-level-info connection)
         object (debug/nth-frame-var level-info frame index)]
     (when object
       (inspect/reset-inspector inspector)
@@ -111,13 +102,13 @@ corresponding attribute values per thread."
   [connection filter-caught? class-exclusions])
 
 ;;; stepping
-(defslimefn sldb-step [connection]
+(defslimefn sldb-step [connection frame]
   (invoke-named-restart connection :step-into))
 
-(defslimefn sldb-next [connection]
+(defslimefn sldb-next [connection frame]
   (invoke-named-restart connection :step-next))
 
-(defslimefn sldb-out [connection]
+(defslimefn sldb-out [connection frame]
   (invoke-named-restart connection :step-out))
 
 ;; eval

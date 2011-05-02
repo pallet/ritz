@@ -174,9 +174,9 @@
   [handler]
   (fn [connection form buffer-package id f]
     (if (and f (= "inspect-frame-var" (name (first form))))
-      (binding [*current-thread-reference*
-                (:thread (connection/sldb-level-info connection))]
-        (core/execute-slime-fn* connection f (rest form) buffer-package))
+      (let [[level-info _] (connection/current-sldb-level-info connection)]
+        (binding [*current-thread-reference* (:thread level-info)]
+          (core/execute-slime-fn* connection f (rest form) buffer-package)))
       (handler connection form buffer-package id f))))
 
 (defn execute-inspect-if-inspector-active
@@ -190,10 +190,9 @@
     (if (and f
              (re-find #"inspect" (name (first form)))
              (inspect/content (connection/inspector connection)))
-      (binding [*current-thread-reference*
-                ;; this may be wrong level's thread
-                (:thread (connection/sldb-level-info connection))]
-        (core/execute-slime-fn* connection f (rest form) buffer-package))
+      (let [[level-info _] (connection/current-sldb-level-info connection)]
+        (binding [*current-thread-reference* (:thread level-info)]
+          (core/execute-slime-fn* connection f (rest form) buffer-package)))
       (handler connection form buffer-package id f))))
 
 (defn execute-unless-inspect
@@ -475,6 +474,10 @@
                    `(new java.lang.Throwable "Stopped by swank")
                    jpda/invoke-single-threaded))))
 
+(defn level-info-thread-id
+  [level-info]
+  (.uniqueID (:thread level-info)))
+
 ;;; debugee functions for starting a thread that may be used from the proxy
 (defn start-control-thread
   "Start a thread that can be used by the proxy execute arbitrary code."
@@ -554,7 +557,7 @@
   "Create a backtrace for the specified frames.
    TODO: seperate out return message generation."
   [connection start end]
-  (when-let [level-info (connection/sldb-level-info connection)]
+  (when-let [[level-info level] (connection/current-sldb-level-info connection)]
     (build-backtrace (:thread level-info) start end)))
 
 
@@ -591,7 +594,7 @@
   "Return a source location vector [buffer position] for the specified
    frame number."
   [connection frame-number]
-  (let [level-info (connection/sldb-level-info connection)]
+  (let [[level-info level] (connection/current-sldb-level-info connection)]
     (when-let [frame (nth (.frames (:thread level-info)) frame-number nil)]
       (let [location (.location frame)]
         [(find-file (jpda/location-source-path location))
@@ -631,6 +634,19 @@
 
 ;;; debug methods
 
+;; This is a synthetic Event for an InvocationException delivered to the debug
+;; thread calling invokeMethod.  These exceptions are (unfortunately) not
+;; reported through the jdi debug event loop.
+(deftype InvocationExceptionEvent
+    [exception thread]
+  com.sun.jdi.event.ExceptionEvent
+  (catchLocation [_] nil)
+  (exception [_] exception)
+  (location [_] (.location exception))
+  (thread [_] thread)
+  (virtualMachine [_] (.virtualMachine exception))
+  (request [_] nil))
+
 ;; Restarts
 (defn resume
   [thread-ref suspend-policy]
@@ -644,57 +660,68 @@
   "Resume sldb levels specified in the connection.
    This is side effecting, so can not be used within swap!"
   [connection]
-  (doseq [level-info (:resume-sldb-levels connection)]
-    (jpda/resume-event-threads (:event level-info)))
+  (doseq [level-info (:resume-sldb-levels connection)
+          :let [event (:event level-info)]
+          :when (not (instance? InvocationExceptionEvent event))]
+    (logging/trace "resuming threads for sldb-level")
+    (jpda/resume-event-threads event))
   connection)
 
-(defn- return-sldb-levels
+(defn- return-or-activate-sldb-levels
   "Return the nested debug levels"
   [connection connection-map]
-  (dorun
-   (map (fn [level-info level]
-          (connection/send-to-emacs
-           connection
-           (messages/debug-return (:thread level-info) level)))
-        (rest (:resume-sldb-levels connection-map))
-        (iterate dec (dec (count (:resume-sldb-levels connection-map))))))
+  (if-let [[level-info level] (connection/current-sldb-level-info connection)]
+    (connection/send-to-emacs
+     connection
+     (messages/debug-activate (.uniqueID (:thread level-info)) level))
+    (let [resume-levels (:resume-sldb-levels connection-map)]
+      (connection/send-to-emacs
+       connection
+       (messages/debug-return
+        (.uniqueID (:thread (first resume-levels))) (count resume-levels)))))
   connection)
 
 (defn- continue-level
   "Continue the current level"
   [connection]
   (logging/trace "continue-level")
-  (resume-sldb-levels
-   (swap!
-    connection
-    (fn [current]
-      (->
-       current
-       (assoc-in [:resume-sldb-levels] [(last (:sldb-levels current))])
-       (update-in
-        [:sldb-levels]
-        (fn [levels] (subvec levels 0 (dec (count levels))))))))))
+  (return-or-activate-sldb-levels
+   connection
+   (resume-sldb-levels
+    (swap!
+     connection
+     (fn [current]
+       (->
+        current
+        (assoc-in [:resume-sldb-levels] [(last (:sldb-levels current))])
+        (update-in
+         [:sldb-levels]
+         (fn [levels] (subvec levels 0 (dec (count levels))))))))))
+  nil)
 
-(defn- abort-level
+(defn- quit-level
   "Abort the current level"
   [connection]
-  (logging/trace "abort-level")
-  (resume-sldb-levels
-   (swap!
-    connection
-    (fn [current]
-      (->
-       current
-       (assoc :abort-to-level (dec (count (:sldb-levels current))))
-       (assoc-in [:resume-sldb-levels] [(last (:sldb-levels current))])
-       (update-in
-        [:sldb-levels]
-        (fn [levels] (subvec levels 0 (dec (count levels))))))))))
+  (logging/trace "quit-level")
+  (return-or-activate-sldb-levels
+   connection
+   (resume-sldb-levels
+    (swap!
+     connection
+     (fn [current]
+       (->
+        current
+        (assoc :abort-to-level (dec (count (:sldb-levels current))))
+        (assoc-in [:resume-sldb-levels] [(last (:sldb-levels current))])
+        (update-in
+         [:sldb-levels]
+         (fn [levels] (subvec levels 0 (dec (count levels))))))))))
+  nil)
 
 (defn abort-all-levels
   [connection]
   (logging/trace "abort-all-levels")
-  (return-sldb-levels
+  (return-or-activate-sldb-levels
    connection
    (resume-sldb-levels
     (swap!
@@ -704,7 +731,8 @@
         connection
         (assoc-in [:resume-sldb-levels] (reverse (:sldb-levels connection)))
         (assoc-in [:sldb-levels] [])
-        (assoc :abort-to-level 0)))))))
+        (assoc :abort-to-level 0))))))
+  nil)
 
 (defn aborting-level?
   "Aborting predicate."
@@ -750,8 +778,7 @@
    (fn [connection]
      (logging/trace "restart %s" name)
      (step-request thread size depth)
-     (connection/sldb-drop-level connection)
-     (resume thread breakpoint-suspend-policy))))
+     (continue-level connection))))
 
 (defn stepping-restarts
   [thread]
@@ -781,24 +808,33 @@
    [exception connection]
    (logging/trace "calculate-restarts exception")
    (let [thread (jpda/event-thread exception)]
-     (filter
-      identity
-      [(make-restart
-        :continue "CONTINUE" "Pass exception to program"
-        (fn [connection]
-          (logging/trace "restart Continuing")
-          (continue-level connection)))
-       (make-restart
-        :abort "ABORT" "Return to SLIME's top level."
-        (fn [connection]
-          (logging/trace "restart Aborting to top level")
-          (abort-all-levels connection)))
-       (when (pos? (connection/sldb-level connection))
-         (make-restart
-          :quit "QUIT" "Return to previous level."
+     (if (.request exception)
+       (filter
+        identity
+        [(make-restart
+          :continue "CONTINUE" "Pass exception to program"
           (fn [connection]
-            (logging/trace "restart Quiting to previous level")
-            (abort-level connection))))]))))
+            (logging/trace "restart Continuing")
+            (continue-level connection)))
+         (make-restart
+          :abort "ABORT" "Return to SLIME's top level."
+          (fn [connection]
+            (logging/trace "restart Aborting to top level")
+            (abort-all-levels connection)))
+         (when (pos? (connection/sldb-level connection))
+           (make-restart
+            :quit "QUIT" "Return to previous level."
+            (fn [connection]
+              (logging/trace "restart Quiting to previous level")
+              (quit-level connection))))])
+       (filter
+        identity
+        [(when (pos? (connection/sldb-level connection))
+           (make-restart
+            :quit "QUIT" "Return to previous level."
+            (fn [connection]
+              (logging/trace "restart Quiting to previous level")
+              (quit-level connection))))])))))
 
 (extend-type BreakpointEvent
   Debugger
@@ -845,10 +881,10 @@
           (continue-level connection)))]
       (stepping-restarts thread)))))
 
-(defn invoke-debugger
+(defn invoke-debugger*
   "Calculate debugger information and invoke"
   [connection event]
-  (logging/trace "invoke-debugger")
+  (logging/trace "invoke-debugger*")
   (let [thread (jpda/event-thread event)
         thread-id (.uniqueID thread)
         restarts (restarts event connection)
@@ -861,35 +897,58 @@
       thread-id level
       (condition-info event)
       restarts
-      (build-backtrace thread 0 *sldb-initial-frames*)
+      (if (instance? InvocationExceptionEvent event)
+        [{:function "Unavailble" :source "UNKNOWN" :line "UNKNOWN"}]
+        (build-backtrace thread 0 *sldb-initial-frames*))
       (connection/pending connection)))
     (connection/send-to-emacs
-     connection (messages/debug-activate thread-id level))
-    ;; the handler resumes threads, so make sure we suspend them
-    ;; again first
-    (jpda/suspend-event-threads event)))
+     connection (messages/debug-activate thread-id level))))
 
-(defn level-info-thread-id
-  [level-info]
-  (.uniqueID (:thread level-info)))
+(defn invoke-debugger
+  "Calculate debugger information and invoke"
+  [connection event]
+  (logging/trace "invoke-debugger")
+  ;; Invoke debugger from a new thread, so we don't block the
+  ;; event loop
+  (executor/execute #(invoke-debugger* connection event))
+  ;; the handler resumes threads, so make sure we suspend them
+  ;; again first
+  (jpda/suspend-event-threads event))
+
+(defn debugger-info-for-emacs
+  "Calculate debugger information and invoke"
+  [connection start end]
+  (logging/trace "debugger-info")
+  (let [[level-info level] (connection/current-sldb-level-info connection)
+        thread (:thread level-info)
+        event (:event level-info)]
+    (logging/trace "invoke-debugger: send-to-emacs")
+    (messages/debug-info
+     (condition-info event)
+     (:restarts level-info)
+     (if (instance? InvocationExceptionEvent event)
+       [{:function "Unavailble" :source "UNKNOWN" :line "UNKNOWN"}]
+       (build-backtrace thread start end))
+     (connection/pending connection))))
 
 (defn invoke-restart
-  [connection level-info n]
-  (logging/trace "invoke-restart %s of %s" n (count (:restarts level-info)))
-  (when-let [f (:f (nth (:restarts level-info) n))]
-    (inspect/reset-inspector (:inspector @connection))
-    (f connection))
-  (level-info-thread-id level-info))
+  [connection level n]
+  (let [level-info (connection/sldb-level-info connection level)]
+    (logging/trace "invoke-restart %s of %s" n (count (:restarts level-info)))
+    (when-let [f (:f (nth (:restarts level-info) n))]
+      (inspect/reset-inspector (:inspector @connection))
+      (f connection))
+    (level-info-thread-id level-info)))
 
 (defn invoke-named-restart
   [connection kw]
   (logging/trace "invoke-named-restart %s" kw)
-  (when-let [level-info (connection/sldb-level-info connection)]
+  (when-let [[level-info level] (connection/current-sldb-level-info connection)]
     (if-let [f (:f (some #(and (= kw (:id %)) %) (:restarts level-info)))]
       (do (inspect/reset-inspector (:inspector @connection))
           (f connection))
-      (logging/trace "invoke-named-restart %s not found" kw))
-    (.uniqueID (:thread level-info))))
+      (do (logging/trace "invoke-named-restart %s not found" kw)
+          (format "Restart %s not found" kw)))))
 
 (def stm-types #{"clojure.lang.Atom"})
 
@@ -1074,29 +1133,33 @@
 (defn eval-string-in-frame
   "Eval the string `expr` in the context of the specified `frame-number`."
   [connection expr frame-number]
-  (let [level-info (connection/sldb-level-info connection)
-        thread (:thread level-info)
-        _ (assert (.isSuspended thread))
-        locals (frame-locals level-info frame-number)
-        _ (logging/trace "eval-string-in-frame: map-sym")
-        map-sym (remote-map-sym thread)
-        _ (logging/trace "eval-string-in-frame: map-var for %s" map-sym)
-        map-var (remote-value
-                 thread `(intern '~'user '~map-sym {})
-                 jpda/invoke-single-threaded)
-        _ (logging/trace "eval-string-in-frame: form")
-        form (with-local-bindings-form map-sym locals (read-string expr))]
-    (logging/trace "eval-string-in-frame: form %s" form)
+  (let [[level-info level] (connection/current-sldb-level-info connection)
+        thread (:thread level-info)]
     (try
-      (logging/trace "eval-string-in-frame: set-remote-values")
-      (set-remote-values (:thread level-info) map-var locals)
-      ;; create a bindings form
-      (logging/trace "eval-string-in-frame: remote-eval")
-      (remote-eval-to-string*
-       thread `(pr-str ~form) jpda/invoke-single-threaded)
-      (finally
-       (logging/trace "eval-string-in-frame: clear-remote-values")
-       (clear-remote-values (:thread level-info) map-var)))))
+      (let [_ (assert (.isSuspended thread))
+            locals (frame-locals level-info frame-number)
+            _ (logging/trace "eval-string-in-frame: map-sym")
+            map-sym (remote-map-sym thread)
+            _ (logging/trace "eval-string-in-frame: map-var for %s" map-sym)
+            map-var (remote-value
+                     thread `(intern '~'user '~map-sym {})
+                     jpda/invoke-single-threaded)
+            _ (logging/trace "eval-string-in-frame: form")
+            form (with-local-bindings-form map-sym locals (read-string expr))]
+        (logging/trace "eval-string-in-frame: form %s" form)
+        (try
+          (logging/trace "eval-string-in-frame: set-remote-values")
+          (set-remote-values (:thread level-info) map-var locals)
+          ;; create a bindings form
+          (logging/trace "eval-string-in-frame: remote-eval")
+          (remote-eval-to-string*
+           thread `(pr-str ~form) jpda/invoke-single-threaded)
+          (finally
+           (logging/trace "eval-string-in-frame: clear-remote-values")
+           (clear-remote-values (:thread level-info) map-var))))
+      (catch com.sun.jdi.InvocationException e
+        (invoke-debugger*
+         connection (InvocationExceptionEvent. (.exception e) thread))))))
 
 ;;; events
 (defn add-exception-event-request

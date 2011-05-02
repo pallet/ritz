@@ -87,16 +87,21 @@ From slime-goto-source-location docstring:
    (iterate inc start)
    frames))
 
+(defn debug-info
+  "Provide debugger information"
+  [condition-map restarts backtrace continutions]
+  (list
+   (condition condition-map)
+   (doall (map restart restarts))
+   (stacktrace-frames backtrace 0)
+   (list* continutions)))
+
 (defn debug
   "Provide debugger information"
   [thread-id level condition-map restarts backtrace continutions]
   (list*
    :debug thread-id level
-   (list
-    (condition condition-map)
-    (doall (map restart restarts))
-    (stacktrace-frames backtrace 0)
-    (list* continutions))))
+   (debug-info condition-map restarts backtrace continutions)))
 
 (defn debug-activate
   "Activate debugger"
