@@ -282,7 +282,7 @@
   ([thread form]
      (remote-eval* vm thread form jpda/invoke-multi-threaded))
   ([thread form options]
-     {:pre [thread form options]}
+     {:pre [thread options]}
      (logging/trace "debug/remote-eval* %s" form)
      (->>
       (str form)
@@ -1111,7 +1111,8 @@
    thread (invoke-option-for (val local))
    `assoc map-var
    (remote-str (.name (key local)))
-   (remote-object (val local) thread)))
+   (when-let [value (val local)]
+     (remote-object (val local) thread))))
 
 (defn set-remote-values
   "Build a map in map-var of name to value for all the locals"
