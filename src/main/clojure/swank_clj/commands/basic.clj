@@ -73,7 +73,13 @@
 (defslimefn swank-macroexpand-1 [connection string]
   (apply-macro-expander macroexpand-1 string))
 
+(defslimefn swank-expand-1 [connection string]
+  (apply-macro-expander macroexpand-1 string))
+
 (defslimefn swank-macroexpand [connection string]
+  (apply-macro-expander macroexpand string))
+
+(defslimefn swank-expand [connection string]
   (apply-macro-expander macroexpand string))
 
 ;; not implemented yet, needs walker

@@ -1,1 +1,1 @@
-duncan@cyclops.gateway.2wire.net.24002
+duncan@cyclops-2.local.1323
