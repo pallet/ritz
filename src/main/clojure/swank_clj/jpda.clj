@@ -14,7 +14,7 @@
     ThreadReference ThreadGroupReference
     ReferenceType)
    (com.sun.jdi.event
-    VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent)
+    VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent Event)
    (com.sun.jdi.request
     ExceptionRequest EventRequest StepRequest EventRequestManager)))
 
@@ -74,7 +74,10 @@
   ;(println event)
   )
 
-(defn handle-event-set [vm queue connected f]
+(defn handle-event-set
+  "NB, this resumes the event-set, so you will need to suspend within
+   the handlers if required."
+  [vm queue connected f]
   (try
    (let [event-set (.remove queue)]
      (doseq [event event-set]
@@ -127,6 +130,7 @@
 (def invoke-nonvirtual ObjectReference/INVOKE_NONVIRTUAL)
 
 (defn invoke-method
+  "Methods can only be invoked on threads suspended for exceptions."
   [class-or-object method thread options args]
   (.invokeMethod class-or-object thread method args options))
 
@@ -155,6 +159,26 @@
    policy is one of :suspend-all, :suspend-event-thread, or :suspend-none"
   [^EventRequest request policy]
   (.setSuspendPolicy request (policy event-request-policies)))
+
+(defn event-suspend-policy
+  "Returns the suspend policy for an event"
+  [^Event event]
+  (let [policy (.. event (request) (suspendPolicy))]
+    (some #(and (= policy (val %)) (key %)) event-request-policies)))
+
+(defn suspend-event-threads
+  [^Event event]
+  (condp = (.. event (request) (suspendPolicy))
+      EventRequest/SUSPEND_ALL (.suspend (.virtualMachine event))
+      EventRequest/SUSPEND_EVENT_THREAD (.suspend (.thread event))
+      EventRequest/SUSPEND_NONE nil))
+
+(defn resume-event-threads
+  [^Event event]
+  (condp = (.. event (request) (suspendPolicy))
+      EventRequest/SUSPEND_ALL (.resume (.virtualMachine event))
+      EventRequest/SUSPEND_EVENT_THREAD (.resume (.thread event))
+      EventRequest/SUSPEND_NONE nil))
 
 (def step-sizes
   {:min StepRequest/STEP_MIN
@@ -363,11 +387,13 @@
       nil)))
 
 (defn clojure-locals
+  "Returns a map from LocalVariable to Value"
   [frame]
   (when-let [fields (clojure-fields frame)]
     (.getValues (.thisObject frame) fields)))
 
 (defn frame-locals
+  "Returns a map from LocalVariable to Value"
   [frame]
   (try
     (when-let [locals (.visibleVariables frame)]

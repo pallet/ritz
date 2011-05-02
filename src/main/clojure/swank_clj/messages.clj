@@ -108,6 +108,6 @@ From slime-goto-source-location docstring:
 (defn debug-return
   "Message to end debugging."
   ([thread-id level stepping]
-     `(:debug-return ~thread-id ~level stepping))
+     `(:debug-return ~thread-id ~level ~stepping))
   ([thread-id level]
      (debug-return thread-id level nil)))
