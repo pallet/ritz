@@ -9,23 +9,35 @@
    java.util.zip.ZipFile
    clojure.lang.LineNumberingPushbackReader))
 
+(defn- reader
+  "This is a hack to get a line numbering pushback reader that
+   doesn't start at line 1"
+  [string line]
+  (let [rdr1 (proxy [LineNumberingPushbackReader] ((StringReader. string)))]
+    (proxy [LineNumberingPushbackReader] (rdr1)
+      (getLineNumber [] (+ line (.getLineNumber rdr1) -1)))))
+
+(defn compile-region
+  "Compile region."
+  ([string file line]
+     (with-open [rdr (reader string line)]
+       (clojure.lang.Compiler/load rdr file (.getName (File. file))))))
+
 (defn eval-region
   "Evaluate string, return the results of the last form as a list and
    a secondary value the last form."
   ([string]
-     (eval-region string "NO_SOURCE_FILE" 1))
+     (eval-region
+      string (str core/source-form-name core/*current-id*) 0))
   ([string file line]
      (core/with-package-tracking
-       (with-open [rdr (proxy [LineNumberingPushbackReader]
-                           ((StringReader. string))
-                         (getLineNumber [] line))]
-         (binding [*file* file]
-           (loop [form (read rdr false rdr), value nil, last-form nil]
-             (if (= form rdr)
-               [value last-form]
-               (recur (read rdr false rdr)
-                      (eval form)
-                      form))))))))
+       (let [last-form
+             (with-open [rdr (reader string line)]
+               (loop [form (read rdr false rdr) last-form nil]
+                 (if (= form rdr)
+                   last-form
+                   (recur (read rdr false rdr) form))))]
+         [(compile-region string file line) last-form]))))
 
 (defn eval-form
   "Evaluate form. maintaining recent result history."
@@ -45,13 +57,3 @@
     (when exception
       (set! *e exception))
     [value exception]))
-
-
-(defn compile-region
-  "Compile region."
-  ([string file line]
-     (with-open [rdr1 (proxy [LineNumberingPushbackReader]
-                          ((StringReader. string)))
-                 rdr (proxy [LineNumberingPushbackReader] (rdr1)
-                       (getLineNumber [] (+ line (.getLineNumber rdr1) -1)))]
-       (clojure.lang.Compiler/load rdr file (.getName (File. file))))))

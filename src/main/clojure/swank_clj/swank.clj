@@ -25,33 +25,35 @@
   (logging/trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
   (try
     (connection/add-pending-id connection id)
-    (let [form (if (= 'cl/mapc (first form))
-                 ;; special case for cl:mapc
-                 (list* (eval (second form)) (eval (nth form 2)))
-                 form)
-          f (commands/slime-fn (name (first form)))
-          handler (or (connection/swank-handler connection) default-pipeline)
-          result (handler connection form buffer-package id f)]
-      (cond
-       (= ::abort result) (do
-                            (connection/send-to-emacs
-                             connection (messages/abort id))
-                            (connection/remove-pending-id connection id))
-       (and
-        (vector? result)
-        (= ::abort (first result))) (do
-                                      (connection/send-to-emacs
-                                       connection
-                                       (messages/abort id (second result)))
-                                      (connection/remove-pending-id
-                                       connection id))
-       (= ::pending result) (logging/trace
-                             "swank/eval-for-emacs: pending %s" id)
-       :else (do
-               (hooks/run-hook core/*pre-reply-hook*)
-               (connection/remove-pending-id connection id)
-               (logging/trace "swank/eval-for-emacs: result %s %s" result id)
-               (connection/send-to-emacs connection (messages/ok result id)))))
+    (binding [core/*current-id* id]
+      (let [form (if (= 'cl/mapc (first form))
+                   ;; special case for cl:mapc
+                   (list* (eval (second form)) (eval (nth form 2)))
+                   form)
+            f (commands/slime-fn (name (first form)))
+            handler (or (connection/swank-handler connection) default-pipeline)
+            result (handler connection form buffer-package id f)]
+        (cond
+         (= ::abort result) (do
+                              (connection/send-to-emacs
+                               connection (messages/abort id))
+                              (connection/remove-pending-id connection id))
+         (and
+          (vector? result)
+          (= ::abort (first result))) (do
+          (connection/send-to-emacs
+           connection
+           (messages/abort id (second result)))
+          (connection/remove-pending-id
+           connection id))
+         (= ::pending result) (logging/trace
+                               "swank/eval-for-emacs: pending %s" id)
+         :else (do
+                 (hooks/run-hook core/*pre-reply-hook*)
+                 (connection/remove-pending-id connection id)
+                 (logging/trace "swank/eval-for-emacs: result %s %s" result id)
+                 (connection/send-to-emacs
+                  connection (messages/ok result id))))))
     (catch Throwable t
       ;; Thread/interrupted clears this thread's interrupted status; if
       ;; Thread.stop was called on us it may be set and will cause an

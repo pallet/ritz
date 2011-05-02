@@ -25,8 +25,9 @@
   (debug/execute-if-inspect-frame-var
    (debug/execute-inspect-if-inspector-active
     (debug/execute-unless-inspect
-     (debug/forward-command
-      core/command-not-found)))))
+     (debug/execute-peek
+      (debug/forward-command
+       core/command-not-found))))))
 
 (defn serve-connection
   "Serve connection for proxy rpc functions"

@@ -10,6 +10,9 @@
 
 (def *current-package*)
 (def *current-connection*)
+(def *current-id*)
+
+(def source-form-name "SOURCE_FORM_")
 
 (hooks/defhook *pre-reply-hook*)
 

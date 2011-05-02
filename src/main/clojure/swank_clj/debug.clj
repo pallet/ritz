@@ -168,6 +168,24 @@
 
 (def *current-thread-reference*)
 
+;;; interactive form tracking
+(def listener-eval-forms (atom {}))
+(defn listener-eval-form! [id form]
+  (logging/trace "listener-eval-form! %s %s" id form)
+  (swap! listener-eval-forms assoc id form))
+(defn listener-eval-form [id]
+  (logging/trace "listener-eval-form %s" id)
+  (@listener-eval-forms id))
+
+;; TODO work out how to call this, or use weak refs
+(defn listener-eval-clear-form [id]
+  (swap! listener-eval-forms dissoc id))
+
+(defn swank-peek
+  [connection form buffer-package id f]
+  (when (= (first form) 'swank/listener-eval)
+    (listener-eval-form! id (second form))))
+
 ;;; execute functions and forwarding don't belong in this
 ;;; namespace
 (defn execute-if-inspect-frame-var
@@ -194,6 +212,12 @@
         (binding [*current-thread-reference* (:thread level-info)]
           (core/execute-slime-fn* connection f (rest form) buffer-package)))
       (handler connection form buffer-package id f))))
+
+(defn execute-peek
+  [handler]
+  (fn [connection form buffer-package id f]
+    (swank-peek connection form buffer-package id f)
+    (handler connection form buffer-package id f)))
 
 (defn execute-unless-inspect
   [handler]
@@ -533,7 +557,10 @@
         declaring-type (jpda/location-type-name location)
         method (jpda/location-method-name location)
         line (jpda/location-line-number location)
-        source-name (jpda/location-source-name location)]
+        source-name (or
+                     (jpda/location-source-name location)
+                     (jpda/location-source-path location)
+                     "UNKNOWN")]
     (if (and (= method "invoke") (.endsWith source-name ".clj"))
       {:function (jpda/unmunge-clojure declaring-type)
        :source source-name
@@ -585,10 +612,17 @@
       (file-resource resource))
     (logging/trace "Couldn't find resource %s" file)))
 
+(defn- find-source-form
+  [path]
+  (let [id (eval (read-string (.substring path (count core/source-form-name))))]
+    {:source-form (listener-eval-form id)}))
+
 (defn- find-file [#^String file]
-  (if (.isAbsolute (File. file))
-    {:file file}
-    (find-resource file)))
+  (if (.startsWith file core/source-form-name)
+    (find-source-form file)
+    (if (.isAbsolute (File. file))
+      {:file file}
+      (find-resource file))))
 
 (defn frame-source-location
   "Return a source location vector [buffer position] for the specified
@@ -598,7 +632,7 @@
     (when-let [frame (nth (.frames (:thread level-info)) frame-number nil)]
       (let [location (.location frame)]
         [(find-file (jpda/location-source-path location))
-             {:line (jpda/location-line-number location)}]))))
+         {:line (jpda/location-line-number location)}]))))
 
 ;;; breakpoints
 ;;; todo - use the event manager's event list
@@ -1230,6 +1264,13 @@
             (.startsWith location-name "swank_clj.commands.contrib")
             (.startsWith location-name "clojure.lang.Compiler"))))))
 
+(defn stacktrace-contains?
+  "Predicate to check for specific deifining type name in the stack trace."
+  [thread defining-type]
+  (some
+   #(= defining-type (jpda/location-type-name (.location %)))
+   (.frames thread)))
+
 (defn break-for-exception?
   "Predicate to check whether we should invoke the debugger fo the given
    exception event"
@@ -1242,15 +1283,21 @@
      (let [catch-location-name (jpda/location-type-name catch-location)]
        (logging/trace
         "break-for-exception? %s %s" catch-location-name location-name)
-       (.startsWith catch-location-name "swank_clj.swank")
-        ;; (or
-        ;; ;; (and
-        ;; ;;  (.startsWith location-name "clojure.lang.Compiler")
-        ;; ;;  (re-matches #"[^$]+\$eval.*." catch-location-name))
-        ;; ;; (and
-        ;; ;;  (.startsWith catch-location-name "clojure.lang.Compiler")
-        ;; ;;  (re-matches #"[^$]+\$eval.*." location-name))
-        ;; (.startsWith catch-location-name "swank_clj.swank"))
+       (or
+        (.startsWith catch-location-name "swank_clj.swank")
+        (and
+         (.startsWith catch-location-name "clojure.lang.Compiler")
+         (stacktrace-contains?
+          (jpda/event-thread exception-event)
+          "swank_clj.swank.basic$compile_region")))
+       ;; (or
+       ;; ;; (and
+       ;; ;;  (.startsWith location-name "clojure.lang.Compiler")
+       ;; ;;  (re-matches #"[^$]+\$eval.*." catch-location-name))
+       ;; ;; (and
+       ;; ;;  (.startsWith catch-location-name "clojure.lang.Compiler")
+       ;; ;;  (re-matches #"[^$]+\$eval.*." location-name))
+       ;; (.startsWith catch-location-name "swank_clj.swank"))
        ;; (or
        ;;  (and
        ;;   (.startsWith location-name "clojure.lang.Compiler")

@@ -219,13 +219,13 @@
   [location]
   (try
     (.. location sourceName)
-    (catch Exception _ "UNKNOWN")))
+    (catch Exception _)))
 
 (defn location-source-path
   [location]
   (try
     (.. location sourcePath)
-    (catch Exception _ "UNKNOWN")))
+    (catch Exception _)))
 
 (defn location-line-number
   [location]
@@ -363,8 +363,9 @@
    of the frame location's source name, or for the presence of well know clojure
    field prefixes."
   [frame fields]
-  (let [names (map #(.name %) fields)]
-    (or (.endsWith (location-source-path (.location frame)) ".clj")
+  (let [names (map #(.name %) fields)
+        source-path (location-source-path (.location frame))]
+    (or (and source-path (.endsWith source-path ".clj"))
         (some #{"__meta"} names))))
 
 (def clojure-implementation-regex
