@@ -48,8 +48,16 @@
   "Shut down virtual machine."
   [vm] (.exit vm 0))
 
+(defn- format-classpath-url [url]
+  (if (= "file" (.getProtocol url))
+    (.getPath url)
+    url))
+
 (defn current-classpath []
-  (. System getProperty "java.class.path"))
+  (string/join
+   ":"
+   (map format-classpath-url (.getURLs (.getClassLoader clojure.lang.RT)))))
+
 ;; (defmulti cleanup-events (fn [e a] (class e)))
 
 ;; (defmethod cleanup-events VMDisconnectEvent [e connected]
