@@ -4,16 +4,17 @@
    [swank-clj.rpc :as rpc]))
 
 (deftest decode-message-test
-  (is (= (list 'swank:a 123 (list (symbol "%b%") '(true nil) "c"))
+  (is (= (list 'swank/a 123 (list (symbol "%b%") '(true nil) "c"))
          (let [msg "00001f(swank:a 123 (%b% (t nil) \"c\"))"]
            (with-open [rdr (java.io.StringReader. msg)]
              (rpc/decode-message rdr)))))
-  (is (= '(swank:swank-require (quote (:swank-hyperdoc :swank-asdf)))
+  (is (= '(swank/swank-require (quote (:swank-hyperdoc :swank-asdf)))
          (let [msg
                (with-out-str
                  (rpc/encode-message
                   *out*
-                  '(swank:swank-require (quote (:swank-hyperdoc :swank-asdf)))))]
+                  '(swank:swank-require
+                    (quote (:swank-hyperdoc :swank-asdf)))))]
            (with-open [rdr (java.io.StringReader. msg)]
              (rpc/decode-message rdr))))))
 

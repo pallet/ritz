@@ -2,6 +2,8 @@
   "A connection is a map in an atom."
   (:require
    [swank-clj.logging :as logging]
+   [swank-clj.repl-utils.helpers :as helpers]
+   [swank-clj.swank.utils :as utils]
    [clojure.java.io :as java-io])
   (:import
    java.io.BufferedReader
@@ -125,7 +127,9 @@
                                          io-connection)
                           :inspector (atom {})
                           :result-history nil
-                          :last-exception nil})))]
+                          :last-exception nil
+                          :indent-cache-pkg (ref nil)
+                          :indent-cache (ref {})})))]
     ;;(when-not (:proxy-to options))
 
       (swap! connection
@@ -137,13 +141,38 @@
     ;; (logging/trace "connection %s" (pr-str @connection))
     connection))
 
-(defn add-pending-id [connection id]
-  (swap! connection update-in [:pending] conj id))
+(defn request!
+  "Set the request details on the connection"
+  [connection buffer-ns id]
+  (swap!
+   connection
+   (fn [connection]
+     (->
+      connection
+      (update-in [:pending] conj id)
+      (assoc-in [:request-id] id)
+      (assoc-in [:buffer-ns-name] buffer-ns)
+      (assoc-in [:request-ns] (utils/maybe-ns buffer-ns))))))
 
 (defn remove-pending-id [connection id]
   (swap! connection update-in [:pending] disj id))
 
+(defn request-id
+  [connection]
+  (:request-id @connection))
+
+(defn buffer-ns-name
+  "The buffer namespace name"
+  [connection]
+  (:buffer-ns-name @connection))
+
+(defn request-ns
+  "The current namespace for the request"
+  [connection]
+  (:request-ns @connection))
+
 (defn pending
+  "A vector of pending continuations"
   [connection]
   (:pending @connection))
 

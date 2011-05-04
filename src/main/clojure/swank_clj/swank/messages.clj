@@ -1,7 +1,9 @@
-(ns swank-clj.messages
+(ns swank-clj.swank.messages
+  "Swank messages"
   (:require
    [swank-clj.inspect :as inspect]
-   [swank-clj.logging :as logging]))
+   [swank-clj.logging :as logging]
+   [clojure.string :as string]))
 
 (defn abort
   "Command aborted message."
@@ -17,6 +19,17 @@
 
 (defn repl-result [val]
   `(:write-string ~(str (pr-str val) "\n") :repl-result))
+
+(defn connection-info
+  [pid clojure-version ns-name protocol-version
+   & {:keys [style ns-prompt] :or {style :spawn}}]
+  `(:pid ~pid
+         :style ~style
+         :lisp-implementation (:type "Clojure"
+                                     :name "clojure"
+                                     :version ~clojure-version)
+         :package (:name ~ns-name :prompt ~(or ns-prompt ns-name))
+         :version ~protocol-version))
 
 (defn inspector
   "Message for an inspector"
@@ -116,3 +129,37 @@ From slime-goto-source-location docstring:
      `(:debug-return ~thread-id ~level ~stepping))
   ([thread-id level]
      (debug-return thread-id level nil)))
+
+(defn symbol-indentation
+  [name body-position]
+  (list name '. body-position))
+
+(defn indentation-update
+  [delta]
+  `(:indentation-update ~delta))
+
+(defn compiler-message
+  "A compiler message"
+  [m]
+  `(:message ~(:message m)
+             :severity ~(:severity m :error)
+             :location ~(if-let [l (:location m)]
+                          (apply location l)
+                          '(:error "No error location available"))
+             :references ~(:references m)
+             :short-message ~(:message m)))
+
+(defn compilation-result
+  "Return a compilation result. Clojure doesn't have fasl files so the
+   loadp and faslfile are ommited from the end of the message."
+  [notes result duration-s]
+  `(:compilation-result
+    ~(list* (map compiler-message notes))
+    ~(pr-str result)
+    ~duration-s))
+
+(defn describe
+  [{:keys [symbol-name type arglists doc] :as options}]
+  (logging/trace "messages/describe %s" (pr-str options))
+  (list :designator symbol-name
+        type (str arglists " " doc)))

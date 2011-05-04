@@ -1,14 +1,13 @@
 (ns swank-clj.commands.debugger
   "Debugger commands.  Everything that the proxy responds to."
   (:require
-   [swank-clj.logging :as logging]
-   [swank-clj.jpda :as jpda]
+   [clojure.java.io :as io]
    [swank-clj.connection :as connection]
    [swank-clj.debug :as debug]
    [swank-clj.inspect :as inspect]
-   [swank-clj.messages :as messages]
-   [swank-clj.swank.core :as core]
-   [clojure.java.io :as io])
+   [swank-clj.jpda :as jpda]
+   [swank-clj.logging :as logging]
+   [swank-clj.swank.messages :as messages])
   (:use
    [swank-clj.commands :only [defslimefn]]))
 

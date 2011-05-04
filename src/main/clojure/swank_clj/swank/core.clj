@@ -1,60 +1,40 @@
 (ns swank-clj.swank.core
-  "Core of swank implementation"
+  "Base namespace for swank"
   (:require
    [swank-clj.connection :as connection]
+   [swank-clj.hooks :as hooks]
    [swank-clj.logging :as logging]
-   [swank-clj.hooks :as hooks]))
+   [swank-clj.repl-utils.helpers :as helpers]
+   [swank-clj.swank.utils :as utils]
+   [clojure.string :as string]))
 
 ;; Protocol version
-(defonce *protocol-version* (atom "20100404"))
+(defonce protocol-version "20101113")
 
-(def *current-package*)
-(def *current-connection*)
-(def *current-id*)
+(hooks/defhook pre-reply-hook)
 
-(def source-form-name "SOURCE_FORM_")
-
-(hooks/defhook *pre-reply-hook*)
-
-(defn send-to-emacs
-  "Sends a message (msg) to emacs."
-  [msg]
-  (connection/send-to-emacs *current-connection* msg))
-
-
-(defmacro with-package-tracking [& body]
+(defmacro with-namespace-tracking [connection & body]
   `(let [last-ns# *ns*]
      (try
       ~@body
       (finally
        (when-not (= last-ns# *ns*)
-         (send-to-emacs `(:new-package ~(str (ns-name *ns*))
-                                       ~(str (ns-name *ns*)))))))))
-(defn exception-causes [#^Throwable t]
-  (lazy-seq
-    (cons t (when-let [cause (.getCause t)]
-              (exception-causes cause)))))
-
-(defn maybe-ns [package]
-  (cond
-   (symbol? package) (or (find-ns package) (maybe-ns 'user))
-   (string? package) (maybe-ns (symbol package))
-   (keyword? package) (maybe-ns (name package))
-   (instance? clojure.lang.Namespace package) package
-   :else (maybe-ns 'user)))
-
-(defmacro with-package [package & body]
-  `(binding [*ns* (maybe-ns ~package)
-             *current-package* (maybe-ns ~package)]
-     ~@body))
+         (connection/send-to-emacs
+          ~connection
+          `(:new-package ~(str (ns-name *ns*))
+                         ~(str (ns-name *ns*)))))))))
 
 (defn command-not-found [connection form buffer-package id _]
   (logging/trace "swank/eval-for-emacs: could not find fn %s" (first form))
   :swank-clj.swank/abort)
 
+(defmacro with-namespace [connection & body]
+  `(binding [*ns* (connection/request-ns ~connection)]
+     ~@body))
+
 (defn execute-slime-fn*
   [connection f args-form buffer-package]
-  (with-package buffer-package
+  (with-namespace connection
     (apply f connection (eval (vec args-form)))))
 
 (defn execute-slime-fn
@@ -64,8 +44,19 @@
       (execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
 
-(defn stack-trace-string
-  [throwable]
-  (with-out-str
-    (with-open [out-writer (java.io.PrintWriter. *out*)]
-      (.printStackTrace throwable out-writer))))
+(defn update-history
+  [connection last-form value exception]
+  (when (and last-form (not (#{'*1 '*2 '*3 '*e} last-form)))
+    (let [history (drop
+                   1 (connection/add-result-to-history connection value))]
+      (set! *3 (fnext history))
+      (set! *2 (first history))
+      (set! *1 value)))
+  (when exception
+    (set! *e exception)))
+
+(defn lines
+  "Split a string in"
+  [s]
+  string/join
+  (.split #^String s (System/getProperty "line.separator")))

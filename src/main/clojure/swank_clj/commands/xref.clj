@@ -3,8 +3,8 @@
    clojure.walk
    swank-clj.commands)
   (:require
-   [swank-clj.swank.core :as core]
-   [swank-clj.swank.find :as find])
+   [swank-clj.repl-utils.core :as core]
+   [swank-clj.repl-utils.find :as find])
   (:import (clojure.lang RT)
            (java.io LineNumberReader InputStreamReader PushbackReader)))
 
@@ -87,8 +87,8 @@ Example: (get-source-from-var 'filter)"
     (let [callers (all-vars-who-call name) ]
       (map first (map xref-lisp callers)))))
 
-(defslimefn xref [type name]
-  (let [sexp (ns-resolve (core/maybe-ns core/*current-package*) (symbol name))]
+(defslimefn xref [connection type name]
+  (let [sexp (ns-resolve (connection/ns connection) (symbol name))]
        (condp = type
               :specializes (who-specializes sexp)
               :calls   (who-calls (symbol name))

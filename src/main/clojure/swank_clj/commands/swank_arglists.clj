@@ -53,7 +53,7 @@
 ;;(defmacro dbg[x] `(let [x# ~x] (println '~x "->" x#) x#))
 
 (defn arglists-for-fname [fname]
-  ((slime-fn 'operator-arglist) fname *current-package*))
+  ((slime-fn 'operator-arglist) fname *current-ns*))
 
 (defn message-format [cmd arglists pos]
   (str (when cmd (str cmd ": "))
@@ -90,7 +90,7 @@
 ;;         (dbg options)
         (cond
          ;; display arglists for function being applied unless on top of apply
-         (and (= fname "apply") (not= pos 0)) (handle-apply raw-specs pos)              
+         (and (= fname "apply") (not= pos 0)) (handle-apply raw-specs pos)
          ;; highlight binding inside binding forms unless >1 level deep
          inside-binding? (message-format parent-fname
                                          (arglists-for-fname parent-fname)
@@ -99,7 +99,7 @@
 
 (defslimefn variable-desc-for-echo-area [variable-name]
   (with-emacs-package
-   (or 
+   (or
     (try
      (when-let [sym (read-string variable-name)]
        (when-let [var (resolve sym)]

@@ -2,14 +2,16 @@
   "Debug functions, used to implement debugger commands via jpda.
    The aim is to move all return messaging back up into swank-clj.commands.*"
   (:require
-   [swank-clj.logging :as logging]
-   [swank-clj.swank.core :as core]
-   [swank-clj.jpda :as jpda]
    [swank-clj.connection :as connection]
    [swank-clj.executor :as executor]
    [swank-clj.inspect :as inspect]
+   [swank-clj.jpda :as jpda]
+   [swank-clj.logging :as logging]
+   [swank-clj.repl-utils.find :as find]
+   [swank-clj.repl-utils.helpers :as helpers]
    [swank-clj.rpc-socket-connection :as rpc-socket-connection]
-   [swank-clj.messages :as messages] ;; TODO - remove this
+   [swank-clj.swank.core :as core]
+   [swank-clj.swank.messages :as messages] ;; TODO - remove this
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as string])
@@ -57,11 +59,22 @@
 (defn remove-connection [connection]
   (swap! connections dissoc connection))
 
+
+(defn- format-classpath-url [url]
+  (if (= "file" (.getProtocol url))
+    (.getPath url)
+    url))
+
+(defn current-classpath []
+  (string/join
+   ":"
+   (map format-classpath-url (.getURLs (.getClassLoader clojure.lang.RT)))))
+
 (defn log-exception [e]
   (logging/trace
    "Caught exception %s %s"
    (pr-str e)
-   (core/stack-trace-string e)))
+   (helpers/stack-trace-string e)))
 
 (defmacro with-caught-jdpa-exceptions
   [& body]
@@ -96,9 +109,6 @@
   ;;   (.enable))
   ))
 
-(def vm-main
-  "(require 'swank-clj.socket-server)(swank-clj.socket-server/start '%s)")
-
 (defn start-vm-daemons
   [vm]
   (let [process (.process (:vm vm))]
@@ -122,19 +132,46 @@
                (:vm vm) continue-handling jpda/handle-event)
               (logging/trace "vm-events: exit")))))
 
+;;; debugee function for starting a thread that may be used from the debugger
+
+(defn start-control-thread
+  "Start a thread that can be used by the proxy to execute arbitrary code."
+  []
+  (logging/trace "start-control-thread")
+  (try
+    (let [thread (Thread/currentThread)]
+      (.setName thread control-thread-name)
+      (throw (Exception. control-thread-name)))
+    (catch Exception _
+      (logging/trace "CONTROL THREAD CONTINUED!"))))
+
+(def vm-main
+  "(require 'swank-clj.socket-server)(swank-clj.socket-server/start '%s)")
+
+(defn start-control-thread-body
+  "Form to start a thread for the debugger to work with.  This should contain
+only clojure.core symbols."
+  []
+  `(let [thread# (Thread.
+                  (fn []
+                    (try
+                      (throw (Exception. (str '~(symbol control-thread-name))))
+                      (catch Exception _#
+                        (throw
+                         (Exception. (str 'CONTROL-THREAD-CONTINUED)))))))]
+     (.setName thread# (str '~(symbol control-thread-name)))
+     (.start thread#)))
+
 (defn launch-vm
   "Launch and configure the vm for the debugee."
-  [vm {:keys [announce port log-level] :as options}]
+  [vm classpath cmd options]
   (if vm
     vm
     (do
       (reset! continue-handling true)
-      (let [cmd (format vm-main (pr-str {:port port
-                                         :announce announce
-                                         :server-ns 'swank-clj.repl
-                                         :log-level (keyword log-level)}))
-            vm (jpda/launch (jpda/current-classpath) cmd)]
-        ;; (.setDebugTraceMode vm VirtualMachine/TRACE_NONE)
+      (logging/trace
+       "launch-vm %s\n%s" classpath (pprint/pprint cmd))
+      (let [vm (jpda/launch classpath cmd)]
         (let [options (-> options
                           (assoc :vm vm)
                           (start-vm-daemons)
@@ -142,11 +179,29 @@
           (.resume vm)
           options)))))
 
+(defn launch-vm-with-swank
+  "Launch and configure the vm for the debugee."
+  [{:keys [port announce log-level] :as options}]
+  #(launch-vm
+    %
+    (current-classpath)
+    (format vm-main (pr-str {:port port
+                             :announce announce
+                             :server-ns 'swank-clj.repl
+                             :log-level (keyword log-level)}))
+    options))
+
+(defn launch-vm-without-swank
+  "Launch and configure the vm for the debugee."
+  [classpath {:as options}]
+  (logging/trace "launch-vm-without-swank %s" classpath)
+  #(launch-vm % classpath (pr-str (start-control-thread-body)) options))
+
 (defn ensure-vm
   "Ensure the debug vm has been started"
-  [{:as options}]
+  [launch-f]
   (logging/trace "ensure-vm")
-  (alter-var-root #'vm launch-vm options))
+  (alter-var-root #'vm launch-f))
 
 (defn stop-vm
   []
@@ -169,22 +224,10 @@
 (def *current-thread-reference*)
 
 ;;; interactive form tracking
-(def listener-eval-forms (atom {}))
-(defn listener-eval-form! [id form]
-  (logging/trace "listener-eval-form! %s %s" id form)
-  (swap! listener-eval-forms assoc id form))
-(defn listener-eval-form [id]
-  (logging/trace "listener-eval-form %s" id)
-  (@listener-eval-forms id))
-
-;; TODO work out how to call this, or use weak refs
-(defn listener-eval-clear-form [id]
-  (swap! listener-eval-forms dissoc id))
-
 (defn swank-peek
   [connection form buffer-package id f]
   (when (= (first form) 'swank/listener-eval)
-    (listener-eval-form! id (second form))))
+    (find/source-form! id (second form))))
 
 ;;; execute functions and forwarding don't belong in this
 ;;; namespace
@@ -238,7 +281,7 @@
       (logging/trace
        "VM threads:\n%s"
        (string/join "\n" (map format-thread (threads))))
-      (when (= 'swank/listener-eval (first form))
+      (when (= 'swank/source-form (first form))
         (clear-abort-for-current-level connection))
       (executor/execute-request
        (partial
@@ -502,17 +545,6 @@
   [level-info]
   (.uniqueID (:thread level-info)))
 
-;;; debugee functions for starting a thread that may be used from the proxy
-(defn start-control-thread
-  "Start a thread that can be used by the proxy execute arbitrary code."
-  []
-  (logging/trace "start-control-thread")
-  (try
-    (let [thread (Thread/currentThread)]
-      (.setName thread control-thread-name)
-      (throw (Exception. control-thread-name)))
-    (catch Exception _
-      (logging/trace "CONTROL THREAD CONTINUED!"))))
 
 (def require-control-thread
   (delay (executor/execute start-control-thread)))
@@ -535,7 +567,10 @@
     (.await @wait-for-control-thread-latch))
   (logging/trace "wait-for-control-thread: acquired")
   (ensure-runtime)
-  (logging/trace "wait-for-control-thread: runtime set")
+  (logging/trace "wait-for-control-thread: runtime set"))
+
+(defn remote-swank-port
+  []
   (loop []
     (if-let [port (swap!
                    vm-port
@@ -589,41 +624,6 @@
 
 
 ;;; Source location
-(defn- clean-windows-path
-  "Decode file URI encoding and remove an opening slash from
-   /c:/program%20files/... in jar file URLs and file resources."
-  [#^String path]
-  (or (and (.startsWith (System/getProperty "os.name") "Windows")
-           (second (re-matches #"^/([a-zA-Z]:/.*)$" path)))
-      path))
-
-(defn- zip-resource [#^java.net.URL resource]
-  (let [jar-connection #^java.net.JarURLConnection (.openConnection resource)
-        jar-file (.getPath (.toURI (.getJarFileURL jar-connection)))]
-    {:zip [(clean-windows-path jar-file) (.getEntryName jar-connection)]}))
-
-(defn- file-resource [#^java.net.URL resource]
-  {:file (clean-windows-path (.getFile resource))})
-
-(defn- find-resource [#^String file]
-  (if-let [resource (.getResource (clojure.lang.RT/baseLoader) file)]
-    (if (= (.getProtocol resource) "jar")
-      (zip-resource resource)
-      (file-resource resource))
-    (logging/trace "Couldn't find resource %s" file)))
-
-(defn- find-source-form
-  [path]
-  (let [id (eval (read-string (.substring path (count core/source-form-name))))]
-    {:source-form (listener-eval-form id)}))
-
-(defn- find-file [#^String file]
-  (if (.startsWith file core/source-form-name)
-    (find-source-form file)
-    (if (.isAbsolute (File. file))
-      {:file file}
-      (find-resource file))))
-
 (defn frame-source-location
   "Return a source location vector [buffer position] for the specified
    frame number."
@@ -631,7 +631,7 @@
   (let [[level-info level] (connection/current-sldb-level-info connection)]
     (when-let [frame (nth (.frames (:thread level-info)) frame-number nil)]
       (let [location (.location frame)]
-        [(find-file (jpda/location-source-path location))
+        [(find/find-source-path (jpda/location-source-path location))
          {:line (jpda/location-line-number location)}]))))
 
 ;;; breakpoints
@@ -1237,7 +1237,7 @@
       (logging/trace
        "control thread acquistion error %s"
        (pr-str e)
-       ;; (core/stack-trace-string e)
+       ;; (helpers/stack-trace-string e)
        ))))
 
 (defn caught?
@@ -1289,7 +1289,7 @@
          (.startsWith catch-location-name "clojure.lang.Compiler")
          (stacktrace-contains?
           (jpda/event-thread exception-event)
-          "swank_clj.swank.basic$compile_region")))
+          "swank_clj.commands.basic$eval_region")))
        ;; (or
        ;; ;; (and
        ;; ;;  (.startsWith location-name "clojure.lang.Compiler")

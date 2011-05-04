@@ -1,8 +1,7 @@
 (ns swank-clj.commands.inspector
   (:require
-   [swank-clj.swank.core :as core]
    [swank-clj.inspect :as inspect]
-   [swank-clj.messages :as messages]
+   [swank-clj.swank.messages :as messages]
    [swank-clj.connection :as connection])
   (:use
    [swank-clj.commands :only [defslimefn]]))

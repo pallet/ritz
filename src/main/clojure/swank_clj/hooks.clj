@@ -1,14 +1,18 @@
-(ns swank-clj.hooks)
+(ns swank-clj.hooks
+  "Define, and run hooks.")
 
-(defmacro defhook [name & hooks]
-  `(defonce ~name (atom (list ~@hooks))))
+(defmacro defhook
+  "Define a hook. Add to a hook with `add`, and run with `run`."
+  [name & hooks]
+  `(defonce ~name (atom [~@hooks])))
 
-;;;; Hooks
-(defn add-hook
-  [place function]
-  (swap! place conj function))
+(defn add
+  "Add a function to a hook."
+  [hook function]
+  (swap! hook conj function))
 
-(defn run-hook
-  [functions & arguments]
-  (doseq [f @functions]
+(defn run
+  "Run specified `hook`, applying each hook function with `arguments`."
+  [hook & arguments]
+  (doseq [f @hook]
     (apply f arguments)))

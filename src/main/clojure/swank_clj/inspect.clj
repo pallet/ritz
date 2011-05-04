@@ -1,26 +1,12 @@
 (ns swank-clj.inspect
   "The inspector is an atom, containing parts"
   (:require
-   [swank-clj.commands :as commands]
+   [swank-clj.swank.utils :as utils]
    [swank-clj.logging :as logging]
-   [swank-clj.swank.core :as core]
    [clojure.string :as string]))
 
 (defn reset-inspector [inspector]
   (swap! inspector {:part-index (atom 0)}))
-
-(defn- position
-  "Finds the first position of an item that matches a given predicate
-   within col. Returns nil if not found. Optionally provide a start
-   offset to search from."
-  ([pred coll] (position pred coll 0))
-  ([pred coll start]
-     (loop [coll (drop start coll), i start]
-       (when (seq coll)
-         (if (pred (first coll))
-           i
-           (recur (rest coll) (inc i))))))
-  {:tag Integer})
 
 (defmulti value-as-string
   (fn [obj] (type obj)))
@@ -91,7 +77,7 @@
 (defn print-part-to-string [value]
   (value-as-string value)
   ;; (let [s (value-as-string value)
-  ;;       pos (position #{value} @*inspector-history*)]
+  ;;       pos (utils/position #{value} @*inspector-history*)]
   ;;   (if pos
   ;;     (str "#" pos "=" s)
   ;;     s))
@@ -378,7 +364,7 @@
 
 
 (defn next-inspectee [inspector]
-  (let [pos (position
+  (let [pos (utils/position
              #{(:inspectee @inspector)} (:inspector-history @inspector))]
     (when-not (= (inc pos) (count (:inspector-history @inspector)))
       (inspect-object (get (:inspector-history @inspector) (inc pos))))))
@@ -391,17 +377,3 @@
 
 (defn content [inspector]
   (:inspector-content @inspector))
-
-
-
-;; (defn inspect-in-emacs [what]
-;;   (letfn [(send-it []
-;;                    (reset-inspector)
-;;                    (send-to-emacs `(:inspect ~(inspect-object what))))]
-;;     (cond
-;;       *current-connection* (send-it)
-;;       (comment (first @*connections*))
-;;       ;; TODO: take a second look at this, will probably need garbage collection on *connections*
-;;       (comment
-;;         (binding [*current-connection* (first @*connections*)]
-;;           (send-it))))))

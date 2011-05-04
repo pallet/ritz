@@ -1,4 +1,5 @@
-(ns swank-clj.util.sys)
+(ns swank-clj.repl-utils.sys
+  "Utils for system introspection")
 
 (defn ^String get-pid
   "Returns the PID of the JVM. This is largely a hack and may or may

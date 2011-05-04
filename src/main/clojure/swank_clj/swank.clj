@@ -1,14 +1,16 @@
 (ns swank-clj.swank
   "Swank protocol"
   (:require
-   [swank-clj.executor :as executor]
-   [swank-clj.debug :as debug]
-   [swank-clj.logging :as logging]
-   [swank-clj.messages :as messages]
-   [swank-clj.hooks :as hooks]
-   [swank-clj.connection :as connection]
    [swank-clj.commands :as commands]
-   [swank-clj.swank.core :as core])
+   [swank-clj.connection :as connection]
+   [swank-clj.debug :as debug]
+   [swank-clj.executor :as executor]
+   [swank-clj.hooks :as hooks]
+   [swank-clj.logging :as logging]
+   [swank-clj.repl-utils.helpers :as helpers]
+   [swank-clj.swank.core :as core]
+   [swank-clj.swank.indent :as indent]
+   [swank-clj.swank.messages :as messages])
   (:import
    java.io.InputStreamReader
    java.io.OutputStreamWriter
@@ -24,36 +26,35 @@
 (defn eval-for-emacs [connection form buffer-package id]
   (logging/trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
   (try
-    (connection/add-pending-id connection id)
-    (binding [core/*current-id* id]
-      (let [form (if (= 'cl/mapc (first form))
-                   ;; special case for cl:mapc
-                   (list* (eval (second form)) (eval (nth form 2)))
-                   form)
-            f (commands/slime-fn (name (first form)))
-            handler (or (connection/swank-handler connection) default-pipeline)
-            result (handler connection form buffer-package id f)]
-        (cond
-         (= ::abort result) (do
-                              (connection/send-to-emacs
-                               connection (messages/abort id))
-                              (connection/remove-pending-id connection id))
-         (and
-          (vector? result)
-          (= ::abort (first result))) (do
-          (connection/send-to-emacs
-           connection
-           (messages/abort id (second result)))
-          (connection/remove-pending-id
-           connection id))
-         (= ::pending result) (logging/trace
-                               "swank/eval-for-emacs: pending %s" id)
-         :else (do
-                 (hooks/run-hook core/*pre-reply-hook*)
-                 (connection/remove-pending-id connection id)
-                 (logging/trace "swank/eval-for-emacs: result %s %s" result id)
-                 (connection/send-to-emacs
-                  connection (messages/ok result id))))))
+    (connection/request! connection buffer-package id)
+    (let [form (if (= 'cl/mapc (first form))
+                 ;; special case for cl:mapc
+                 (list* (eval (second form)) (eval (nth form 2)))
+                 form)
+          f (commands/slime-fn (name (first form)))
+          handler (or (connection/swank-handler connection) default-pipeline)
+          result (handler connection form buffer-package id f)]
+      (cond
+       (= ::abort result) (do
+                            (connection/send-to-emacs
+                             connection (messages/abort id))
+                            (connection/remove-pending-id connection id))
+       (and
+        (vector? result)
+        (= ::abort (first result))) (do
+        (connection/send-to-emacs
+         connection
+         (messages/abort id (second result)))
+        (connection/remove-pending-id
+         connection id))
+       (= ::pending result) (logging/trace
+                             "swank/eval-for-emacs: pending %s" id)
+       :else (do
+               (hooks/run core/pre-reply-hook connection)
+               (connection/remove-pending-id connection id)
+               (logging/trace "swank/eval-for-emacs: result %s %s" result id)
+               (connection/send-to-emacs
+                connection (messages/ok result id)))))
     (catch Throwable t
       ;; Thread/interrupted clears this thread's interrupted status; if
       ;; Thread.stop was called on us it may be set and will cause an
@@ -61,7 +62,8 @@
       (logging/trace
        "swank/eval-for-emacs: exception %s %s"
        (pr-str t)
-       (core/stack-trace-string t))
+       (helpers/stack-trace-string t))
+      (.printStackTrace t)
       ;;(Thread/interrupted)
       (connection/send-to-emacs connection (messages/abort id t))
       ;; (finally
@@ -104,7 +106,6 @@
                     *2 (fnext last-values)
                     *3 (first (nnext last-values))
                     *e (:last-exception @connection)
-                    core/*current-connection* connection
                     *out* (:writer-redir @connection)
                     *in* (:input-redir @connection)]
             (eval-for-emacs connection form-string package id))))

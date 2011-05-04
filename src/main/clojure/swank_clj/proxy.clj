@@ -42,8 +42,9 @@
                       options
                       (dissoc :announce)
                       (merge {:port 0 :join true :server-ns 'swank-clj.repl}))
-          vm (debug/ensure-vm vm-options)
-          port (debug/wait-for-control-thread)]
+          vm (debug/ensure-vm (debug/launch-vm-with-swank vm-options))
+          _ (debug/wait-for-control-thread)
+          port (debug/remote-swank-port)]
       (logging/trace "proxy/connection-handler proxied server on %s" port)
       (if (= port (:port options))
         (do

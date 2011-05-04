@@ -3,17 +3,25 @@
    clojure.test)
   (:require
    [swank-clj.connection :as connection]
-   [swank-clj.rpc :as rpc]))
+   [swank-clj.rpc :as rpc]
+   [swank-clj.rpc-socket-connection :as rpc-s-c]))
 
 (deftest initialise-test
   (let [a (java.net.ServerSocket. 0)
         f (future (.accept a))
         s (java.net.Socket. "localhost" (.getLocalPort a))
-        c (#'connection/initialise s {:encoding "iso-latin-1-unix"})]
+        c (#'connection/initialise
+           {:socket s
+            :reader (java.io.StringReader. "s")
+            :writer (java.io.StringWriter.)}
+           {:encoding "iso-latin-1-unix"})]
     (try
       (is (:reader @c))
       (is (:writer @c))
+      (is (:indent-cache-pkg @c))
+      (is (deref (:indent-cache @c)))
       (is (:writer-redir @c))
+      (is (set? (:pending @c)))
       (finally
        (when-not (.isClosed s) (.close s))
        (when-not (.isClosed a) (.close a))))))
@@ -22,7 +30,11 @@
   (let [a (java.net.ServerSocket. 0)
         f (future (.accept a))
         s (java.net.Socket. "localhost" (.getLocalPort a))
-        c (#'connection/create s {:encoding "iso-latin-1-unix"})]
+        c (#'connection/create
+           {:socket s
+            :reader (java.io.StringReader. "s")
+            :writer (java.io.StringWriter.)}
+           {:encoding "iso-latin-1-unix"})]
     (try
       (is (:reader @c))
       (is (:writer @c))
@@ -32,16 +44,31 @@
        (when-not (.isClosed a) (.close a))))))
 
 (deftest read-from-connection-test
-  (let [msg '(a 123 (swank:b (true nil) "c"))]
+  (let [msg '(a 123 (swank/b (true nil) "c"))]
     (is (= msg
            (connection/read-from-connection
-            (atom {:reader (java.io.StringReader.
-                            (with-out-str (rpc/encode-message *out* msg)))}))))))
+            (atom
+             {:reader (java.io.StringReader.
+                       (with-out-str (rpc/encode-message *out* msg)))
+              :read-message rpc-s-c/read-message
+              :read-monitor (Object.)}))))))
 
 (deftest send-to-emacs-test
   (let [msg '(a 123 (swank:b (true false) "c"))]
     (is (= "00001d(a 123 (swank:b (t nil) \"c\"))"
            (with-out-str
              (connection/send-to-emacs
-              (atom {:writer *out*})
+              (atom {:writer *out*
+                     :write-message rpc-s-c/write-message
+                     :write-monitor (Object.)})
               msg))))))
+
+(deftest request!-test
+  (is (every?
+       #(= % {:request-id 2
+              :buffer-ns-name "fred"
+              :request-ns (the-ns 'user)
+              :pending #{2}})
+       (let [connection (atom {:pending #{}})]
+         [(connection/request! connection "fred" 2)
+          @connection]))))

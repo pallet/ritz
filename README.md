@@ -29,6 +29,23 @@ on the line where you want a breakpoint, and `M-x (slime-line-breakpoint)`.
 
 Note that breakpoints disappear on recompilation at the moment.
 
+## Use Cases
+
+### Development
+
+Run swank server and JDI debugger in the same process to have a single JVM and keep
+memory usage down
+
+### Debug
+
+Run swank and debugger in a seperate JVM process. Attach to any -Xdebug enabled
+JVM process.
+
+### Production server
+
+Run swank server in process and attach slime as required. This requires the
+debugger to run in process.
+
 ## License
 
 Copyright (C) 2010, 2011 Hugo Duncan

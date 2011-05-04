@@ -52,8 +52,8 @@
 
 ;;(defmacro dbg[x] `(let [x# ~x] (println '~x "->" x#) x#))
 
-(defn arglists-for-fname [fname]
-  ((slime-fn 'operator-arglist) fname *current-package*))
+(defn arglists-for-fname [connection fname]
+  ((slime-fn 'operator-arglist) connection fname (connection/ns connection)))
 
 (defn message-format [cmd arglists pos]
   (str (when cmd (str cmd ": "))
@@ -62,9 +62,9 @@
            (highlight-arglists arglists pos)
            arglists))))
 
-(defn handle-apply [raw-specs pos]
+(defn handle-apply [connection raw-specs pos]
   (let [fname (second (first raw-specs))]
-    (message-format fname (arglists-for-fname fname) (dec pos))))
+    (message-format fname (arglists-for-fname connection fname) (dec pos))))
 
 (defslimefn arglist-for-echo-area [raw-specs & options]
   (let [{:keys [arg-indices
@@ -90,7 +90,7 @@
 ;;         (dbg options)
         (cond
          ;; display arglists for function being applied unless on top of apply
-         (and (= fname "apply") (not= pos 0)) (handle-apply raw-specs pos)
+         (and (= fname "apply") (not= pos 0)) (handle-apply connection raw-specs pos)
          ;; highlight binding inside binding forms unless >1 level deep
          inside-binding? (message-format parent-fname
                                          (arglists-for-fname parent-fname)

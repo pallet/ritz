@@ -1,4 +1,4 @@
-(ns swank-clj.util.clojure)
+(ns swank-clj.repl-utils.clojure)
 
 (defn unmunge
   "Converts a javafied name to a clojure symbol name"
