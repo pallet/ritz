@@ -365,39 +365,20 @@ Return NIL if the symbol is unbound."
 	(push frame backtrace)))))
 
 (defun frame-actual-args (frame)
-  (let ((*break-on-signals* nil)
-        (kind nil))
-    (loop for arg in (dbg::call-frame-arglist frame)
-          if (eq kind '&rest)
-          nconc (handler-case
-                    (dbg::dbg-eval arg frame)
-                  (error (e) (list (format nil "<~A>" arg))))
-          and do (loop-finish)
-          else
-          if (member arg '(&rest &optional &key))
-          do (setq kind arg)
-          else
-          nconc
-          (handler-case
-              (nconc (and (eq kind '&key)
-                          (list (cond ((symbolp arg)
-                                       (intern (symbol-name arg) :keyword))
-                                      ((and (consp arg) (symbolp (car arg)))
-                                       (intern (symbol-name (car arg)) :keyword))
-                                      (t (caar arg)))))
-                     (list (dbg::dbg-eval
-                            (cond ((symbolp arg) arg)
-                                  ((and (consp arg) (symbolp (car arg)))
-                                   (car arg))
-                                  (t (cadar arg)))
-                            frame)))
-            (error (e) (list (format nil "<~A>" arg)))))))
+  (let ((*break-on-signals* nil))
+    (mapcar (lambda (arg)
+              (case arg
+                ((&rest &optional &key) arg)
+                (t
+                 (handler-case (dbg::dbg-eval arg frame)
+                   (error (e) (format nil "<~A>" arg))))))
+            (dbg::call-frame-arglist frame))))
 
 (defimplementation print-frame (frame stream)
   (cond ((dbg::call-frame-p frame)
-         (prin1 (cons (dbg::call-frame-function-name frame)
-                      (frame-actual-args frame))
-                stream))
+         (format stream "~S ~S"
+                 (dbg::call-frame-function-name frame)
+                 (frame-actual-args frame)))
         (t (princ frame stream))))
 
 (defun frame-vars (frame)
