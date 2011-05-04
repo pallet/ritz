@@ -64,8 +64,7 @@
            #:default-directory
            #:set-default-directory
            #:quit-lisp
-           #:eval-for-emacs
-           #:eval-in-emacs))
+           #:eval-for-emacs))
 
 (in-package :swank)
 
@@ -178,13 +177,11 @@ bound to the corresponding VALUE.")
 (defun call-with-bindings (alist fun)
   "Call FUN with variables bound according to ALIST.
 ALIST is a list of the form ((VAR . VAL) ...)."
-  (if (null alist)
-      (funcall fun)
-      (let* ((rlist (reverse alist))
-             (vars (mapcar #'car rlist))
-             (vals (mapcar #'cdr rlist)))
-        (progv vars vals
-          (funcall fun)))))
+  (let* ((rlist (reverse alist))
+         (vars (mapcar #'car rlist))
+         (vals (mapcar #'cdr rlist)))
+    (progv vars vals
+      (funcall fun))))
 
 (defmacro with-bindings (alist &body body)
   "See `call-with-bindings'."
@@ -1819,8 +1816,7 @@ converted to lower case."
               (princ-to-string form)))))
 
 (defun eval-in-emacs (form &optional nowait)
-  "Eval FORM in Emacs.
-`slime-enable-evaluate-in-emacs' should be set to T on the Emacs side."
+  "Eval FORM in Emacs."
   (cond (nowait 
          (send-to-emacs `(:eval-no-wait ,(process-form-for-emacs form))))
         (t
@@ -1831,7 +1827,6 @@ converted to lower case."
 	   (let ((value (caddr (wait-for-event `(:emacs-return ,tag result)))))
 	     (destructure-case value
 	       ((:ok value) value)
-               ((:error kind . data) (error "~a: ~{~a~}" kind data))
 	       ((:abort) (abort))))))))
 
 (defvar *swank-wire-protocol-version* nil
@@ -2035,8 +2030,7 @@ considered to represent a symbol internal to some current package.)"
                  (char-upcase char)))))
 
 
-(defun find-symbol-with-status (symbol-name status 
-                                &optional (package *package*))
+(defun find-symbol-with-status (symbol-name status &optional (package *package*))
   (multiple-value-bind (symbol flag) (find-symbol symbol-name package)
     (if (and flag (eq flag status))
         (values symbol flag)
@@ -2599,12 +2593,8 @@ format suitable for Emacs."
     (loop for restart in *sldb-restarts* collect 
           (list (format nil "~:[~;*~]~a" 
                         (eq restart *sldb-quit-restart*)
-                        (restart-name restart))
-                (with-output-to-string (stream)
-                  (without-printing-errors (:object restart
-                                            :stream stream
-                                            :msg "<<error printing restart>>")
-                    (princ restart stream)))))))
+                        (restart-name restart) )
+                (princ-to-string restart)))))
 
 ;;;;; SLDB entry points
 
@@ -2768,10 +2758,6 @@ TAGS has is a list of strings."
 (define-stepper-function sldb-step sldb-step-into)
 (define-stepper-function sldb-next sldb-step-next)
 (define-stepper-function sldb-out  sldb-step-out)
-
-(defslimefun toggle-break-on-signals ()
-  (setq *break-on-signals* (not *break-on-signals*))
-  (format nil "*break-on-signals* = ~a" *break-on-signals*))
 
 
 ;;;; Compilation Commands.
@@ -3311,10 +3297,9 @@ Include the nicknames if NICKNAMES is true."
 (defslimefun find-definitions-for-emacs (name)
   "Return a list ((DSPEC LOCATION) ...) of definitions for NAME.
 DSPEC is a string and LOCATION a source location. NAME is a string."
-  (multiple-value-bind (symbol found) (with-buffer-syntax () 
-                                        (parse-symbol name))
-    (when found
-      (mapcar #'xref>elisp (find-definitions symbol)))))
+  (multiple-value-bind (sexp error) (ignore-errors (from-string name))
+    (unless error
+      (mapcar #'xref>elisp (find-definitions sexp)))))
 
 ;;; Generic function so contribs can extend it.
 (defgeneric xref-doit (type thing)
@@ -3761,8 +3746,7 @@ a time.")
 LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
   (setq *thread-list* (all-threads))
-  (when (and *emacs-connection*
-             (use-threads-p)
+  (when (and (use-threads-p)
              (equalp (thread-name (current-thread)) "worker"))
     (setf *thread-list* (delete (current-thread) *thread-list*)))
   (let* ((plist (thread-attributes (car *thread-list*)))

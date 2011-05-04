@@ -12,7 +12,7 @@
            `("--"
              [ "Start sb-sprof"  slime-sprof-start ,C ]
              [ "Stop sb-sprof"   slime-sprof-stop ,C ]
-             [ "Report sb-sprof" slime-sprof-report ,C ])))))
+             [ "Report sb-sprof" slime-sprof-browser ,C ])))))
 
 (defvar slime-sprof-exclude-swank nil
   "*Display swank functions in the report.")
@@ -74,9 +74,7 @@
                       :exclude-swank ,exclude-swank)
                     'slime-sprof-format))
 
-(defalias 'slime-sprof-browser 'slime-sprof-report)
-
-(defun slime-sprof-report ()
+(defun slime-sprof-browser ()
   (interactive)
   (slime-with-popup-buffer ((slime-buffer-name :sprof)
                             :connection t
@@ -99,7 +97,7 @@
     (slime-insert-propertized
      (slime-sprof-browser-name-properties)
      (format (format "%%-%ds " name-length)
-             (slime-sprof-abbreviate-name name name-length)))
+             (abbreviate-name name name-length)))
     (insert (format "%6.2f " self))
     (when cumul
       (insert (format "%6.2f " cumul))
@@ -110,7 +108,7 @@
        `(profile-index ,index expanded nil)))
     (insert "\n")))
 
-(defun slime-sprof-abbreviate-name (name max-length)
+(defun abbreviate-name (name max-length)
   (lexical-let ((length (min (length name) max-length)))
     (subseq name 0 length)))
 
@@ -166,7 +164,7 @@
            (slime-sprof-browser-name-properties)
            (let ((len (- 59 (* 2 nesting))))
              (format (format "%%-%ds " len)
-                     (slime-sprof-abbreviate-name name len))))
+                     (abbreviate-name name len))))
           (slime-sprof-browser-add-line-text-properties
            `(profile-sub-index ,index))
           (insert (format "%6.2f" cumul)))))))

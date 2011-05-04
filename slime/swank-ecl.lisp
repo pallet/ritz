@@ -498,8 +498,7 @@
 
 ;;;; Definitions
 
-(defvar +TAGS+ (namestring
-                (merge-pathnames "TAGS" (translate-logical-pathname "SYS:"))))
+(defvar +TAGS+ (namestring (translate-logical-pathname #P"SYS:TAGS")))
 
 (defun make-file-location (file file-position)
   ;; File positions in CL start at 0, but Emacs' buffer positions
