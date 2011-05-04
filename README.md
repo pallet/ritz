@@ -12,6 +12,8 @@ This is alpha quality.
 
 Add `[swank-clj "0.1.0-SNAPSHOT"]` to your project.clj `:dev-dependencies`.
 
+A compatible slime.el is in slime/slime.el
+
 ## Usage
 
 To run with jpda:
