@@ -12,7 +12,12 @@ This is alpha quality.
 
 Add `[swank-clj "0.1.0-SNAPSHOT"]` to your project.clj `:dev-dependencies`.
 
-A compatible slime.el is in slime/slime.el
+A compatible slime.el is in slime/slime.el. It is available as a `package.el`
+package file you can
+[download](https://github.com/downloads/hugoduncan/swank-clj/slime-20101113.tar)
+and install with `M-x package-install-file`.  Note that you will need to remove
+this package to use
+[swank-clojure](https://github.com/technomancy/swank-clojure) again.
 
 ## Usage
 
