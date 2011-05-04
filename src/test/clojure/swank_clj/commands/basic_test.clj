@@ -16,11 +16,12 @@
    "000019(:return (:ok \"[1 2]\") 1)"))
 
 (deftest briefly-describe-symbol-for-emacs-test
-  (=
-   (#'basic/briefly-describe-symbol-for-emacs #'clojure.core/when)
-   (str "0000aa(:return (:ok {:symbol-name \"clojure.core/when\", :type :macro,"
-        " :arglists \"([test & body])\", :doc \"Evaluates test. If logical "
-        "true, evaluates body in an implicit do.\"}) 1)")))
+  (is
+   (=
+    [:designator "clojure.core/when"
+     :macro (str "([test & body]) Evaluates test. If logical true,"
+                 " evaluates body in an implicit do.")]
+    (#'basic/briefly-describe-symbol-for-emacs #'clojure.core/when))))
 
 (deftest apropos-list-for-emacs-test
   ;; (logging/set-level :trace)
@@ -39,3 +40,8 @@
         "([test & body])\nMacro\n  Evaluates test. If logical true, evaluates"
         " body in an implicit do.\n\") 1)")
    {:ns 'clojure.core}))
+
+(deftest list-all-package-names-test
+  ;; (logging/set-level :trace)
+  (test-utils/eval-for-emacs-test
+   (swank/list-all-package-names) #".*clojure.core.*"))

@@ -245,7 +245,7 @@
 ;;;; Package Commands
 (defslimefn list-all-package-names
   ([connection] (map (comp str ns-name) (all-ns)))
-  ([connection nicknames?] (list-all-package-names)))
+  ([connection nicknames?] (list-all-package-names connection)))
 
 (defslimefn set-package [connection name]
   (let [ns (utils/maybe-ns name)]
