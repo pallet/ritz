@@ -57,8 +57,4 @@
   ;; (logging/set-level :trace)
   (test-utils/eval-for-emacs-test
    (swank/find-definitions-for-emacs "clojure.test/run-tests")
-   "00001c(:return (:ok (\"1\n\" \"2\")) 1)")
-  (test-utils/eval-for-emacs-test
-   (swank/find-definitions-for-emacs "clojure.test/run-tests")
-   "00001c(:return (:ok (\"1\n\" \"2\")) 1)"
-   {:ns "user"}))
+   #"000[0-9a-f]{3,3}\(:return \(:ok \(\(\"\(defn run-tests\)\" \(:location \(:zip \"[^\"]+\" \"clojure/test.clj\"\) \(:line \d+\) nil\)\)\)\) 1\)"))
