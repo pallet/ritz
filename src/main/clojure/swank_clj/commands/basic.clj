@@ -95,8 +95,12 @@
          [(str s#) result#]))))
 
 (defslimefn eval-and-grab-output [connection string]
-  (let [[output value] (with-out-str-and-value (eval-region connection string))]
-    (list output (pr-str (first value)))))
+  (let [value (promise)]
+    (list
+     (with-out-str
+       (binding [*err* *out*]
+         (deliver value (eval-region connection string))))
+     (pr-str (first @value)))))
 
 (defslimefn pprint-eval [connection string]
   (format/pprint-code (first (eval-region connection string))))
