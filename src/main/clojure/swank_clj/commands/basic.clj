@@ -55,9 +55,10 @@
    0))
 
 (defn interactive-eval* [connection string]
+  (logging/trace "basic/interactive-eval* %s" string)
   (pr-str
    (first
-    (core/with-namespace-tracking
+    (core/with-namespace-tracking connection
       (eval-region connection string)))))
 
 (defslimefn interactive-eval-region [connection string]

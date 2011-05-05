@@ -44,4 +44,21 @@
 (deftest list-all-package-names-test
   ;; (logging/set-level :trace)
   (test-utils/eval-for-emacs-test
-   (swank/list-all-package-names) #".*clojure.core.*"))
+   (swank/list-all-package-names)
+   #".*clojure.core.*"))
+
+(deftest eval-and-grab-output-test
+  ;; (logging/set-level :trace)
+  (test-utils/eval-for-emacs-test
+   (swank/eval-and-grab-output "(println 1)2")
+   "00001c(:return (:ok (\"1\n\" \"2\")) 1)"))
+
+(deftest find-definitions-for-emacs-test
+  ;; (logging/set-level :trace)
+  (test-utils/eval-for-emacs-test
+   (swank/find-definitions-for-emacs "clojure.test/run-tests")
+   "00001c(:return (:ok (\"1\n\" \"2\")) 1)")
+  (test-utils/eval-for-emacs-test
+   (swank/find-definitions-for-emacs "clojure.test/run-tests")
+   "00001c(:return (:ok (\"1\n\" \"2\")) 1)"
+   {:ns "user"}))
