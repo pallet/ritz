@@ -114,7 +114,7 @@
 
 (defun slime-breakpoint-kill ()
   (interactive)
-  (slime-eval `(swank:kill-nth-breakpoint
+  (slime-eval `(swank:breakpoint-kill
                 ,@(slime-get-properties 'breakpoint-id)))
   (call-interactively 'slime-update-breakpoints-buffer))
 

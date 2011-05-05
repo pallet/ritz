@@ -32,9 +32,18 @@ To run without jpda:
 ### Breakpoints
 
 To set a breakpoint, eval `swank-clj.el` from src/main/elisp, put the cursor
-on the line where you want a breakpoint, and `M-x (slime-line-breakpoint)`.
+on the line where you want a breakpoint, and `M-x slime-line-breakpoint`.
 
 Note that breakpoints disappear on recompilation at the moment.
+
+To list breakpoints, use `M-x slime-list-breakpoints`.  In the listing you can
+use the following keys
+
+ - e enable
+ - d disable
+ - g refresh list
+ - k remove breakpoint
+ - v view source location
 
 ## Use Cases
 

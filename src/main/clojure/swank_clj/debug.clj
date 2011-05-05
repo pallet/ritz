@@ -692,7 +692,11 @@ only clojure.core symbols."
             (jpda/breakpoints (:vm vm)))))))
 
 (defn breakpoint-kill
-  [connection breakpoint-id])
+  [connection breakpoint-id]
+  (doseq [breakpoint (breakpoints-for-id connection breakpoint-id)]
+    (.disable breakpoint)
+    (.. breakpoint (virtualMachine) (eventRequestManager)
+        (deleteEventRequest breakpoint))))
 
 (defn breakpoint-enable
   [connection breakpoint-id]
