@@ -274,24 +274,33 @@
 
 
 ;;;; meta dot find
+(defn- find-class-definition [sym]
+  (or
+   (when-let [ns (namespace sym)]
+     (when-let [location (find/source-location-for-class (symbol ns))]
+       `((~ns ~(messages/location location)))))
+   (when-let [location (find/source-location-for-class sym)]
+     `((~(name sym) ~(messages/location location))))))
+
 (defn- find-ns-definition [ns]
   (when-let [location (find/source-location-for-namespace-sym ns)]
-    `((~(str ns) ~(apply messages/location location)))))
+    `((~(str ns) ~(messages/location location)))))
 
-(defn- find-var-definition [ns sym-name]
+(defn- find-var-definition [ns sym]
   (try
-    (let [sym-var (ns-resolve ns sym-name)]
+    (when-let [sym-var (ns-resolve ns sym)]
       (when-let [location (find/source-location-for-var sym-var)]
         `((~(str "(defn " (:name (meta sym-var)) ")")
-           ~(apply messages/location location)))))
+           ~(messages/location location)))))
     (catch java.lang.ClassNotFoundException e nil)))
 
 (defslimefn find-definitions-for-emacs [connection name]
-  (let [sym (read-string name)]
+  (let [sym (symbol name)]
     (or
      (find-var-definition (connection/request-ns connection) sym)
      (find-ns-definition ((ns-aliases (connection/request-ns connection)) sym))
      (find-ns-definition (find-ns sym))
+     (find-class-definition sym)
      `((~name (:error "Source definition not found."))))))
 
 (defslimefn throw-to-toplevel [connection]
