@@ -585,16 +585,13 @@ only clojure.core symbols."
 
 
 ;;; stacktrace
-(defn- frame-data
-  "Extract data from a stack frame"
-  [frame]
-  (let [location (.location frame)
-        declaring-type (jpda/location-type-name location)
+(defn- location-data
+  [location]
+  (let [declaring-type (jpda/location-type-name location)
         method (jpda/location-method-name location)
         line (jpda/location-line-number location)
         source-name (or
                      (jpda/location-source-name location)
-                     (jpda/location-source-path location)
                      "UNKNOWN")]
     (if (and (= method "invoke") (.endsWith source-name ".clj"))
       {:function (jpda/unmunge-clojure declaring-type)
@@ -603,6 +600,11 @@ only clojure.core symbols."
       {:function (format "%s.%s" declaring-type method)
        :source source-name
        :line line})))
+
+(defn- frame-data
+  "Extract data from a stack frame"
+  [frame]
+  (location-data (.location frame)))
 
 (defn- exception-stacktrace [frames]
   (logging/trace "exception-stacktrace")
@@ -636,6 +638,19 @@ only clojure.core symbols."
 
 ;;; breakpoints
 ;;; todo - use the event manager's event list
+(defn breakpoint-list
+  "Provide a list of breakpoints. The list is cached in the connection
+   to allow it to be retrieveb by index."
+  [connection]
+  (let [breakpoints (map
+                     #(->
+                       (jpda/breakpoint-data %1)
+                       (assoc :id %2))
+                     (jpda/breakpoints (:vm vm))
+                     (iterate inc 0))]
+    (swap! connection assoc :breakpoints breakpoints)
+    breakpoints))
+
 (defn line-breakpoint
   "Set a line breakpoint."
   [connection namespace filename line]
@@ -665,6 +680,42 @@ only clojure.core symbols."
            (.eventRequestManager (.virtualMachine event)) request)
           (remove #(= % request) breakpoints)))))))
 
+(defn breakpoints-for-id
+  [connection id]
+  (when-let [breakpoints (:breakpoints @connection)]
+    (when-let [{:keys [file line]} (nth breakpoints id nil)]
+      (seq (map
+            #(let [location (.location %)]
+               (and (= file (.sourcePath location))
+                    (= line (.lineNumber location))
+                    %))
+            (jpda/breakpoints (:vm vm)))))))
+
+(defn breakpoint-kill
+  [connection breakpoint-id])
+
+(defn breakpoint-enable
+  [connection breakpoint-id]
+  (doseq [breakpoint (breakpoints-for-id connection breakpoint-id)]
+    (.enable breakpoint)))
+
+(defn breakpoint-disable
+  [connection breakpoint-id]
+  (doseq [breakpoint (breakpoints-for-id connection breakpoint-id)]
+    (.disable breakpoint)))
+
+(defn breakpoint-location
+  [connection breakpoint-id]
+  (when-let [breakpoint (first (breakpoints-for-id connection breakpoint-id))]
+    (let [location (.location breakpoint)]
+      (logging/trace
+       "debug/breakpoint-location %s %s %s"
+       (jpda/location-source-name location)
+       (jpda/location-source-path location)
+       (jpda/location-line-number location))
+      (when-let [path (find/find-source-path
+                       (jpda/location-source-path location))]
+        [path {:line (jpda/location-line-number location)}]))))
 
 ;;; debug methods
 
@@ -797,8 +848,8 @@ only clojure.core symbols."
 (defn make-restart
   "Make a restart map.
    Contains
-     :id keyword id,
-     :name short name,
+     :id keyword id
+     :name short name
      :descritpton longer description
      :f restart function to invoke"
   [kw name description f]
@@ -1074,7 +1125,7 @@ only clojure.core symbols."
     (remote-eval (:vm vm) *current-thread-reference* args))))
 
 (defn frame-locals
-  "Return frame locals for slime, a sequence of [LocalVariable Value],
+  "Return frame locals for slime, a sequence of [LocalVariable Value]
    sorted by name."
   [level-info n]
   (let [frame (nth (.frames (:thread level-info)) n)]

@@ -1,6 +1,6 @@
 (ns swank-clj.jpda
   "JPDA/JDI wrapper.
-   The aim here is to work towards a clojure interface for JDI,
+   The aim here is to work towards a clojure interface for JDI
    but is currently mainly a set of light wrapper functions."
   (:refer-clojure :exclude [methods])
   (:require
@@ -442,3 +442,16 @@
              (map thread-group-f (.threadGroups group))
              (map thread-data (.threads group))])]
     (map f (.topLevelThreadGroups vm))))
+
+(defn breakpoint-data
+  "Returns breakpoint data"
+  [breakpoint]
+  (let [location (.location breakpoint)]
+    {:file (str (.sourcePath location))
+     :line (.lineNumber location)
+     :enabled (.isEnabled breakpoint)}))
+
+(defn breakpoints
+  "List breakpoints"
+  [vm]
+  (.. vm (eventRequestManager) (breakpointRequests)))

@@ -8,7 +8,8 @@
    [swank-clj.logging :as logging]
    [swank-clj.debug :as debug]
    swank-clj.commands.debugger
-   swank-clj.commands.inspector))
+   swank-clj.commands.inspector
+   swank-clj.commands.contrib.swank-clj))
 
 (defn forward-commands
   "Alter eval-for-emacs to forward unrecognised commands to proxied connection."

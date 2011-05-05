@@ -7,7 +7,8 @@
    [swank-clj.inspect :as inspect]
    [swank-clj.jpda :as jpda]
    [swank-clj.logging :as logging]
-   [swank-clj.swank.messages :as messages])
+   [swank-clj.swank.messages :as messages]
+   [swank-clj.commands.contrib.swank-clj])
   (:use
    [swank-clj.commands :only [defslimefn]]))
 
@@ -90,15 +91,6 @@ corresponding attribute values per thread."
     (when-let [thread (debug/nth-thread connection index)]
       (debug/stop-thread (:id thread)))))
 
-;;; Breakpoints
-;;; These are non-standard slime functions
-(defslimefn line-breakpoint
-  [connection namespace filename line]
-  (debug/line-breakpoint connection namespace filename line))
-
-(defslimefn break-on-exceptions
-  "Control which expressions are trapped in the debugger"
-  [connection filter-caught? class-exclusions])
 
 ;;; stepping
 (defslimefn sldb-step [connection frame]
