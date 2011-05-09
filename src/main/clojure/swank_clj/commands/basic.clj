@@ -173,12 +173,12 @@
         line (line-at-position directory position)
         ret (do
               (when (not= (name (ns-name *ns*))
-                          (connection/request-ns connection))
+                          (connection/buffer-ns-name connection))
                 (throw (clojure.lang.Compiler$CompilerException.
                         directory line
                         (Exception.
                          (str "No such namespace: "
-                              (connection/request-ns connection))))))
+                              (connection/buffer-ns-name connection))))))
               (compile/compile-region string directory line))
         delta (- (System/nanoTime) start)]
     (messages/compilation-result nil ret (/ delta 1000000000.0))))
