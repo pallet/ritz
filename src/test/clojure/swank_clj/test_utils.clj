@@ -20,7 +20,8 @@
                 :pending #{}
                 :indent-cache-pkg (ref nil)
                 :indent-cache (ref {})
-                :request-id 1}
+                :request-id 1
+                :inspector (atom {})}
                m)))
 
 (defn split-indentation-response

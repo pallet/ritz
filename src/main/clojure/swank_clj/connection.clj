@@ -294,3 +294,8 @@
   (if (:proxy-to @connection)
     :proxy
     :repl))
+
+(defn vm-context
+  [connection]
+  (when-let [vm-context (:vm-context @connection)]
+    @vm-context))

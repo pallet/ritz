@@ -112,6 +112,7 @@ From slime-goto-source-location docstring:
 (defn debug
   "Provide debugger information"
   [thread-id level condition-map restarts backtrace continutions]
+  (logging/trace "building debug info message")
   (list*
    :debug thread-id level
    (debug-info condition-map restarts backtrace continutions)))

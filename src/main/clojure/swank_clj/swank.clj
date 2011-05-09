@@ -3,7 +3,7 @@
   (:require
    [swank-clj.commands :as commands]
    [swank-clj.connection :as connection]
-   [swank-clj.debug :as debug]
+   [swank-clj.jpda.debug :as debug]
    [swank-clj.executor :as executor]
    [swank-clj.hooks :as hooks]
    [swank-clj.logging :as logging]
@@ -91,8 +91,6 @@
   "Executes a message."
   [ev connection]
   (logging/trace "swank/dispatch-event: %s" (pr-str ev))
-  (when debug/vm
-    (debug/ensure-exception-event-request))
   (let [[action & args] ev]
     (logging/trace "swank/dispatch-event: %s -> %s" action (pr-str args))
     (case action

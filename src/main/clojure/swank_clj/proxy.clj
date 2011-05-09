@@ -1,12 +1,16 @@
 (ns swank-clj.proxy
   "Proxy server.  Sits between slime and the target swank process"
   (:require
+   [clojure.pprint :as pprint]
    [swank-clj.executor :as executor]
    [swank-clj.swank :as swank]
    [swank-clj.swank.core :as core]
    [swank-clj.rpc-server :as rpc-server]
    [swank-clj.logging :as logging]
-   [swank-clj.debug :as debug]
+   [swank-clj.jpda.debug :as debug]
+   [swank-clj.jpda.jdi :as jdi]
+   [swank-clj.jpda.jdi-clj :as jdi-clj]
+   [swank-clj.jpda.jdi-vm :as jdi-vm]
    swank-clj.commands.debugger
    swank-clj.commands.inspector
    swank-clj.commands.contrib.swank-clj))
@@ -39,28 +43,41 @@
     [io-connection options]
     (logging/trace "proxy/proxy-connection-handler")
     (forward-commands)
-    (let [vm-options (->
-                      options
-                      (dissoc :announce)
-                      (merge {:port 0 :join true :server-ns 'swank-clj.repl}))
-          vm (debug/ensure-vm (debug/launch-vm-with-swank vm-options))
-          _ (debug/wait-for-control-thread)
-          port (debug/remote-swank-port)]
-      (logging/trace "proxy/connection-handler proxied server on %s" port)
-      (if (= port (:port options))
-        (do
-          (logging/trace "invalid port")
-          ((:close-connection io-connection) io-connection))
-        (let [proxied-connection (debug/create-connection (assoc vm :port port))
-              _ (logging/trace "proxy/connection-handler connected to proxied")
-              [connection future] (rpc-server/serve-connection
-                                   io-connection
-                                   (merge
-                                    options
-                                    {:proxy-to proxied-connection
-                                     :swank-handler swank-pipeline}))]
-          (logging/trace "proxy/connection-handler running")
-          (executor/execute-loop
-           (partial debug/forward-reply connection) :name "Reply pump")
-          (logging/trace "proxy/connection-handler reply-pump running")
-          (debug/add-connection connection proxied-connection))))))
+    (let [options (->
+                   options
+                   (dissoc :announce)
+                   (merge {:port 0 :join true :server-ns 'swank-clj.repl}))
+          vm-context (debug/launch-vm-with-swank options)
+          options (assoc options :vm-context (atom vm-context))]
+      (logging/trace "proxy/connection-handler: runtime set")
+      (logging/trace "proxy/connection-handler: thread-groups")
+      (logging/trace (with-out-str
+                       (pprint/pprint (jdi/thread-groups (:vm vm-context)))))
+      (debug/add-exception-event-request vm-context)
+      (logging/trace "proxy/connection-handler: resume")
+      (.resume (:vm vm-context))
+      (logging/trace "proxy/connection-handler: thread-groups")
+      (logging/trace (with-out-str
+                       (pprint/pprint (jdi/thread-groups (:vm vm-context)))))
+      (Thread/sleep 3000) ;; let swank start up
+      (let [port (debug/remote-swank-port vm-context)]
+        (logging/trace "proxy/connection-handler proxied server on %s" port)
+        (if (= port (:port options))
+          (do
+            (logging/trace "invalid port")
+            ((:close-connection io-connection) io-connection))
+          (let [proxied-connection (debug/create-connection
+                                    (assoc options :port port))
+                _ (logging/trace
+                   "proxy/connection-handler connected to proxied")
+                [connection future] (rpc-server/serve-connection
+                                     io-connection
+                                     (merge
+                                      options
+                                      {:proxy-to proxied-connection
+                                       :swank-handler swank-pipeline}))]
+            (logging/trace "proxy/connection-handler running")
+            (executor/execute-loop
+             (partial debug/forward-reply connection) :name "Reply pump")
+            (logging/trace "proxy/connection-handler reply-pump running")
+            (debug/add-connection connection proxied-connection)))))))

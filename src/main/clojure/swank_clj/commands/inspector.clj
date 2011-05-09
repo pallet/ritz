@@ -8,24 +8,27 @@
 
 
 (defslimefn init-inspector [connection string]
-  (let [inspector (connection/inspector connection)]
+  (let [inspector (connection/inspector connection)
+        vm-context (connection/vm-context connection)]
     (inspect/reset-inspector inspector)
     (inspect/inspect-object inspector (eval (read-string string)))
-    (messages/inspector (inspect/display-values inspector))))
+    (messages/inspector (inspect/display-values vm-context inspector))))
 
 (defslimefn inspect-nth-part [connection index]
-  (let [inspector (connection/inspector connection)]
+  (let [inspector (connection/inspector connection)
+        vm-context (connection/vm-context connection)]
     (inspect/inspect-object inspector (inspect/nth-part inspector index))
-    (messages/inspector (inspect/display-values inspector))))
+    (messages/inspector (inspect/display-values vm-context inspector))))
 
 (defslimefn inspector-range [connection from to]
   (let [inspector (connection/inspector connection)]
     (inspect/content-range inspector from to)))
 
 (defslimefn inspector-call-nth-action [connection index & args]
-  (let [inspector (connection/inspector connection)]
-    (when (inspect/call-nth-action index args)
-      (messages/inspector (inspect/display-values inspector)))))
+  (let [inspector (connection/inspector connection)
+        vm-context (connection/vm-context connection)]
+    (when (inspect/call-nth-action vm-context index args)
+      (messages/inspector (inspect/display-values vm-context inspector)))))
 
 (defslimefn inspector-pop [connection]
   (messages/inspector

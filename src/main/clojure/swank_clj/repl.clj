@@ -3,7 +3,7 @@
   (:require
    [swank-clj.rpc-server :as rpc-server]
    [swank-clj.logging :as logging]
-   [swank-clj.debug :as debug]
+   [swank-clj.jpda.debug :as debug]
    swank-clj.commands.basic
    swank-clj.commands.inspector
    swank-clj.commands.completion
@@ -14,7 +14,6 @@
   []
   (logging/trace "repl/serve-connection")
   (.setName (Thread/currentThread) "REPL")
-  @debug/require-control-thread
   (fn repl-connection-handler
     [socket options]
     (logging/trace "repl/repl-connection-hanler")

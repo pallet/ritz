@@ -89,6 +89,7 @@
   [{:keys [port encoding server-ns backlog host]
     :or {server-ns 'swank-clj.proxy}
     :as options}]
+  (logging/trace "socket-server/start")
   (let [stop (atom false)
         options (-> options
                     (update-in

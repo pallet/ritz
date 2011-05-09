@@ -3,7 +3,7 @@
   (:use
    [swank-clj.commands :only [defslimefn]])
   (:require
-   [swank-clj.debug :as debug]
+   [swank-clj.jpda.debug :as debug]
    [swank-clj.swank.messages :as messages]))
 
 ;;; Breakpoints

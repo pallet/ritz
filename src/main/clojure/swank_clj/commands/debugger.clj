@@ -3,9 +3,8 @@
   (:require
    [clojure.java.io :as io]
    [swank-clj.connection :as connection]
-   [swank-clj.debug :as debug]
+   [swank-clj.jpda.debug :as debug]
    [swank-clj.inspect :as inspect]
-   [swank-clj.jpda :as jpda]
    [swank-clj.logging :as logging]
    [swank-clj.swank.messages :as messages]
    [swank-clj.commands.contrib.swank-clj])
@@ -44,7 +43,9 @@
 (defslimefn frame-locals-for-emacs [connection n]
   (let [[level-info level] (connection/current-sldb-level-info connection)]
     (messages/frame-locals
-     (debug/frame-locals-with-string-values level-info n))))
+     (debug/frame-locals-with-string-values
+       @(:vm-context @connection)
+       (:thread level-info) n))))
 
 (defslimefn frame-locals-and-catch-tags [connection n]
   (list (frame-locals-for-emacs connection n)
@@ -57,12 +58,15 @@
 (defslimefn inspect-frame-var [connection frame index]
   (let [inspector (connection/inspector connection)
         [level-info level] (connection/current-sldb-level-info connection)
-        object (debug/nth-frame-var level-info frame index)]
+        vm-context (connection/vm-context connection)
+        thread (:thread level-info)
+        object (debug/nth-frame-var vm-context thread frame index)]
     (when object
       (inspect/reset-inspector inspector)
       (inspect/inspect-object inspector object)
       (messages/inspector
-       (inspect/display-values inspector)))))
+       (inspect/display-values
+        (assoc vm-context :current-thread thread) inspector)))))
 
 ;;; Threads
 (def ^{:private true} thread-data-fn
@@ -104,4 +108,6 @@ corresponding attribute values per thread."
 
 ;; eval
 (defslimefn eval-string-in-frame [connection expr n]
-  (debug/eval-string-in-frame connection expr n))
+  (let [[level-info level] (connection/current-sldb-level-info connection)
+        thread (:thread level-info)]
+    (debug/eval-string-in-frame (:vm-context @connection) thread expr n)))

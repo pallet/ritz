@@ -1,11 +1,14 @@
-(ns swank-clj.debug
-  "Debug functions, used to implement debugger commands via jpda.
-   The aim is to move all return messaging back up into swank-clj.commands.*"
+(ns swank-clj.jpda.debug
+  "Debug functions using jpda/jdi, used to implement debugger commands via jpda.
+   The aim is to move all return messaging back up into swank-clj.commands.*
+   and to accept only vm-context aguments, rather than a connection"
   (:require
    [swank-clj.connection :as connection]
    [swank-clj.executor :as executor]
    [swank-clj.inspect :as inspect]
-   [swank-clj.jpda :as jpda]
+   [swank-clj.jpda.jdi :as jdi]
+   [swank-clj.jpda.jdi-clj :as jdi-clj]
+   [swank-clj.jpda.jdi-vm :as jdi-vm]
    [swank-clj.logging :as logging]
    [swank-clj.repl-utils.find :as find]
    [swank-clj.repl-utils.helpers :as helpers]
@@ -30,9 +33,8 @@
    com.sun.jdi.ObjectReference
    (com.sun.jdi
     BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
-    LongValue ShortValue)))
+    LongValue ShortValue StringReference)))
 
-(defonce vm nil)
 (def control-thread-name "swank-clj-debug-thread")
 
 (def exception-suspend-policy :suspend-all)
@@ -60,155 +62,59 @@
   (swap! connections dissoc connection))
 
 
-(defn- format-classpath-url [url]
-  (if (= "file" (.getProtocol url))
-    (.getPath url)
-    url))
-
-(defn current-classpath []
-  (string/join
-   ":"
-   (map format-classpath-url (.getURLs (.getClassLoader clojure.lang.RT)))))
-
 (defn log-exception [e]
   (logging/trace
    "Caught exception %s %s"
    (pr-str e)
    (helpers/stack-trace-string e)))
 
-(defmacro with-caught-jdpa-exceptions
-  [& body]
-  `(try
-     ~@body
-     (catch com.sun.jdi.InternalException e#
-       (log-exception e#))))
 
-
-(def throwable (delay (first (jpda/classes (:vm vm) "java.lang.Throwable"))))
-(def get-message (delay (first (jpda/methods @throwable "getMessage"))))
-(defn exception-message [exception thread]
-  (with-caught-jdpa-exceptions
-    (if-let [message (jpda/invoke-method
-                      exception @get-message thread jpda/invoke-single-threaded
-                      [])]
-      (jpda/string-value message))))
-
-(def continue-handling (atom true))
-
-(defn request-events [context]
-(let [manager (.eventRequestManager (:vm context))]
-  (->
-   context
-   (assoc
-       :event-request-manager manager
-       :exception-request (doto (.createExceptionRequest manager nil true true)
-                            (.setSuspendPolicy
-                             ExceptionRequest/SUSPEND_EVENT_THREAD)
-                            (.enable))))
-  ;; (doto (.createClassPrepareRequest manager)
-  ;;   (.enable))
-  ))
-
-(defn start-vm-daemons
-  [vm]
-  (let [process (.process (:vm vm))]
-    (logging/trace "start-vm-daemons")
-    (assoc vm
-      :vm-in (executor/daemon-thread
-              "vm-in"
-              (io/copy *in* (.getOutputStream process))
-              (logging/trace "vm-in: exit"))
-      :vm-out (executor/daemon-thread
-               "vm-out"
-               (io/copy (.getInputStream process) logging/logging-out)
-               (logging/trace "vm-out: exit"))
-      :vm-err (executor/daemon-thread
-               "vm-err"
-               (io/copy (.getErrorStream process) logging/logging-out)
-               (logging/trace "vm-err: exit"))
-      :vm-ev (executor/daemon-thread
-              "vm-events"
-              (jpda/run-events
-               (:vm vm) continue-handling jpda/handle-event)
-              (logging/trace "vm-events: exit")))))
+;; (defn request-events
+;;   "Add event requests that should be set before resuming the vm."
+;;   [context]
+;;   (let [req (doto (jdi/exception-request (:vm context) nil true true)
+;;               (jdi/suspend-policy :suspend-event-thread)
+;;               (.enable))]
+;;     (swap! context assoc :exception-request req)))
 
 ;;; debugee function for starting a thread that may be used from the debugger
+(defn- vm-swank-main
+  [options]
+  `(try
+     (require '~'swank-clj.socket-server)
+     ((resolve '~'swank-clj.socket-server/start) ~options)
+     (catch Exception e#
+       (println e#)
+       (.printStackTrace e#))))
 
-(defn start-control-thread
-  "Start a thread that can be used by the proxy to execute arbitrary code."
-  []
-  (logging/trace "start-control-thread")
-  (try
-    (let [thread (Thread/currentThread)]
-      (.setName thread control-thread-name)
-      (throw (Exception. control-thread-name)))
-    (catch Exception _
-      (logging/trace "CONTROL THREAD CONTINUED!"))))
-
-(def vm-main
-  "(require 'swank-clj.socket-server)(swank-clj.socket-server/start '%s)")
-
-(defn start-control-thread-body
-  "Form to start a thread for the debugger to work with.  This should contain
-only clojure.core symbols."
-  []
-  `(let [thread# (Thread.
-                  (fn []
-                    (try
-                      (throw (Exception. (str '~(symbol control-thread-name))))
-                      (catch Exception _#
-                        (throw
-                         (Exception. (str 'CONTROL-THREAD-CONTINUED)))))))]
-     (.setName thread# (str '~(symbol control-thread-name)))
-     (.start thread#)))
+;;; functions for acquiring the control thread in the proxy
+(defn launch-vm-with-swank
+  "Launch and configure the vm for the debugee."
+  [{:keys [port announce log-level classpath] :as options}]
+  (jdi-vm/launch-vm
+   (or classpath (jdi-vm/current-classpath))
+   (vm-swank-main {:port port
+                   :announce announce
+                   :server-ns `(quote swank-clj.repl)
+                   :log-level (keyword log-level)})))
 
 (defn launch-vm
   "Launch and configure the vm for the debugee."
-  [vm classpath cmd options]
-  (if vm
-    vm
-    (do
-      (reset! continue-handling true)
-      (logging/trace
-       "launch-vm %s\n%s" classpath (pprint/pprint cmd))
-      (let [vm (jpda/launch classpath cmd)]
-        (let [options (-> options
-                          (assoc :vm vm)
-                          (start-vm-daemons)
-                          (request-events))]
-          (.resume vm)
-          options)))))
+  [{:keys [classpath main] :as options}]
+  (jdi-vm/launch-vm (or classpath (jdi-vm/current-classpath)) main))
 
-(defn launch-vm-with-swank
-  "Launch and configure the vm for the debugee."
-  [{:keys [port announce log-level] :as options}]
-  #(launch-vm
-    %
-    (current-classpath)
-    (format vm-main (pr-str {:port port
-                             :announce announce
-                             :server-ns 'swank-clj.repl
-                             :log-level (keyword log-level)}))
-    options))
+;; (defn launch-vm-without-swank
+;;   "Launch and configure the vm for the debugee."
+;;   [classpath {:as options}]
+;;   (logging/trace "launch-vm-without-swank %s" classpath)
+;;   (jdi-vm/launch-vm classpath ))
 
-(defn launch-vm-without-swank
-  "Launch and configure the vm for the debugee."
-  [classpath {:as options}]
-  (logging/trace "launch-vm-without-swank %s" classpath)
-  #(launch-vm % classpath (pr-str (start-control-thread-body)) options))
-
-(defn ensure-vm
-  "Ensure the debug vm has been started"
-  [launch-f]
-  (logging/trace "ensure-vm")
-  (alter-var-root #'vm launch-f))
-
-(defn stop-vm
-  []
-  (when vm
-    (.exit (:vm vm) 0)
-    (reset! continue-handling nil)
-    (alter-var-root #'vm (constantly nil))))
+;; (defn stop-vm
+;;   [context]
+;;   (when context
+;;     (.exit (:vm context) 0)
+;;     (reset! (:continue-handling context) nil)
+;;     nil))
 
 (defn connect-to-repl-on-vm [port]
   (logging/trace "debugger/connect-to-repl-on-vm port %s" port)
@@ -221,7 +127,20 @@ only clojure.core symbols."
    (rpc-socket-connection/create options)
    (connection/create options)))
 
-(def *current-thread-reference*)
+
+(defn remote-swank-port
+  "Obtain the swank port on the remote vm"
+  [context]
+  (loop []
+    (logging/trace "debug/remote-swank-port: loop")
+    (if-let [port (jdi-clj/control-eval
+                   context
+                   `(deref swank-clj.socket-server/acceptor-port))]
+      port
+      (do
+        (logging/trace "debug/remote-swank-port: no port yet ...")
+        (Thread/sleep 1000)
+        (recur)))))
 
 ;;; interactive form tracking
 (defn swank-peek
@@ -235,9 +154,7 @@ only clojure.core symbols."
   [handler]
   (fn [connection form buffer-package id f]
     (if (and f (= "inspect-frame-var" (name (first form))))
-      (let [[level-info _] (connection/current-sldb-level-info connection)]
-        (binding [*current-thread-reference* (:thread level-info)]
-          (core/execute-slime-fn* connection f (rest form) buffer-package)))
+      (core/execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
 
 (defn execute-inspect-if-inspector-active
@@ -251,9 +168,7 @@ only clojure.core symbols."
     (if (and f
              (re-find #"inspect" (name (first form)))
              (inspect/content (connection/inspector connection)))
-      (let [[level-info _] (connection/current-sldb-level-info connection)]
-        (binding [*current-thread-reference* (:thread level-info)]
-          (core/execute-slime-fn* connection f (rest form) buffer-package)))
+      (core/execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
 
 (defn execute-peek
@@ -280,7 +195,9 @@ only clojure.core symbols."
        (first form))
       (logging/trace
        "VM threads:\n%s"
-       (string/join "\n" (map format-thread (threads))))
+       (string/join
+        "\n"
+        (map format-thread (threads (:vm-context @connection)))))
       (when (= 'swank/source-form (first form))
         (clear-abort-for-current-level connection))
       (executor/execute-request
@@ -310,203 +227,21 @@ only clojure.core symbols."
         (connection/remove-pending-id connection id)))))
 
 
-(def var-signature "(Ljava/lang/String;Ljava/lang/String;)Lclojure/lang/Var;")
-
-(defn vm-rt
-  "Lookup clojure runtime."
-  [vm]
-  (if-not (:RT vm)
-    (if-let [rt (first (jpda/classes (:vm vm) "clojure.lang.RT"))]
-      (let [vm (assoc vm
-                 :RT rt
-                 :Compiler (first
-                            (jpda/classes (:vm vm) "clojure.lang.Compiler"))
-                 :Var (first (jpda/classes (:vm vm) "clojure.lang.Var")))]
-        (assoc vm
-          :read-string (first (jpda/methods (:RT vm) "readString"))
-          :var (first (jpda/methods (:RT vm) "var" var-signature))
-          :eval (first (jpda/methods (:Compiler vm) "eval"))
-          :get (first (jpda/methods (:Var vm) "get"))
-          :assoc (first (jpda/methods (:RT vm) "assoc"))
-          :swap-root (first (jpda/methods (:Var vm) "swapRoot"))))
-      (throw (Exception. "No clojure runtime found in vm")))
-    vm))
-
-(defn ensure-runtime
-  []
-  (alter-var-root #'vm vm-rt))
-
-;;; Remote evaluation
-(defn arg-list [& args]
-  (or args []))
-
-(defn remote-str
-  "Create a remote string"
-  [s]
-  (jpda/mirror-of (:vm vm) s))
-
-(defn remote-eval*
-  ([thread form]
-     (remote-eval* vm thread form jpda/invoke-multi-threaded))
-  ([thread form options]
-     {:pre [thread options]}
-     (logging/trace "debug/remote-eval* %s" form)
-     (->>
-      (str form)
-      (jpda/mirror-of (:vm vm))
-      arg-list
-      (jpda/invoke-method
-       (:RT vm) (:read-string vm) thread options)
-      arg-list
-      (jpda/invoke-method
-       (:Compiler vm) (:eval vm) thread options))))
-
-(defn remote-eval-to-string*
-  ([thread form]
-     (remote-eval-to-string* thread form jpda/invoke-multi-threaded))
-  ([thread form options]
-     (logging/trace "debug/remote-eval-to-string* %s" form)
-     (if-let [rv (remote-eval* thread form options)]
-       (jpda/string-value rv))))
-
-(defn eval-to-string
-  [form]
-  `(pr-str (eval ~form)))
-
-(defmacro remote-eval
-  ([thread form]
-     `(remote-eval-to-string* ~thread '~(eval-to-string form)))
-  ([thread form options]
-     `(remote-eval-to-string* ~thread '~(eval-to-string form) ~options)))
-
-(defmacro remote-value
-  [thread form options]
-  `(remote-eval* ~thread ~form ~options))
-
-(defmacro control-eval
-  ([form]
-     `(read-string (remote-eval (:control-thread vm) '~form)))
-  ([form options]
-     `(read-string (remote-eval (:control-thread vm) '~form ~options))))
-
-(defprotocol RemoteObject
-  "Protocol for obtaining a remote object reference"
-  (remote-object [value thread]))
-
-
-(let [st jpda/invoke-single-threaded]
-  (extend-protocol RemoteObject
-    ObjectReference (remote-object [o _] o)
-    BooleanValue (remote-object
-                  [o thread] (remote-value thread (list 'boolean (.value o)) st))
-    ByteValue (remote-object
-                  [o thread] (remote-value thread (list 'byte (.value o)) st))
-    CharValue (remote-object
-                  [o thread] (remote-value thread (list 'char (.value o)) st))
-    DoubleValue (remote-object
-                 [o thread] (remote-value thread (list 'double (.value o)) st))
-    FloatValue (remote-object
-                  [o thread] (remote-value thread (list 'float (.value o)) st))
-    IntegerValue (remote-object
-                  [o thread] (remote-value thread (list 'int (.value o)) st))
-    LongValue (remote-object
-               [o thread] (remote-value thread (list 'long (.value o)) st))
-    ShortValue (remote-object
-                [o thread] (remote-value thread (list 'short (.value o)) st))))
-
-(def jni-object "Ljava/lang/Object;")
-(defn invoke-signature
-  "Clojure invoke signature for the specified number of arguments"
-  [n]
-  (str "(" (string/join (repeat n jni-object)) ")" jni-object))
-
-(defn clojure-fn
-  "Resolve a clojure function in the remote vm. Returns an ObjectReference and
-   a Method for n arguments."
-  [ns name n thread options]
-  (let [object (jpda/invoke-method
-                (:RT vm) (:var vm) thread
-                options
-                [(jpda/mirror-of (:vm vm) ns)
-                 (jpda/mirror-of (:vm vm) name)])]
-    [object (first (jpda/methods
-                    (.referenceType object) "invoke" (invoke-signature n)))]))
-
-(defn invoke-clojure-fn
-  "Invoke a function on the control connection with the given remote arguments."
-  [ns name thread options & args]
-  (logging/trace "invoke-clojure-fn %s %s %s" ns name args)
-  (let [[object method] (clojure-fn ns name (count args) thread options)]
-    (jpda/invoke-method object method thread options args)))
-
-(defn remote-call
-  "Call a function using thread with the given remote arguments."
-  [thread options sym & args]
-  (logging/trace "remote-call %s %s" (pr-str sym) args)
-  (let [[object method] (clojure-fn
-                         (namespace sym) (name sym) (count args)
-                         thread options)]
-    (logging/trace "clojure fn is  %s %s" object method)
-    (jpda/invoke-method object  method thread options args)))
-
-(defn remote-var-get
-  [thread options value]
-  (jpda/invoke-method value (:get vm) thread options []))
-
-(defn remote-assoc
-  [thread options & values]
-  (jpda/invoke-method (:RT vm) (:assoc vm) thread options values))
-
-(defn remote-swap-root
-  [thread options var value]
-  (jpda/invoke-method var (:swap-root vm) thread options [value]))
-
-(defn pr-str-arg
-  "Read the value of the given arg"
-  ([thread arg]
-     (pr-str-arg thread arg jpda/invoke-multi-threaded))
-  ([thread arg options]
-     (-> (invoke-clojure-fn "clojure.core" "pr-str" thread options arg)
-         jpda/string-value)))
-
-(defn read-arg
-  "Read the value of the given arg"
-  [thread arg]
-  (-> (pr-str-arg thread arg)
-      read-string))
-
-(defn get-keyword
-  "Get ObjectReference for the result of looking up keyword in a remote map
-   object."
-  [thread m kw]
-  (let [kw (invoke-clojure-fn
-            "clojure.core" "keyword" thread jpda/invoke-multi-threaded
-            (jpda/mirror-of (:vm vm) (name kw)))
-        method (first
-                (jpda/methods
-                 (.referenceType m) "invoke" (invoke-signature 1)))]
-    (logging/trace "map %s" (jpda/object-reference m))
-    (logging/trace "signature %s" (invoke-signature 1))
-    (logging/trace "keyword %s" (jpda/object-reference kw))
-    (logging/trace "method %s" (pr-str method))
-    (jpda/invoke-method
-     m method (:control-thread vm) jpda/invoke-multi-threaded [kw])))
-
-
 ;;; threads
 (defn format-thread
   [thread-reference]
   (format
    "%s %s (suspend count %s)"
    (.name thread-reference)
-   (jpda/thread-states (.status thread-reference))
+   (jdi/thread-states (.status thread-reference))
    (.suspendCount thread-reference)))
 
 (defn threads
-  []
-  (jpda/threads (:vm vm)))
+  "Return a sequence containing a thread reference for each remote thread."
+  [context]
+  (jdi/threads (:vm @context)))
 
-(defn transform-thread-group
+(defn- transform-thread-group
   [pfx [group groups threads]]
   [(->
     group
@@ -516,14 +251,14 @@ only clojure.core symbols."
    (map #(update-in % [:name] (fn [s] (str pfx "  " s))) threads)])
 
 (defn thread-list
-  "Provide a list of threads. The list is cached in the connection
-   to allow it to be retrieveb by index."
-  [connection]
+  "Provide a list of threads. The list is cached in the context
+   to allow it to be retrieved by index."
+  [context]
   (let [threads (flatten
                  (map
                   #(transform-thread-group "" %)
-                  (jpda/thread-groups (:vm vm))))]
-    (swap! connection assoc :threads threads)
+                  (jdi/thread-groups (:vm @context))))]
+    (swap! context assoc :threads threads)
     threads))
 
 (defn nth-thread
@@ -531,80 +266,26 @@ only clojure.core symbols."
   (nth (:threads @connection) index nil))
 
 (defn stop-thread
-  [thread-id]
+  [context thread-id]
   (when-let [thread (some
                      #(and (= thread-id (.uniqueID %)) %)
-                     (threads))]
-    ;; to do - realy stop the thread
-    (.stop thread (remote-eval*
-                   (:control-thread vm)
-                   `(new java.lang.Throwable "Stopped by swank")
-                   jpda/invoke-single-threaded))))
+                     (threads context))]
+    (.stop thread (jdi-clj/control-eval-to-value
+                   @context `(new java.lang.Throwable "Stopped by swank")))))
 
 (defn level-info-thread-id
   [level-info]
   (.uniqueID (:thread level-info)))
 
 
-(def require-control-thread
-  (delay (executor/execute start-control-thread)))
 
-;;; functions for acquiring the control thread in the proxy
-(def wait-for-control-thread-latch
-  (delay (java.util.concurrent.CountDownLatch. 1)))
-
-(defn control-thread-acquired!
-  []
-  (logging/trace "control-thread-acquired!")
-  (.countDown @wait-for-control-thread-latch))
-
-(def vm-port (atom nil))
-
-(defn wait-for-control-thread
-  []
-  (logging/trace "wait-for-control-thread")
-  (when-not (:control-thread vm) ;; theoretical race
-    (.await @wait-for-control-thread-latch))
-  (logging/trace "wait-for-control-thread: acquired")
-  (ensure-runtime)
-  (logging/trace "wait-for-control-thread: runtime set"))
-
-(defn remote-swank-port
-  []
-  (loop []
-    (if-let [port (swap!
-                   vm-port
-                   #(or %
-                        (control-eval
-                         (deref swank-clj.socket-server/acceptor-port)
-                         jpda/invoke-single-threaded)))]
-      port
-      (do
-        (Thread/sleep 200)
-        (recur)))))
 
 
 ;;; stacktrace
-(defn- location-data
-  [location]
-  (let [declaring-type (jpda/location-type-name location)
-        method (jpda/location-method-name location)
-        line (jpda/location-line-number location)
-        source-name (or
-                     (jpda/location-source-name location)
-                     "UNKNOWN")]
-    (if (and (= method "invoke") (.endsWith source-name ".clj"))
-      {:function (jpda/unmunge-clojure declaring-type)
-       :source source-name
-       :line line}
-      {:function (format "%s.%s" declaring-type method)
-       :source source-name
-       :line line})))
-
 (defn- frame-data
   "Extract data from a stack frame"
   [frame]
-  (location-data (.location frame)))
+  (jdi/location-data (jdi/location frame)))
 
 (defn- exception-stacktrace [frames]
   (logging/trace "exception-stacktrace")
@@ -633,35 +314,33 @@ only clojure.core symbols."
   (let [[level-info level] (connection/current-sldb-level-info connection)]
     (when-let [frame (nth (.frames (:thread level-info)) frame-number nil)]
       (let [location (.location frame)]
-        [(find/find-source-path (jpda/location-source-path location))
-         {:line (jpda/location-line-number location)}]))))
+        [(find/find-source-path (jdi/location-source-path location))
+         {:line (jdi/location-line-number location)}]))))
 
 ;;; breakpoints
 ;;; todo - use the event manager's event list
 (defn breakpoint-list
   "Provide a list of breakpoints. The list is cached in the connection
    to allow it to be retrieveb by index."
-  [connection]
+  [context]
   (let [breakpoints (map
                      #(->
-                       (jpda/breakpoint-data %1)
+                       (jdi/breakpoint-data %1)
                        (assoc :id %2))
-                     (jpda/breakpoints (:vm vm))
+                     (jdi/breakpoints (:vm @context))
                      (iterate inc 0))]
-    (swap! connection assoc :breakpoints breakpoints)
+    (swap! context assoc :breakpoints breakpoints)
     breakpoints))
 
 (defn line-breakpoint
   "Set a line breakpoint."
-  [connection namespace filename line]
-  (let [breakpoints (jpda/line-breakpoints
-                     (:vm vm) breakpoint-suspend-policy
+  [context namespace filename line]
+  (let [breakpoints (jdi/line-breakpoints
+                     (:vm @context) breakpoint-suspend-policy
                      namespace filename line)]
     (swap!
-     connection
-     update-in
-     [:breakpoints]
-     #(concat % breakpoints))
+     context
+     update-in [:breakpoints] #(concat % breakpoints))
     (format "Set %d breakpoints" (count breakpoints))))
 
 (defn remove-breakpoint
@@ -681,45 +360,45 @@ only clojure.core symbols."
           (remove #(= % request) breakpoints)))))))
 
 (defn breakpoints-for-id
-  [connection id]
-  (when-let [breakpoints (:breakpoints @connection)]
+  [context id]
+  (when-let [breakpoints (:breakpoints @context)]
     (when-let [{:keys [file line]} (nth breakpoints id nil)]
       (seq (map
             #(let [location (.location %)]
                (and (= file (.sourcePath location))
                     (= line (.lineNumber location))
                     %))
-            (jpda/breakpoints (:vm vm)))))))
+            (jdi/breakpoints (:vm @context)))))))
 
 (defn breakpoint-kill
-  [connection breakpoint-id]
-  (doseq [breakpoint (breakpoints-for-id connection breakpoint-id)]
+  [context breakpoint-id]
+  (doseq [breakpoint (breakpoints-for-id context breakpoint-id)]
     (.disable breakpoint)
     (.. breakpoint (virtualMachine) (eventRequestManager)
         (deleteEventRequest breakpoint))))
 
 (defn breakpoint-enable
-  [connection breakpoint-id]
-  (doseq [breakpoint (breakpoints-for-id connection breakpoint-id)]
+  [context breakpoint-id]
+  (doseq [breakpoint (breakpoints-for-id context breakpoint-id)]
     (.enable breakpoint)))
 
 (defn breakpoint-disable
-  [connection breakpoint-id]
-  (doseq [breakpoint (breakpoints-for-id connection breakpoint-id)]
+  [context breakpoint-id]
+  (doseq [breakpoint (breakpoints-for-id context breakpoint-id)]
     (.disable breakpoint)))
 
 (defn breakpoint-location
-  [connection breakpoint-id]
-  (when-let [breakpoint (first (breakpoints-for-id connection breakpoint-id))]
+  [context breakpoint-id]
+  (when-let [breakpoint (first (breakpoints-for-id context breakpoint-id))]
     (let [location (.location breakpoint)]
       (logging/trace
        "debug/breakpoint-location %s %s %s"
-       (jpda/location-source-name location)
-       (jpda/location-source-path location)
-       (jpda/location-line-number location))
+       (jdi/location-source-name location)
+       (jdi/location-source-path location)
+       (jdi/location-line-number location))
       (when-let [path (find/find-source-path
-                       (jpda/location-source-path location))]
-        [path {:line (jpda/location-line-number location)}]))))
+                       (jdi/location-source-path location))]
+        [path {:line (jdi/location-line-number location)}]))))
 
 ;;; debug methods
 
@@ -753,7 +432,7 @@ only clojure.core symbols."
           :let [event (:event level-info)]
           :when (not (instance? InvocationExceptionEvent event))]
     (logging/trace "resuming threads for sldb-level")
-    (jpda/resume-event-threads event))
+    (jdi/resume-event-threads event))
   connection)
 
 (defn- return-or-activate-sldb-levels
@@ -844,9 +523,9 @@ only clojure.core symbols."
 
 (defn step-request
   [thread size depth]
-  (doto (jpda/step-request thread size depth)
+  (doto (jdi/step-request thread size depth)
     (.addCountFilter 1)
-    (jpda/suspend-policy breakpoint-suspend-policy)
+    (jdi/suspend-policy breakpoint-suspend-policy)
     (.enable)))
 
 (defn make-restart
@@ -879,24 +558,22 @@ only clojure.core symbols."
     thread :step-out "STEP-OUT" "Step out of current frame" :line :out)])
 
 (defprotocol Debugger
-  (condition-info [event])
+  (condition-info [event context])
   (restarts [event connection]))
 
 (extend-type ExceptionEvent
   Debugger
 
   (condition-info
-   [event]
+   [event context]
    (let [exception (.exception event)]
-     {:message (or
-                (exception-message exception (jpda/event-thread event))
-                "No message.")
+     {:message (or (jdi-clj/exception-message context event) "No message.")
       :type (str "  [Thrown " (.. exception referenceType name) "]")}))
 
   (restarts
    [exception connection]
    (logging/trace "calculate-restarts exception")
-   (let [thread (jpda/event-thread exception)]
+   (let [thread (jdi/event-thread exception)]
      (if (.request exception)
        (filter
         identity
@@ -929,13 +606,13 @@ only clojure.core symbols."
   Debugger
 
   (condition-info
-   [breakpoint]
+   [breakpoint _]
    {:message "BREAKPOINT"})
 
   (restarts
    [breakpoint connection]
    (logging/trace "calculate-restarts breakpoint")
-   (let [thread (jpda/event-thread breakpoint)]
+   (let [thread (jdi/event-thread breakpoint)]
      (concat
       [(make-restart
         :continue "CONTINUE" "Continue from breakpoint"
@@ -955,13 +632,13 @@ only clojure.core symbols."
   Debugger
 
   (condition-info
-   [step]
+   [step _]
    {:message "STEPPING"})
 
   (restarts
    [step-event connection]
    (logging/trace "calculate-restarts step-event")
-   (let [thread (jpda/event-thread step-event)]
+   (let [thread (jdi/event-thread step-event)]
      (concat
       [(make-restart
         :continue "CONTINUE" "Continue normal execution"
@@ -974,21 +651,22 @@ only clojure.core symbols."
   "Calculate debugger information and invoke"
   [connection event]
   (logging/trace "invoke-debugger*")
-  (let [thread (jpda/event-thread event)
+  (let [thread (jdi/event-thread event)
         thread-id (.uniqueID thread)
         restarts (restarts event connection)
         level-info {:restarts restarts :thread thread :event event}
-        level (connection/next-sldb-level connection level-info)]
+        level (connection/next-sldb-level connection level-info)
+        _ (logging/trace "building condition")
+        condition (condition-info event @(:vm-context @connection))
+        _ (logging/trace "building backtrace")
+        backtrace (if (instance? InvocationExceptionEvent event)
+                    [{:function "Unavailble" :source "UNKNOWN" :line "UNKNOWN"}]
+                    (build-backtrace thread 0 *sldb-initial-frames*))]
     (logging/trace "invoke-debugger: send-to-emacs")
     (connection/send-to-emacs
      connection
      (messages/debug
-      thread-id level
-      (condition-info event)
-      restarts
-      (if (instance? InvocationExceptionEvent event)
-        [{:function "Unavailble" :source "UNKNOWN" :line "UNKNOWN"}]
-        (build-backtrace thread 0 *sldb-initial-frames*))
+      thread-id level condition restarts backtrace
       (connection/pending connection)))
     (connection/send-to-emacs
      connection (messages/debug-activate thread-id level))))
@@ -1002,7 +680,7 @@ only clojure.core symbols."
   (executor/execute #(invoke-debugger* connection event))
   ;; the handler resumes threads, so make sure we suspend them
   ;; again first
-  (jpda/suspend-event-threads event))
+  (jdi/suspend-event-threads event))
 
 (defn debugger-info-for-emacs
   "Calculate debugger information and invoke"
@@ -1013,7 +691,7 @@ only clojure.core symbols."
         event (:event level-info)]
     (logging/trace "invoke-debugger: send-to-emacs")
     (messages/debug-info
-     (condition-info event)
+     (condition-info event @(:vm-context @connection))
      (:restarts level-info)
      (if (instance? InvocationExceptionEvent event)
        [{:function "Unavailble" :source "UNKNOWN" :line "UNKNOWN"}]
@@ -1051,109 +729,103 @@ only clojure.core symbols."
   (logging/trace "invoke-option-for %s" object-reference)
   (if (and (instance? ObjectReference object-reference)
            (stm-type? object-reference))
-    jpda/invoke-multi-threaded
-    jpda/invoke-single-threaded))
+    jdi/invoke-multi-threaded
+    jdi/invoke-single-threaded))
 
 (defmethod inspect/value-as-string com.sun.jdi.PrimitiveValue
-  [obj] (pr-str (.value obj)))
+  [context obj] (pr-str (.value obj)))
+
+(defmethod inspect/value-as-string com.sun.jdi.StringReference
+  [context obj] (pr-str (.value obj)))
 
 (defmethod inspect/value-as-string com.sun.jdi.Value
-  [obj]
+  [context obj]
+  {:pre [(:current-thread context)]}
   (try
-    (jpda/string-value
-     (invoke-clojure-fn
-      "swank-clj.inspect" "value-as-string"
-      *current-thread-reference*
-      jpda/invoke-multi-threaded
-      obj))
+    (jdi-clj/pr-str-arg
+     context (:current-thread context) jdi/invoke-single-threaded obj)
     (catch com.sun.jdi.InternalException e
       (logging/trace "inspect/value-as-string: exeception %s" e)
       (format "#<%s>" (.. obj referenceType name)))))
 
-;; (defmethod inspect/emacs-inspect com.sun.jdi.PrimitiveValue
-;;   [obj]
-;;   (inspect/emacs-inspect (.value obj)))
-
-;; (defmethod inspect/emacs-inspect com.sun.jdi.Value
-;;   [obj]
-;;   (try
-;;     (->
-;;      (invoke-clojure-fn
-;;       "swank-clj.inspect" "emacs-inspect"
-;;       *current-thread-reference*
-;;       jpda/invoke-multi-threaded
-;;       obj))
-;;     (catch com.sun.jdi.InternalException e
-;;       (logging/trace "inspect/emacs-inspect: exeception %s" e)
-;;       `("unavailable : " ~(str e)))))
-
 (defmethod inspect/object-content-range com.sun.jdi.PrimitiveValue
-  [object start end]
-  (inspect/object-content-range (.value object) start end))
+  [context object start end]
+  (inspect/object-content-range context (.value object) start end))
 
 (defmethod inspect/object-content-range com.sun.jdi.Value
-  [object start end]
+  [context object start end]
   (logging/trace
    "inspect/object-content-range com.sun.jdi.Value %s %s" start end)
-  (read-arg
-   *current-thread-reference*
-   (invoke-clojure-fn
+  (jdi-clj/read-arg
+   context
+   (:current-thread context)
+   (jdi-clj/invoke-clojure-fn
+    context (:current-thread context)
+    jdi/invoke-multi-threaded
     "swank-clj.inspect" "object-content-range"
-    *current-thread-reference* jpda/invoke-multi-threaded
-    object
-    (remote-eval*
-     *current-thread-reference* start jpda/invoke-single-threaded)
-    (remote-eval*
-     *current-thread-reference* end jpda/invoke-single-threaded))))
+    nil object
+    (jdi-clj/eval-to-value
+     context (:current-thread context) jdi/invoke-single-threaded start)
+    (jdi-clj/eval-to-value
+     context (:current-thread context) jdi/invoke-single-threaded end))))
 
 (defmethod inspect/object-nth-part com.sun.jdi.Value
-  [object n max-index]
-  (read-arg
-   *current-thread-reference*
-   (invoke-clojure-fn
+  [context object n max-index]
+  (jdi-clj/read-arg
+   context
+   (:current-thread context)
+   (jdi-clj/invoke-clojure-fn
     "swank-clj.inspect" "object-nth-part"
-    *current-thread-reference* jpda/invoke-multi-threaded
-    object (jpda/mirror-of (:vm vm) n) (jpda/mirror-of (:vm vm) max-index))))
+    (:current-thread context) jdi/invoke-single-threaded
+    nil object
+    (jdi/mirror-of (:vm context) n)
+    (jdi/mirror-of (:vm context) max-index))))
 
 (defmethod inspect/object-call-nth-action :default com.sun.jdi.Value
-  [object n max-index args]
-  (read-arg
-   *current-thread-reference*
-   (invoke-clojure-fn
+  [context object n max-index args]
+  (jdi-clj/read-arg
+   context
+   (:current-thread context)
+   (jdi-clj/invoke-clojure-fn
+    context
+    (:current-thread context)
+    jdi/invoke-multi-threaded
     "swank-clj.inspect" "object-call-nth-action"
-    *current-thread-reference*
-    jpda/invoke-multi-threaded
     object
-    (jpda/mirror-of (:vm vm) n)
-    (jpda/mirror-of (:vm vm) max-index)
-    (remote-eval (:vm vm) *current-thread-reference* args))))
+    (jdi/mirror-of (:vm context) n)
+    (jdi/mirror-of (:vm context) max-index)
+    (jdi-clj/eval
+     (:vm context) (:current-thread context)
+     jdi/invoke-single-threaded
+     args))))
 
 (defn frame-locals
   "Return frame locals for slime, a sequence of [LocalVariable Value]
    sorted by name."
-  [level-info n]
-  (let [frame (nth (.frames (:thread level-info)) n)]
+  [thread n]
+  (let [frame (nth (.frames thread) n)]
     (sort-by
      #(.name (key %))
-     (merge {} (jpda/frame-locals frame) (jpda/clojure-locals frame)))))
+     (merge {} (jdi/frame-locals frame) (jdi/clojure-locals frame)))))
 
 (defn frame-locals-with-string-values
   "Return frame locals for slime"
-  [level-info n]
-  (binding [*current-thread-reference* (:thread level-info)]
-    (doall
-     (for [map-entry (seq (frame-locals level-info n))]
-       {:name (.name (key map-entry))
-        :value (val map-entry)
-        :string-value (inspect/value-as-string (val map-entry))}))))
+  [context thread n]
+  (doall
+   (for [map-entry (seq (frame-locals thread n))]
+     {:name (.name (key map-entry))
+      :value (val map-entry)
+      :string-value (inspect/value-as-string
+                     (assoc context :current-thread thread)
+                     (val map-entry))})))
 
 (defn nth-frame-var
   "Return the var-index'th var in the frame-index'th frame"
-  [level-info frame-index var-index]
-  {:pre [(< frame-index (count (.frames (:thread level-info))))]}
+  [context thread frame-index var-index]
+  {:pre [(< frame-index (count (.frames thread)))]}
   (logging/trace "debug/nth-frame-var %s %s" frame-index var-index)
   (->
-   (seq (frame-locals-with-string-values level-info frame-index))
+   (seq (frame-locals-with-string-values context thread frame-index))
    (nth var-index)
    :value))
 
@@ -1180,7 +852,9 @@ only clojure.core symbols."
   [thread]
   (or @remote-map-sym-value
       (reset! remote-map-sym-value
-              (symbol (remote-eval thread `(gensym "swank"))))))
+              (symbol (jdi-clj/eval
+                       thread jdi/invoke-single-threaded
+                       `(gensym "swank"))))))
 
 (def ^{:private true
        :doc "An empty map"}
@@ -1188,120 +862,84 @@ only clojure.core symbols."
 
 (defn remote-empty-map
   "Return a remote empty map for use in resetting the swank remote var"
-  [thread]
+  [context thread]
   (or @remote-empty-map-value
       (reset! remote-empty-map-value
-              (remote-value thread `(hash-map) jpda/invoke-single-threaded))))
+              (jdi-clj/eval-to-value
+               context thread jdi/invoke-single-threaded
+               `(hash-map)))))
 
 (defn assoc-local
   "Assoc a local variable into a remote var"
-  [thread map-var local]
-  (remote-call
-   thread (invoke-option-for (val local))
+  [context thread map-var local]
+  (jdi-clj/remote-call
+   context thread (invoke-option-for (val local))
    `assoc map-var
-   (remote-str (.name (key local)))
+   (jdi-clj/remote-str context (.name (key local)))
    (when-let [value (val local)]
-     (remote-object (val local) thread))))
+     (jdi-clj/remote-object context (val local) thread))))
 
 (defn set-remote-values
   "Build a map in map-var of name to value for all the locals"
-  [thread map-var locals]
-  (remote-swap-root
-   thread jpda/invoke-single-threaded
+  [context thread map-var locals]
+  (jdi-clj/swap-root
+   context thread jdi/invoke-single-threaded
    map-var
    (reduce
     (fn [v local] (assoc-local thread v local))
-    (remote-var-get thread jpda/invoke-single-threaded  map-var)
+    (jdi-clj/var-get context thread jdi/invoke-single-threaded map-var)
     locals)))
 
 (defn clear-remote-values
   [thread map-var]
-  (remote-swap-root
-   thread jpda/invoke-single-threaded
+  (jdi-clj/swap-root
+   thread jdi/invoke-single-threaded
    map-var (remote-empty-map thread)))
 
 (defn eval-string-in-frame
   "Eval the string `expr` in the context of the specified `frame-number`."
-  [connection expr frame-number]
-  (let [[level-info level] (connection/current-sldb-level-info connection)
-        thread (:thread level-info)]
-    (try
-      (let [_ (assert (.isSuspended thread))
-            locals (frame-locals level-info frame-number)
-            _ (logging/trace "eval-string-in-frame: map-sym")
-            map-sym (remote-map-sym thread)
-            _ (logging/trace "eval-string-in-frame: map-var for %s" map-sym)
-            map-var (remote-value
-                     thread `(intern '~'user '~map-sym {})
-                     jpda/invoke-single-threaded)
-            _ (logging/trace "eval-string-in-frame: form")
-            form (with-local-bindings-form map-sym locals (read-string expr))]
-        (logging/trace "eval-string-in-frame: form %s" form)
-        (try
-          (logging/trace "eval-string-in-frame: set-remote-values")
-          (set-remote-values (:thread level-info) map-var locals)
-          ;; create a bindings form
-          (logging/trace "eval-string-in-frame: remote-eval")
-          (remote-eval-to-string*
-           thread `(pr-str ~form) jpda/invoke-single-threaded)
-          (finally
-           (logging/trace "eval-string-in-frame: clear-remote-values")
-           (clear-remote-values (:thread level-info) map-var))))
-      (catch com.sun.jdi.InvocationException e
-        (invoke-debugger*
-         connection (InvocationExceptionEvent. (.exception e) thread))))))
+  [context thread expr frame-number]
+  (try
+    (let [_ (assert (.isSuspended thread))
+          locals (frame-locals thread frame-number)
+          _ (logging/trace "eval-string-in-frame: map-sym")
+          map-sym (remote-map-sym thread)
+          _ (logging/trace "eval-string-in-frame: map-var for %s" map-sym)
+          map-var (jdi-clj/eval-to-value
+                   context thread jdi/invoke-single-threaded
+                   `(intern '~'user '~map-sym {}))
+          _ (logging/trace "eval-string-in-frame: form")
+          form (with-local-bindings-form map-sym locals (read-string expr))]
+      (logging/trace "eval-string-in-frame: form %s" form)
+      (try
+        (logging/trace "eval-string-in-frame: set-remote-values")
+        (set-remote-values thread map-var locals)
+        ;; create a bindings form
+        (logging/trace "eval-string-in-frame: eval")
+        (jdi-clj/eval context thread jdi/invoke-single-threaded form)
+        (finally
+         (logging/trace "eval-string-in-frame: clear-remote-values")
+         (clear-remote-values thread map-var))))
+    (catch com.sun.jdi.InvocationException e
+      (invoke-debugger*
+       context (InvocationExceptionEvent. (.exception e) thread)))))
 
 ;;; events
 (defn add-exception-event-request
-  [vm]
+  [context]
   (logging/trace "add-exception-event-request")
-  (if (:exception-request vm)
-    vm
-    (do (logging/trace "add-exception-event-request: adding request")
-        (assoc vm
-          :exception-request (doto (jpda/exception-request
-                                    (:event-request-manager vm)
-                                    nil true true)
-                               (jpda/suspend-policy exception-suspend-policy)
-                               (.enable))))))
-
-(defn ensure-exception-event-request
-  []
-  (alter-var-root #'vm add-exception-event-request))
+  (doto (jdi/exception-request (:vm context) nil true true)
+    (jdi/suspend-policy exception-suspend-policy)
+    (.enable)))
 
 ;;; VM events
-(defn maybe-acquire-control-thread
-  "Inspect exception to see if we can use it to acquire a control thread.
-   If found, swap the exception event request for uncaught exceptions."
-  [exception thread]
-  (try
-    (let [status (jpda/thread-states (.status thread))]
-      (when (not= status :running)
-        (logging/trace
-         "maybe-acquire-control-thread: thread status %s" status)))
-    (when-let [message (exception-message exception thread)]
-      (when (= message control-thread-name)
-        (.suspend thread) ;; make sure it stays suspended
-        (.disable (:exception-request vm))
-        (alter-var-root
-         #'vm assoc
-         :control-thread thread
-         :exception-request nil)
-        (control-thread-acquired!)))
-    (catch Throwable e
-      (logging/trace
-       "control thread acquistion error %s"
-       (pr-str e)
-       ;; (helpers/stack-trace-string e)
-       ))))
-
 (defn caught?
   "Predicate for testing if the given exception is caught outside of swank-clj"
   [exception-event]
-  (when-let [catch-location (jpda/catch-location exception-event)]
-    (let [catch-location-name (jpda/location-type-name catch-location)
-          location (jpda/location exception-event)
-          location-name (jpda/location-type-name location)]
+  (when-let [catch-location (jdi/catch-location exception-event)]
+    (let [catch-location-name (jdi/location-type-name catch-location)
+          location (jdi/location exception-event)
+          location-name (jdi/location-type-name location)]
       (logging/trace "caught? %s %s" catch-location-name location-name)
       (or (not (.startsWith catch-location-name "swank_clj.swank"))
           (and
@@ -1313,7 +951,7 @@ only clojure.core symbols."
   [thread]
   (when-let [frame (first (.frames thread))]
     (when-let [location (.location frame)]
-      (let [location-name (jpda/location-type-name location)]
+      (let [location-name (jdi/location-type-name location)]
         (logging/trace "ignore-location? %s" location-name)
         (or (.startsWith location-name "swank_clj.swank")
             (.startsWith location-name "swank_clj.commands.contrib")
@@ -1323,19 +961,19 @@ only clojure.core symbols."
   "Predicate to check for specific deifining type name in the stack trace."
   [thread defining-type]
   (some
-   #(= defining-type (jpda/location-type-name (.location %)))
+   #(= defining-type (jdi/location-type-name (.location %)))
    (.frames thread)))
 
 (defn break-for-exception?
   "Predicate to check whether we should invoke the debugger fo the given
    exception event"
   [exception-event]
-  (let [catch-location (jpda/catch-location exception-event)
-        location (jpda/location exception-event)
-        location-name (jpda/location-type-name location)]
+  (let [catch-location (jdi/catch-location exception-event)
+        location (jdi/location exception-event)
+        location-name (jdi/location-type-name location)]
     (or
      (not catch-location)
-     (let [catch-location-name (jpda/location-type-name catch-location)]
+     (let [catch-location-name (jdi/location-type-name catch-location)]
        (logging/trace
         "break-for-exception? %s %s" catch-location-name location-name)
        (or
@@ -1343,7 +981,7 @@ only clojure.core symbols."
         (and
          (.startsWith catch-location-name "clojure.lang.Compiler")
          (stacktrace-contains?
-          (jpda/event-thread exception-event)
+          (jdi/event-thread exception-event)
           "swank_clj.commands.basic$eval_region")))
        ;; (or
        ;; ;; (and
@@ -1367,51 +1005,43 @@ only clojure.core symbols."
 (defn connection-and-id-from-thread
   "Walk the stack frames to find the eval-for-emacs call and extract
    the id argument."
-  [thread]
+  [context thread]
   (logging/trace "connection-and-id-from-thread %s" thread)
   (some (fn [frame]
           (when-let [location (.location frame)]
-            ;; (logging/trace
-            ;;  "connection-and-id-from-thread %s %s"
-            ;;  (jpda/location-type-name location)
-            ;;  (jpda/location-method-name location))
             (when (and (= "swank_clj.swank$eval_for_emacs"
-                          (jpda/location-type-name location))
-                       (= "invoke"
-                          (jpda/location-method-name location)))
+                          (jdi/location-type-name location))
+                       (= "invoke" (jdi/location-method-name location)))
               ;; (logging/trace "connection-and-id-from-thread found frame")
               (let [connection (first (.getArgumentValues frame))
-                    id (last (.getArgumentValues frame))
-                    ;; socket (-> (invoke-clojure-fn
-                    ;;             "clojure.core" "deref" connection)
-                    ;;            (get-keyword thread :socket))
-                    ;; port (jpda/invoke-method
-                    ;;       socket
-                    ;;       (first
-                    ;;        (jpda/methods
-                    ;;         (.referenceType socket) "getPort"))
-                    ;;       thread [])
-                    ]
+                    id (last (.getArgumentValues frame))]
                 ;; (logging/trace
                 ;;  "connection-and-id-from-thread id %s connection %s"
-                ;;  (jpda/object-reference id)
-                ;;  (jpda/object-reference connection))
+                ;;  (jdi/object-reference id)
+                ;;  (jdi/object-reference connection))
                 {:connection connection
-                 :id (read-arg thread id)}))))
+                 :id (jdi-clj/read-arg context thread id)}))))
         (.frames thread)))
 
-(defmethod jpda/handle-event ExceptionEvent
-  [event connected]
+(defmethod jdi/handle-event ExceptionEvent
+  [event context]
   (let [exception (.exception event)
-        thread (jpda/event-thread event)]
-    (if-not (:control-thread vm)
-      (maybe-acquire-control-thread exception thread)
-      (when (and (:control-thread vm) (:RT vm))
-        ;; (logging/trace "EXCEPTION %s" event)
-        ;; assume a single connection for now
-        (logging/trace "EXCEPTION %s" (exception-message exception thread))
+        thread (jdi/event-thread event)
+        silent? (.startsWith
+                 (.toString event)
+                 "ExceptionEvent@java.net.URLClassLoader")]
+    (if (and
+         (:control-thread context)
+         (:RT context)
+         (not silent?))
+      ;; (logging/trace "EXCEPTION %s" event)
+      ;; assume a single connection for now
+      (do
+        (logging/trace
+         "EXCEPTION %s" (jdi-clj/exception-message context event))
         (if (break-for-exception? event)
-          (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
+          (let [{:keys [id connection]} (connection-and-id-from-thread
+                                         context thread)]
             ;; (logging/trace "exception-event: %s %s" id connection)
             (let [connection (ffirst @connections)]
               ;; ensure we have started - id and connection need to go
@@ -1423,12 +1053,19 @@ only clojure.core symbols."
                     (invoke-debugger connection event)))
                 (logging/trace "Not activating sldb (no id, connection)"))))
           (do
-            (logging/trace "Not activating sldb (break-for-exception?)")))))))
+            (logging/trace "Not activating sldb (break-for-exception?)"))))
+      (when-not silent?
+        (logging/trace
+         "jdi/handle-event ExceptionEvent: Can't handle EXCEPTION %s %s"
+         event
+         (jdi-clj/exception-message context event)
+         ;;(jdi/exception-event-string context event)
+         )))))
 
-(defmethod jpda/handle-event BreakpointEvent
-  [event connected]
-  (let [thread (jpda/event-thread event)]
-    (when (and (:control-thread vm) (:RT vm))
+(defmethod jdi/handle-event BreakpointEvent
+  [event context]
+  (let [thread (jdi/event-thread event)]
+    (when (and (:control-thread context) (:RT context))
       (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
         (logging/trace "BREAKPOINT")
         (let [connection (ffirst @connections)]
@@ -1439,10 +1076,10 @@ only clojure.core symbols."
               (invoke-debugger connection event))
             (logging/trace "Not activating sldb (no id, connection)")))))))
 
-(defmethod jpda/handle-event StepEvent
-  [event connected]
-  (let [thread (jpda/event-thread event)]
-    (when (and (:control-thread vm) (:RT vm))
+(defmethod jdi/handle-event StepEvent
+  [event context]
+  (let [thread (jdi/event-thread event)]
+    (when (and (:control-thread context) (:RT context))
       (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
         (logging/trace "STEP")
         (let [connection (ffirst @connections)]
@@ -1457,8 +1094,8 @@ only clojure.core symbols."
               (invoke-debugger connection event))
             (logging/trace "Not activating sldb (no id, connection)")))))))
 
-(defmethod jpda/handle-event VMDeathEvent
-  [event connected]
+(defmethod jdi/handle-event VMDeathEvent
+  [event context-atom]
   (doseq [[connection proxied-connection] @connections]
     (connection/close proxied-connection)
     (connection/close connection))
