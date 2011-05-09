@@ -128,7 +128,7 @@
                           :inspector (atom {})
                           :result-history nil
                           :last-exception nil
-                          :indent-cache-pkg (ref nil)
+                          :indent-cache-hash (atom nil)
                           :indent-cache (ref {})})))]
     ;;(when-not (:proxy-to options))
 

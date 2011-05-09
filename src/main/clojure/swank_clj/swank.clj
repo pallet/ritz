@@ -53,8 +53,7 @@
                (hooks/run core/pre-reply-hook connection)
                (connection/remove-pending-id connection id)
                (logging/trace "swank/eval-for-emacs: result %s %s" result id)
-               (connection/send-to-emacs
-                connection (messages/ok result id)))))
+               (connection/send-to-emacs connection (messages/ok result id)))))
     (catch Throwable t
       ;; Thread/interrupted clears this thread's interrupted status; if
       ;; Thread.stop was called on us it may be set and will cause an
