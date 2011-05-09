@@ -198,8 +198,7 @@
        (string/join
         "\n"
         (map format-thread (threads (:vm-context @connection)))))
-      (when (= 'swank/source-form (first form))
-        (clear-abort-for-current-level connection))
+      (clear-abort-for-current-level connection)
       (executor/execute-request
        (partial
         connection/send-to-emacs
