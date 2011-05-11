@@ -19,7 +19,7 @@
          (inspect/value-as-string nil {:a 1 :b 2})))
   (is (= "(:a 1 3)"
          (inspect/value-as-string nil '(:a 1 3))))
-  (is (re-matches #"#<X swank-clj.inspect-test.X@.*>"
+  (is (re-matches #"#<X swank[-_]clj.inspect[-_]test.X@.*>"
          (inspect/value-as-string nil (X. 1)))))
 
 (deftest display-values-test
