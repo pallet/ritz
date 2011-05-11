@@ -11,6 +11,10 @@ dest="slime-$VERSION"
 rm -rf "marmalade/$dest" "marmalade/slime"
 find slime \( -name '*.el' -or -name 'ChangeLog' \) | cpio -pd marmalade
 
+# remove the slime-clj contrib
+rm marmalade/slime/contrib/slime-clj.el
+
+# add an elpa style header
 sed -i .bak \
     -e "/For a detailed/ i \\
 ;; Authors: Eric Marsden, Luke Gorrie, Helmut Eller, Tobias C. Rittweiler" \
@@ -28,6 +32,7 @@ sed -i .bak \
 
 rm marmalade/slime/slime.el.bak
 
+# create a package descriptor
 cat > marmalade/slime/slime-pkg.el <<EOF
 (define-package "slime" "$VERSION"
                 "Superior Lisp Interaction Mode for Emacs")
