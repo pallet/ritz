@@ -10,12 +10,14 @@ This is alpha quality.
 
 ## Install
 
-Add `[swank-clj "0.1.0-SNAPSHOT"]` to your project.clj `:dev-dependencies`.
+Add `[swank-clj "0.1.0"]` to your project.clj `:dev-dependencies`.
+
+Install the slime-clj.el contrib from [marmalade](http://marmalade-repo.org/).
 
 A compatible slime.el is in slime/slime.el. It is available as a `package.el`
 package file you can
 [download](https://github.com/downloads/hugoduncan/swank-clj/slime-20101113.tar)
-and install with `M-x package-install-file`.  Note that you will need to remove
+and install with `M-x package-install-file`.  Note that you may need to remove
 this package to use
 [swank-clojure](https://github.com/technomancy/swank-clojure) again.
 
