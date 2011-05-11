@@ -18,13 +18,14 @@
                 :write-message rpc-s-c/write-message
                 :write-monitor (Object.)
                 :pending #{}
-                :indent-cache-pkg (ref nil)
+                :indent-cache-hash (atom nil)
                 :indent-cache (ref {})
                 :request-id 1
                 :inspector (atom {})}
                m)))
 
 (defn split-indentation-response
+  "Splits a response into [non-indentation-response indentation-response]"
   [^String msg]
   (let [index (.indexOf msg "(:indentation-update")]
     (if (pos? index)
@@ -34,28 +35,35 @@
          (.substring msg (- index 6) (+ index len))])
       [msg])))
 
-(defn eval-for-emacs-test-body
-  [msg-form {:as options}]
+(defmacro eval-for-emacs-test-body
+  [msg-form options connection sb]
   `(let [options# ~options]
      (first
       (split-indentation-response
-       (with-out-str
-         (let [connection# (test-connection (dissoc options# :ns))]
-           (swank/eval-for-emacs
-            connection# '~msg-form
-            (:ns options# 'user)
-            (:request-id @connection# 1))))))))
+       (do
+         (swank/eval-for-emacs
+          ~connection ~msg-form
+          (:ns options# 'user)
+          (:request-id ~connection 1))
+         (str ~sb))))))
 
 (defmacro eval-for-emacs-test
   "Create a test for eval-for-emacs. output is a string or regex literal"
-  ([msg-form output {:as options}]
-     `(let [options# ~options]
-        (is
-         ~(if (or (string? output) (list? output))
-            `(= ~output
-                ~(eval-for-emacs-test-body msg-form options))
-            `(re-find ~output
-                      ~(eval-for-emacs-test-body msg-form options))))))
+  ([msg-form output options]
+     (let [opts (gensym "opts")
+           conn (gensym "conn")
+           sb (gensym "sb")]
+       `(let [~opts ~options
+              ~sb (new java.io.StringWriter)
+              ~conn (binding [*out* ~sb] (test-connection
+                                          (dissoc ~opts :ns :writer)))]
+          (is
+           ~(if (or (string? output) (list? output))
+              `(= ~output
+                  (eval-for-emacs-test-body ~msg-form ~opts ~conn ~sb))
+              `(re-find ~output
+                        (eval-for-emacs-test-body ~msg-form ~opts ~conn ~sb))))
+          (deref ~conn))))
   ([msg-form output]
      `(eval-for-emacs-test ~msg-form ~output {})))
 

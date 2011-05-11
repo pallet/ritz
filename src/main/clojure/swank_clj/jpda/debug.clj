@@ -197,7 +197,7 @@
        "VM threads:\n%s"
        (string/join
         "\n"
-        (map format-thread (threads (:vm-context @connection)))))
+        (map format-thread (threads (connection/vm-context connection)))))
       (clear-abort-for-current-level connection)
       (executor/execute-request
        (partial
@@ -238,7 +238,7 @@
 (defn threads
   "Return a sequence containing a thread reference for each remote thread."
   [context]
-  (jdi/threads (:vm @context)))
+  (jdi/threads (:vm context)))
 
 (defn- transform-thread-group
   [pfx [group groups threads]]
@@ -256,21 +256,22 @@
   (let [threads (flatten
                  (map
                   #(transform-thread-group "" %)
-                  (jdi/thread-groups (:vm @context))))]
-    (swap! context assoc :threads threads)
-    threads))
+                  (jdi/thread-groups (:vm context))))]
+    (assoc context :threads threads)))
 
 (defn nth-thread
-  [connection index]
-  (nth (:threads @connection) index nil))
+  [context index]
+  (nth (:threads context) index nil))
 
 (defn stop-thread
   [context thread-id]
   (when-let [thread (some
                      #(and (= thread-id (.uniqueID %)) %)
                      (threads context))]
-    (.stop thread (jdi-clj/control-eval-to-value
-                   @context `(new java.lang.Throwable "Stopped by swank")))))
+    (.stop
+     thread
+     (jdi-clj/control-eval-to-value
+      context `(new java.lang.Throwable "Stopped by swank")))))
 
 (defn level-info-thread-id
   [level-info]
@@ -319,55 +320,47 @@
 ;;; breakpoints
 ;;; todo - use the event manager's event list
 (defn breakpoint-list
-  "Provide a list of breakpoints. The list is cached in the connection
-   to allow it to be retrieveb by index."
+  "Update the context with a list of breakpoints. The list is cached in the
+   context to allow it to be retrieveb by index."
   [context]
   (let [breakpoints (map
                      #(->
                        (jdi/breakpoint-data %1)
                        (assoc :id %2))
-                     (jdi/breakpoints (:vm @context))
+                     (jdi/breakpoints (:vm context))
                      (iterate inc 0))]
-    (swap! context assoc :breakpoints breakpoints)
-    breakpoints))
+    (assoc-in context [:breakpoints] breakpoints)))
 
 (defn line-breakpoint
   "Set a line breakpoint."
   [context namespace filename line]
   (let [breakpoints (jdi/line-breakpoints
-                     (:vm @context) breakpoint-suspend-policy
+                     (:vm context) breakpoint-suspend-policy
                      namespace filename line)]
-    (swap!
-     context
-     update-in [:breakpoints] #(concat % breakpoints))
-    (format "Set %d breakpoints" (count breakpoints))))
+    (println (format "line-breakpoint %s %s %s" namespace filename line))
+    (update-in context [:breakpoints] concat breakpoints)))
 
 (defn remove-breakpoint
   "Set a line breakpoint."
-  [connection event]
-  (swap!
-   connection
-   (fn [connection]
-     (update-in
-      connection
-      [:breakpoints]
-      (fn [breakpoints]
-        (when-let [request (.request event)]
-          (.disable request)
-          (.deleteEventRequest
-           (.eventRequestManager (.virtualMachine event)) request)
-          (remove #(= % request) breakpoints)))))))
+  [context event]
+  (update-in context [:breakpoints]
+             (fn [breakpoints]
+               (when-let [request (.request event)]
+                 (.disable request)
+                 (.deleteEventRequest
+                  (.eventRequestManager (.virtualMachine event)) request)
+                 (remove #(= % request) breakpoints)))))
 
 (defn breakpoints-for-id
   [context id]
-  (when-let [breakpoints (:breakpoints @context)]
-    (when-let [{:keys [file line]} (nth breakpoints id nil)]
-      (seq (map
-            #(let [location (.location %)]
-               (and (= file (.sourcePath location))
-                    (= line (.lineNumber location))
-                    %))
-            (jdi/breakpoints (:vm @context)))))))
+  (let [vm (:vm context)]
+    (when-let [breakpoints (:breakpoints context)]
+      (when-let [{:keys [file line]} (nth breakpoints id nil)]
+        (seq (filter
+              #(let [location (.location %)]
+                 (and (= file (.sourcePath location))
+                      (= line (.lineNumber location))))
+              (jdi/breakpoints vm)))))))
 
 (defn breakpoint-kill
   [context breakpoint-id]
@@ -1036,23 +1029,25 @@
       ;; (logging/trace "EXCEPTION %s" event)
       ;; assume a single connection for now
       (do
-        (logging/trace
-         "EXCEPTION %s" (jdi-clj/exception-message context event))
+        (logging/trace "EXCEPTION %s" exception)
+        ;; would like to print this, but can cause hangs
+        ;;    (jdi-clj/exception-message context event)
         (if (break-for-exception? event)
           (let [{:keys [id connection]} (connection-and-id-from-thread
-                                         context thread)]
+                                         context thread)
+                connection (or connection (ffirst @connections))]
             ;; (logging/trace "exception-event: %s %s" id connection)
-            (let [connection (ffirst @connections)]
+            (let []
               ;; ensure we have started - id and connection need to go
-              (if (and id connection)
+              (if connection
                 (if (aborting-level? connection)
                   (logging/trace "Not activating sldb (aborting)")
                   (do
                     (logging/trace "Activating sldb")
                     (invoke-debugger connection event)))
                 (logging/trace "Not activating sldb (no id, connection)"))))
-          (do
-            (logging/trace "Not activating sldb (break-for-exception?)"))))
+          ;; (logging/trace "Not activating sldb (break-for-exception?)")
+          ))
       (when-not silent?
         (logging/trace
          "jdi/handle-event ExceptionEvent: Can't handle EXCEPTION %s %s"
@@ -1063,35 +1058,34 @@
 
 (defmethod jdi/handle-event BreakpointEvent
   [event context]
+  (logging/trace "BREAKPOINT")
   (let [thread (jdi/event-thread event)]
     (when (and (:control-thread context) (:RT context))
-      (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
-        (logging/trace "BREAKPOINT")
-        (let [connection (ffirst @connections)]
-          ;; ensure we have started - id and connection need to go
-          (if (and id connection)
-            (do
-              (logging/trace "Activating sldb for breakpoint")
-              (invoke-debugger connection event))
-            (logging/trace "Not activating sldb (no id, connection)")))))))
+      (let [{:keys [id connection]} (connection-and-id-from-thread
+                                     context thread)
+            connection (or connection (ffirst @connections))]
+        ;; ensure we have started - id and connection need to go
+        (if connection
+          (do
+            (logging/trace "Activating sldb for breakpoint")
+            (invoke-debugger connection event))
+          (logging/trace "Not activating sldb (no connection)"))))))
 
 (defmethod jdi/handle-event StepEvent
   [event context]
+  (logging/trace "STEP")
   (let [thread (jdi/event-thread event)]
     (when (and (:control-thread context) (:RT context))
-      (let [{:keys [id connection]} (connection-and-id-from-thread thread)]
-        (logging/trace "STEP")
-        (let [connection (ffirst @connections)]
-          ;; ensure we have started - id and connection need to go
-          (if (and id connection)
-            (do
-              (let [request (.. event request)]
-                (.disable request)
-                (.. event (virtualMachine) (eventRequestManager)
-                    (deleteEventRequest request)))
-              (logging/trace "Activating sldb for stepping")
-              (invoke-debugger connection event))
-            (logging/trace "Not activating sldb (no id, connection)")))))))
+      (let [{:keys [id connection]} (connection-and-id-from-thread
+                                     context thread)
+            connection (or connection (ffirst @connections))]
+        ;; ensure we have started - id and connection need to go
+        (if connection
+          (do
+            (logging/trace "Activating sldb for stepping")
+            (invoke-debugger connection event)
+            (jdi/discard-event-request (:vm context) (.. event request)))
+          (logging/trace "Not activating sldb (no connection)"))))))
 
 (defmethod jdi/handle-event VMDeathEvent
   [event context-atom]

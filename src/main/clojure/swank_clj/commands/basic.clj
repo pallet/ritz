@@ -107,7 +107,13 @@
 
 ;;;; Macro expansion
 (defn- apply-macro-expander [expander string]
-  (format/pprint-code (expander (read-string string))))
+  (format/pprint-code (expander (read-string string)) false))
+
+;; (defmacro apply-macro-expander* [expander string]
+;;   `(~expander ~string))
+
+;; (defn- apply-macro-expander [expander string]
+;;   (format/pprint-code (read-string (apply-macro-expander* expander string)) false))
 
 (defslimefn swank-macroexpand-1 [connection string]
   (apply-macro-expander macroexpand-1 string))
@@ -361,8 +367,7 @@
 
 (defslimefn eval-string-in-frame [connection expr n]
   ;; (if (and (zero? n) *current-env*)
-  ;;   (with-bindings *current-env*
-  ;;     (eval expr)))
+  ;;   (with-bindings *current-env* (eval expr)))
   )
 
 (defslimefn frame-source-location [connection n]

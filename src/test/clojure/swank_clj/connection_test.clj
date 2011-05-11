@@ -18,7 +18,7 @@
     (try
       (is (:reader @c))
       (is (:writer @c))
-      (is (:indent-cache-pkg @c))
+      (is (:indent-cache-hash @c))
       (is (deref (:indent-cache @c)))
       (is (:writer-redir @c))
       (is (set? (:pending @c)))

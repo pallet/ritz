@@ -11,7 +11,7 @@
   ;; (logging/set-level :trace)
   (binding [commands/slime-fn-map {'swank/echo (fn echo [_ arg] arg)}]
     (test-utils/eval-for-emacs-test
-      (swank/echo :a)
+     `(~'swank/echo :a)
       "000014(:return (:ok :a) 1)")))
 
 (deftest dispatch-event-test

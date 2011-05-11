@@ -84,17 +84,17 @@
 LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
   [connection]
-  (let [threads (debug/thread-list connection)
+  (let [context (swap! (:vm-context @connection) debug/thread-list)
         labels '(:id :name :state :at-breakpoint? :suspended? :suspends)]
-    (cons labels (map thread-data-fn threads))))
+    (cons labels (map thread-data-fn (:threads context)))))
 
 ;;; TODO: Find a better way, as Thread.stop is deprecated
 (defslimefn kill-nth-thread
   [connection index]
   (when index
-    (when-let [thread (debug/nth-thread connection index)]
-      (debug/stop-thread (:id thread)))))
-
+    (let [context (connection/vm-context connection)]
+      (when-let [thread (debug/nth-thread context index)]
+        (debug/stop-thread context (:id thread))))))
 
 ;;; stepping
 (defslimefn sldb-step [connection frame]
