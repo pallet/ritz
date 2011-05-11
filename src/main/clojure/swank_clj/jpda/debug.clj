@@ -841,11 +841,11 @@
 
 (defn remote-map-sym
   "Return the remote symbol for a var to use in swank"
-  [thread]
+  [context thread]
   (or @remote-map-sym-value
       (reset! remote-map-sym-value
               (symbol (jdi-clj/eval
-                       thread jdi/invoke-single-threaded
+                       context thread jdi/invoke-single-threaded
                        `(gensym "swank"))))))
 
 (def ^{:private true
@@ -869,7 +869,7 @@
    `assoc map-var
    (jdi-clj/remote-str context (.name (key local)))
    (when-let [value (val local)]
-     (jdi-clj/remote-object context (val local) thread))))
+     (jdi-clj/remote-object value context thread))))
 
 (defn set-remote-values
   "Build a map in map-var of name to value for all the locals"
@@ -878,15 +878,15 @@
    context thread jdi/invoke-single-threaded
    map-var
    (reduce
-    (fn [v local] (assoc-local thread v local))
+    (fn [v local] (assoc-local context thread v local))
     (jdi-clj/var-get context thread jdi/invoke-single-threaded map-var)
     locals)))
 
 (defn clear-remote-values
-  [thread map-var]
+  [context thread map-var]
   (jdi-clj/swap-root
-   thread jdi/invoke-single-threaded
-   map-var (remote-empty-map thread)))
+   context thread jdi/invoke-single-threaded
+   map-var (remote-empty-map context thread)))
 
 (defn eval-string-in-frame
   "Eval the string `expr` in the context of the specified `frame-number`."
@@ -895,7 +895,7 @@
     (let [_ (assert (.isSuspended thread))
           locals (frame-locals thread frame-number)
           _ (logging/trace "eval-string-in-frame: map-sym")
-          map-sym (remote-map-sym thread)
+          map-sym (remote-map-sym context thread)
           _ (logging/trace "eval-string-in-frame: map-var for %s" map-sym)
           map-var (jdi-clj/eval-to-value
                    context thread jdi/invoke-single-threaded
@@ -905,13 +905,13 @@
       (logging/trace "eval-string-in-frame: form %s" form)
       (try
         (logging/trace "eval-string-in-frame: set-remote-values")
-        (set-remote-values thread map-var locals)
+        (set-remote-values context thread map-var locals)
         ;; create a bindings form
         (logging/trace "eval-string-in-frame: eval")
         (jdi-clj/eval context thread jdi/invoke-single-threaded form)
         (finally
          (logging/trace "eval-string-in-frame: clear-remote-values")
-         (clear-remote-values thread map-var))))
+         (clear-remote-values context thread map-var))))
     (catch com.sun.jdi.InvocationException e
       (invoke-debugger*
        context (InvocationExceptionEvent. (.exception e) thread)))))

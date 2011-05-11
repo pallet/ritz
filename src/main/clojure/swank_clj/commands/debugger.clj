@@ -110,4 +110,5 @@ corresponding attribute values per thread."
 (defslimefn eval-string-in-frame [connection expr n]
   (let [[level-info level] (connection/current-sldb-level-info connection)
         thread (:thread level-info)]
-    (debug/eval-string-in-frame (:vm-context @connection) thread expr n)))
+    (debug/eval-string-in-frame
+     (connection/vm-context connection) thread expr n)))

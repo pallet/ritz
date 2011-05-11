@@ -163,8 +163,8 @@
   [context thread options sym & args]
   (logging/trace "remote-call %s %s" (pr-str sym) args)
   (let [[object method] (clojure-fn
-                         (namespace sym) (name sym) (count args)
-                         context thread options)]
+                         context thread options
+                         (namespace sym) (name sym) (count args))]
     (logging/trace "clojure fn is  %s %s" object method)
     (jdi/invoke-method thread options object method args)))
 
