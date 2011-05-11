@@ -356,11 +356,11 @@
   (let [vm (:vm context)]
     (when-let [breakpoints (:breakpoints context)]
       (when-let [{:keys [file line]} (nth breakpoints id nil)]
-        (seq (filter
-              #(let [location (.location %)]
-                 (and (= file (.sourcePath location))
-                      (= line (.lineNumber location))))
-              (jdi/breakpoints vm)))))))
+        (doall (filter
+                #(let [location (.location %)]
+                   (and (= file (.sourcePath location))
+                        (= line (.lineNumber location))))
+                (jdi/breakpoints vm)))))))
 
 (defn breakpoint-kill
   [context breakpoint-id]
