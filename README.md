@@ -45,6 +45,22 @@ use the following keys
  - k remove breakpoint
  - v view source location
 
+## Open Problems
+
+Recompilation of clojure code creates new classes, with the same location as the
+code they replace.  Recompilation therefore looses breakpoints, which are set on
+the old code. Setting breakpoints by line number finds all the old code too.
+
+## Roadmap
+
+A pure JDI backend, that doesn't require swank in the target VM is certainly a
+possibility.
+
+A slime-eval-symbol-at-point would be useful (requires determining the frame
+in the current sldb stacktrace using file and line number).
+
+Add watchpoints with logging of locals to an emacs buffer or file.
+
 ## Use Cases
 
 ### Development
