@@ -1,3 +1,13 @@
+;;; slime-clj.el --- slime extensions for swank-clj
+;;
+;; Copyright 2011 Hugo Duncan
+;;
+;; Authors: Hugo Duncan <hugo_duncan@yahoo.com>
+;; Keywords: languages, lisp, slime
+;; URL: https://github.com/hugoduncan/swank-clj
+;; Version: 0.1.0
+;; License: GNU GPL (same license as Emacs)
+
 (define-slime-contrib slime-clj
   "Integration with swank-clj features"
   (:authors "Hugo Duncan <hugo_duncan@yahoo.com>")
