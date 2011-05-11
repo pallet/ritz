@@ -34,7 +34,7 @@
 (defmacro with-timeout
   "Create a thunk that returns true if given time-limit-in-msec has been
   elapsed and bind it to timed-out?. Then execute body."
-  #^{:private true}
+  ^{:private true}
   [[timed-out? time-limit-in-msec] & body]
   `(call-with-timeout ~time-limit-in-msec (fn [~timed-out?] ~@body)))
 
@@ -42,7 +42,7 @@
   (let [[symbol package] (fuzzy-completion/fuzzy-extract-matching-info
                           matching string)
         result (str package (when package "/") symbol)]
-    [result (.indexOf #^String result #^String symbol)]))
+    [result (.indexOf ^String result ^String symbol)]))
 
 (defn- classify-matching [m]
   (let [make-var-meta (fn [m]

@@ -141,8 +141,8 @@
       ;;   (dosync
       ;;    (cond
       ;;     (and (true? thread) (seq @*active-threads*))
-      ;;     (.stop #^Thread (first @*active-threads*))
-      ;;     (= thread :repl-thread) (.stop #^Thread @(connection :repl-thread)))))
+      ;;     (.stop ^Thread (first @*active-threads*))
+      ;;     (= thread :repl-thread) (.stop ^Thread @(connection :repl-thread)))))
       :else
       (do
         (logging/trace "swank/dispatch-event: invalid command %s" action)
@@ -151,7 +151,7 @@
 
 (defn- response
   "Respond and act as watchdog"
-  [#^Future future form connection]
+  [^Future future form connection]
   (try
     (let [timeout (:timeout @connection)
           result (if timeout

@@ -134,7 +134,7 @@
 ;;;; Compiler / Execution
 
 ;; plist of message, severity, location, references, short-message
-(defn- exception-message [#^Throwable t]
+(defn- exception-message [^Throwable t]
   {:message (.toString t)
    :severity :error
    :location (find/find-compiler-exception-location t)})
@@ -196,7 +196,7 @@
                (ns-resolve
                 (connection/request-ns connection) (symbol symbol-name))
                (catch ClassNotFoundException e nil))]
-    (with-out-str (print-doc v))
+    (with-out-str (doc/print-doc v))
     (str "Unknown symbol " symbol-name)))
 
 (defslimefn describe-symbol [connection symbol-name]
@@ -384,9 +384,9 @@
 (defslimefn create-repl [connection target] '("user" "user"))
 
 ;;; Threads
-(def #^{:private true} thread-list (atom []))
+(def ^{:private true} thread-list (atom []))
 
-(defn- get-root-group [#^java.lang.ThreadGroup tg]
+(defn- get-root-group [^java.lang.ThreadGroup tg]
   (if-let [parent (.getParent tg)]
     (recur parent)
     tg))
@@ -397,7 +397,7 @@
     (.enumerate rg arr true)
     (seq arr)))
 
-(defn- extract-info [#^Thread t]
+(defn- extract-info [^Thread t]
   (map str [(.getId t) (.getName t) (.getPriority t) (.getState t)]))
 
 (defslimefn list-threads

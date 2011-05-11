@@ -19,10 +19,10 @@
          (inspect/value-as-string nil {:a 1 :b 2})))
   (is (= "(:a 1 3)"
          (inspect/value-as-string nil '(:a 1 3))))
-  (is (re-matches #"#<X swank-clj.inspect-test.X@.*>"
+  (is (re-matches #"#<X swank[-_]clj.inspect[-_]test.X@.*>"
          (inspect/value-as-string nil (X. 1)))))
 
 (deftest display-values-test
   (is (re-matches
-       #"\[\"1\" 0 \(\(\"Type: \" \(:value \"java.lang.Integer\" 0\) \"\\n\" \"Value: \" \(:value \"1\" 1\) \"\\n\" \"---\" \"\\n\" \"Fields: \" \"\\n\" \"  MIN_VALUE: \" \(:value \"-2147483648\" 2\) \"\\n\" \"  MAX_VALUE: \" \(:value \"2147483647\" 3\) \"\\n\" \"  TYPE: \" \(:value \"int\" 4\) \"\\n\" \"  digits: \" \(:value \"#<char\[\] \[C@[0-9a-f]+>\" 5\) \"\\n\" \"  DigitTens: \" \(:value \"#<char\[\] \[C@[0-9a-f]+>\" 6\) \"\\n\" \"  DigitOnes: \" \(:value \"#<char\[\] \[C@[0-9a-f]+>\" 7\) \"\\n\" \"  sizeTable: \" \(:value \"#<int\[\] \[I@[0-9a-f]+>\" 8\) \"\\n\" \"  integerCacheHighPropValue: \" \(:value \"nil\" 9\) \"\\n\" \"  value: \" \(:value \"1\" 10\) \"\\n\" \"  SIZE: \" \(:value \"32\" 11\) \"\\n\" \"  serialVersionUID: \" \(:value \"[0-9]+\" 12\) \"\\n\"\) 43 0 500\)\]"
+       #"\[\"1\" 0 \(\(\"Type: \" \(:value \"java.lang.(Integer|Long)\" 0\) \"\\n\" \"Value: \" \(:value \"1\" 1\) \"\\n\" \"---\" \"\\n\" \"Fields: .* 0 500\)\]"
        (str (inspect/display-values nil (atom {:inspectee 1}))))))

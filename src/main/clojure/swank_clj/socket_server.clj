@@ -18,7 +18,7 @@
 
 (defn announce-port-to-file
   "Writes the given port number into a file."
-  ([port #^String file]
+  ([port ^String file]
      (with-open [out (new java.io.FileWriter file)]
        (doto out
          (.write (str port "\n"))

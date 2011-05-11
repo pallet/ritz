@@ -44,21 +44,21 @@
 (defn- clean-windows-path
   "Decode file URI encoding and remove an opening slash from
    /c:/program%20files/... in jar file URLs and file resources."
-  [#^String path]
+  [^String path]
   (or (and (.startsWith (System/getProperty "os.name") "Windows")
            (second (re-matches #"^/([a-zA-Z]:/.*)$" path)))
       path))
 
-(defn- zip-resource [#^java.net.URL resource]
-  (let [jar-connection #^java.net.JarURLConnection (.openConnection resource)
+(defn- zip-resource [^java.net.URL resource]
+  (let [jar-connection ^java.net.JarURLConnection (.openConnection resource)
         jar-file (.getPath (.toURI (.getJarFileURL jar-connection)))]
     {:zip [(clean-windows-path jar-file) (.getEntryName jar-connection)]}))
 
-(defn- file-resource [#^java.net.URL resource]
+(defn- file-resource [^java.net.URL resource]
   {:file (clean-windows-path (.getFile resource))})
 
 (defn find-resource
-  [#^String file]
+  [^String file]
   (when-let [resource (.getResource (clojure.lang.RT/baseLoader) file)]
     (if (= (.getProtocol resource) "jar")
       (zip-resource resource)
@@ -66,7 +66,7 @@
 
 (defn find-source-path
   "Find source file or source string for specified source-path"
-  [#^String source-path]
+  [^String source-path]
   (if (source-form-path? source-path)
     (source-form-from-path source-path)
     (if (.isAbsolute (File. source-path))
@@ -81,7 +81,7 @@
 (defn find-compiler-exception-location
   "Return a location vector [source-buffer position], for the given
    throwable."
-  [#^Throwable t]
+  [^Throwable t]
   (when (instance? clojure.lang.Compiler$CompilerException t)
     (let [[match file line] (re-find compiler-exception-location-re (str t))]
       (when (and file line)
@@ -108,7 +108,7 @@
       file-name)))
 
 (defn source-location-for-stack-trace-element
-  [#^StackTraceElement frame]
+  [^StackTraceElement frame]
   (let [line (.getLineNumber frame)
         filename (.getFileName frame)
         classname (.getClassName frame)

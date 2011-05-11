@@ -11,15 +11,15 @@
   split by `split', if each substring of `prefix' is a prefix of the
   corresponding substring in `target' then we call `prefix' a
   compound-prefix of `target'."
-  ([split #^String prefix #^String target]
+  ([split ^String prefix ^String target]
      (let [prefixes (split prefix)
            targets  (split target)]
        (when (<= (count prefixes) (count targets))
-         (every? true? (map #(.startsWith #^String %1 %2) targets prefixes))))))
+         (every? true? (map #(.startsWith ^String %1 %2) targets prefixes))))))
 
 (defn unacronym
   "Interposes delimiter between each character of string."
-  ([delimiter #^String string]
+  ([delimiter ^String string]
      (apply str (interpose delimiter string)))
   {:tag String})
 
@@ -27,7 +27,7 @@
   "Uses a delimiter as the `split' for a compound prefix match check.
   See also: `compound-prefix-match?'"
   ([delimiter prefix target]
-     (compound-prefix-match? #(.split #^String % (str "[" (java.util.regex.Pattern/quote delimiter) "]") -1)
+     (compound-prefix-match? #(.split ^String % (str "[" (java.util.regex.Pattern/quote delimiter) "]") -1)
                              prefix
                              target)))
 
@@ -41,12 +41,12 @@
   "Uses camel case as a delimiter for a compound prefix match check.
 
    See also: `compound-prefix-match?'"
-  ([#^String prefix #^String target]
+  ([^String prefix ^String target]
      (compound-prefix-match? #(re-seq #"(?:^.|[A-Z])[^A-Z]*" %)
                              prefix
                              target)))
 
-(defn split-compound-prefix-match? [#^String symbol-string #^String potential]
+(defn split-compound-prefix-match? [^String symbol-string ^String potential]
   (if (.startsWith symbol-string ".")
     (and (.startsWith potential ".")
          (camel-compound-prefix-match? symbol-string potential))

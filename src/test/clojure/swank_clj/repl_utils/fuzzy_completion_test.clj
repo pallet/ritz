@@ -1,8 +1,12 @@
 (ns swank-clj.repl-utils.fuzzy-completion-test
   (:use
    [swank-clj.repl-utils.fuzzy-completion :as sf]
-   clojure.test)
-  (:import swank-clj.repl-utils.fuzzy-completion.FuzzyMatching))
+   clojure.test))
+
+(try
+  (import swank_clj.repl_utils.fuzzy_completion.FuzzyMatching)
+  (catch ClassNotFoundException _
+    (import swank-clj.repl-utils.fuzzy-completion.FuzzyMatching)))
 
 (deftest compute-most-completions-test
   (is (= '(([0 "m"] [9 "v"] [15 "b"]))

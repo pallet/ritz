@@ -7,7 +7,7 @@
 
 (defn ^String largest-common-prefix
   "Returns the largest common prefix of two strings."
-  [#^String a #^String b]
+  [^String a ^String b]
   (apply str (take-while identity (map #(when (= %1 %2) %1) a b))))
 
 (defn ns-name-list
@@ -46,7 +46,7 @@
 
 (defn static-member-name-list
   "Returns a list of static members for a given class"
-  [#^Class class]
+  [^Class class]
   (map java/member-name
        (concat (java/static-methods class) (java/static-fields class))))
 
@@ -100,7 +100,7 @@
                             (when sym-ns (symbol sym-ns))
                             (ns-name (the-ns ns)))
                            (classes-on-path symbol-name))
-                   (filter #(.startsWith #^String % symbol-name))
+                   (filter #(.startsWith ^String % symbol-name))
                    (sort)
                    (seq))]
       [matches

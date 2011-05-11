@@ -51,7 +51,7 @@
 (def first-eval-seen (atom false))
 ;;;
 
-(def *sldb-initial-frames* 10)
+(def ^{:dynamic true} *sldb-initial-frames* 10)
 
 (defonce connections (atom {}))
 
@@ -135,7 +135,9 @@
     (logging/trace "debug/remote-swank-port: loop")
     (if-let [port (jdi-clj/control-eval
                    context
-                   `(deref swank-clj.socket-server/acceptor-port))]
+                   `(if-let [v# (resolve
+                                 '~'swank-clj.socket-server/acceptor-port)]
+                      (deref (var-get v#))))]
       port
       (do
         (logging/trace "debug/remote-swank-port: no port yet ...")
@@ -1020,9 +1022,7 @@
   [event context]
   (let [exception (.exception event)
         thread (jdi/event-thread event)
-        silent? (.startsWith
-                 (.toString event)
-                 "ExceptionEvent@java.net.URLClassLoader")]
+        silent? (jdi/silent-event? event)]
     (if (and
          (:control-thread context)
          (:RT context)

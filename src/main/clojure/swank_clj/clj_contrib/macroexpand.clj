@@ -1,7 +1,7 @@
 (ns swank-clj.clj-contrib.macroexpand)
 
 (def
- #^{:private true}
+ ^{:private true}
  walk-enabled?
  (.getResource (clojure.lang.RT/baseLoader) "clojure/contrib/macro_utils.clj"))
 

@@ -103,7 +103,7 @@
     (try
      (when-let [sym (read-string variable-name)]
        (when-let [var (resolve sym)]
-         (when (.isBound #^clojure.lang.Var var)
+         (when (.isBound ^clojure.lang.Var var)
            (str variable-name " => " (var-get var)))))
      (catch Exception e nil))
     "")))

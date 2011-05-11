@@ -12,7 +12,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
 ;; INPUT
 (defn read-chars
   ([rdr n] (read-chars rdr n false))
-  ([#^Reader rdr n throw-exception]
+  ([^Reader rdr n throw-exception]
      (let [sb (StringBuilder.)]
        (dotimes [i n]
          (let [c (.read rdr)]
@@ -24,7 +24,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
 
 (defn- read-form
    "Read a form that conforms to the swank rpc protocol"
-  ([#^Reader rdr]
+  ([^Reader rdr]
     (let [c (.read rdr)]
       (condp = (char c)
           \" (let [sb (StringBuilder.)]
@@ -72,7 +72,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
                   (symbol str)))))))))
 
 (defn- read-packet
-  ([#^Reader reader]
+  ([^Reader reader]
      (let [len (read-chars reader 6 swank-protocol-error)
            _ (logging/trace "rpc/read-packet length %s" len)
            len (Integer/parseInt len 16)]
@@ -81,7 +81,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
 
 (defn decode-message
    "Read an rpc message encoded using the swank rpc protocol."
-  ([#^Reader rdr]
+  ([^Reader rdr]
     (let [packet (read-packet rdr)]
        (logging/trace "READ: %s\n" packet)
        (try
@@ -94,13 +94,13 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
 
 (defmulti print-object (fn [x writer] (type x)))
 
-(defmethod print-object :default [o, #^Writer w]
+(defmethod print-object :default [o, ^Writer w]
   (print-method o w))
 
-(defmethod print-object Boolean [o, #^Writer w]
+(defmethod print-object Boolean [o, ^Writer w]
   (.write w (if o "t" "nil")))
 
-(defmethod print-object String [#^String s, #^Writer w]
+(defmethod print-object String [^String s, ^Writer w]
   (let [char-escape-string {\" "\\\""
                             \\  "\\\\"}]
     (do (.append w \")
@@ -111,7 +111,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
       (.append w \"))
   nil))
 
-(defmethod print-object clojure.lang.ISeq [o, #^Writer w]
+(defmethod print-object clojure.lang.ISeq [o, ^Writer w]
   (.write w "(")
   (print-object (first o) w)
   (doseq [item (rest o)]
@@ -120,11 +120,11 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
   (.write w ")"))
 
 (defn- write-form
-  ([#^Writer writer message]
+  ([^Writer writer message]
     (print-object message writer)))
 
 (defn- write-packet
-  ([#^Writer writer str]
+  ([^Writer writer str]
    (let [len (.length str)]
     (doto writer
           (.write (format "%06x" len))
@@ -133,7 +133,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
 
 (defn encode-message
   "Write an rpc message encoded using the swank rpc protocol."
-  ([#^Writer writer message]
+  ([^Writer writer message]
      (let [str (with-out-str
                   (write-form *out* message)) ]
        (logging/trace "WRITE: %s\n" str)

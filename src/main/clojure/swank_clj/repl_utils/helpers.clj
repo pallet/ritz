@@ -3,7 +3,7 @@
 
 (defn exception-causes
   "Create a sequence of throwable causes."
-  [#^Throwable t]
+  [^Throwable t]
   (lazy-seq
     (cons t (when-let [cause (.getCause t)]
               (exception-causes cause)))))
