@@ -4,6 +4,7 @@
    [swank-clj.commands :only [defslimefn]])
   (:require
    [swank-clj.jpda.debug :as debug]
+   [swank-clj.logging :as logging]
    [swank-clj.swank.messages :as messages]))
 
 ;;; Breakpoints
@@ -15,6 +16,11 @@
 ;; (defslimefn break-on-exceptions
 ;;   "Control which expressions are trapped in the debugger"
 ;;   [connection filter-caught? class-exclusions])
+
+(defslimefn toggle-swank-logging
+  "Control logging level"
+  [connection]
+  (swap! logging/log-level (fn [lvl] (if lvl nil :trace))))
 
 (defslimefn quit-breakpoint-browser [connection])
 

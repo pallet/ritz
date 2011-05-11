@@ -154,4 +154,10 @@
         `(swank:breakpoint-location ,id)
       #'slime-show-source-location)))
 
+(defun slime-toggle-swank-logging ()
+  "Toggle logging in swank"
+  (interactive)
+  (slime-eval-with-transcript
+   `(swank:toggle-swank-logging)))
+
 (provide 'slime-clj)
