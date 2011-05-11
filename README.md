@@ -10,7 +10,7 @@ This is alpha quality.
 
 ## Install
 
-Add `[swank-clj "0.1.0"]` to your project.clj `:dev-dependencies`.
+Add `[swank-clj "0.1.1"]` to your project.clj `:dev-dependencies`.
 
 Install the slime-clj.el contrib from [marmalade](http://marmalade-repo.org/).
 
