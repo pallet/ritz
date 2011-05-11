@@ -11,31 +11,31 @@
 
 (defonce ^{:private true
            :doc "Use own pool to prevent any interaction with user pools"}
-  #^ExecutorService executor
+  ^ExecutorService executor
   (Executors/newCachedThreadPool
    (proxy [ThreadFactory] []
      (newThread
-      [#^Runnable r]
+      [^Runnable r]
       (doto (Thread. r)
         (.setDaemon true))))))
 
 (defn execute
-  [#^Callable f]
+  [^Callable f]
   (.submit executor f))
 
 
 (defonce ^{:private true
            :doc "request handler pool"}
-  #^ExecutorService request-executor
+  ^ExecutorService request-executor
   (Executors/newCachedThreadPool))
 
 (defn execute-request
-  [#^Callable f]
+  [^Callable f]
   (.submit request-executor f))
 
 
 (defn- default-exception-handler
-  [#^java.lang.Throwable cause name]
+  [^java.lang.Throwable cause name]
   (when-not (or (instance? IOException cause)
                 (instance? java.lang.InterruptedException cause)
                 (instance? java.nio.channels.ClosedByInterruptException cause))
@@ -48,7 +48,7 @@
 (defn- root-cause
   "Return the deepest root cause of a Throwable"
   [throwable]
-  (loop [#^Throwable cause throwable]
+  (loop [^Throwable cause throwable]
     (if-let [cause (.getCause cause)]
       (recur cause)
       cause)))

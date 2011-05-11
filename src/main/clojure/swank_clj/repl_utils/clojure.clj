@@ -1,17 +1,18 @@
-(ns swank-clj.repl-utils.clojure)
+(ns swank-clj.repl-utils.clojure
+  (:refer-clojure :exclude [with-redefs]))
 
 (defn unmunge
   "Converts a javafied name to a clojure symbol name"
-  ([#^String name]
-     (reduce (fn [#^String s [to from]]
+  ([^String name]
+     (reduce (fn [^String s [to from]]
                (.replaceAll s from (str to)))
              name
              clojure.lang.Compiler/CHAR_MAP)))
 
 (defn ns-path
   "Returns the path form of a given namespace"
-  ([#^clojure.lang.Namespace ns]
-     (let [#^String ns-str (name (ns-name ns))]
+  ([^clojure.lang.Namespace ns]
+     (let [^String ns-str (name (ns-name ns))]
        (-> ns-str
            (.substring 0 (.lastIndexOf ns-str "."))
            (.replace \- \_)
@@ -22,7 +23,7 @@
    contain a namespace, the default-ns is used (nil if none provided)."
   ([symbol]
      (symbol-name-parts symbol nil))
-  ([#^String symbol default-ns]
+  ([^String symbol default-ns]
      (let [ns-pos (.indexOf symbol (int \/))]
        (if (= ns-pos -1) ;; namespace found?
          [default-ns symbol]
@@ -31,3 +32,10 @@
 (defn resolve-ns [sym ns]
   (or (find-ns sym)
       (get (ns-aliases ns) sym)))
+
+(def ^{:macro true :doc "Provide cross version support for with-redefs"}
+  with-redefs
+  (var-get
+   (or
+    (resolve 'clojure.core/with-redefs)
+    (resolve 'clojure.core/binding))))

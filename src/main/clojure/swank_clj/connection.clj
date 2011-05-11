@@ -62,7 +62,7 @@
      (proxy [StringWriter] []
        (close [] (reset! closed? true))
        (flush []
-              (let [#^StringWriter me this
+              (let [^StringWriter me this
                     len (.. me getBuffer length)]
                 (when (> len 0)
                   (flushf (.. me getBuffer (substring 0 len)))
@@ -81,7 +81,7 @@
 
 (defn thread-id
   ([] (thread-id (Thread/currentThread)))
-  ([#^Thread thread]
+  ([^Thread thread]
      (.getId thread)))
 
 (defn ^java.io.Reader make-repl-input-stream

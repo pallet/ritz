@@ -1,5 +1,36 @@
 (ns swank-clj.repl-utils.doc
-  "Documentation utils")
+  "Documentation utils"
+  (:refer-clojure :exclude [print-doc]))
+
+(defn- print-doc*
+  "Replacement for clojure.core/print-doc"
+  [m]
+  (println "-------------------------")
+  (println (str (when-let [ns (:ns m)] (str (ns-name ns) "/")) (:name m)))
+  (cond
+   (:forms m) (doseq [f (:forms m)]
+                (print "  ")
+                (prn f))
+   (:arglists m) (prn (:arglists m)))
+  (if (:special-form m)
+    (do
+      (println "Special Form")
+      (println " " (:doc m))
+      (if (contains? m :url)
+        (when (:url m)
+          (println (str "\n  Please see http://clojure.org/" (:url m))))
+        (println (str "\n  Please see http://clojure.org/special_forms#"
+                      (:name m)))))
+    (do
+      (when (:macro m)
+        (println "Macro"))
+      (println " " (:doc m)))))
+
+(def print-doc
+  (let [print-doc (resolve 'clojure.core/print-doc)]
+    (if (or (nil? print-doc) (-> print-doc meta :private))
+      (comp print-doc* meta)
+      print-doc)))
 
 (defn doc-string
   "Return a string with a var's formatted documentation"

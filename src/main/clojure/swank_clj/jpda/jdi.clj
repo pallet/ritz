@@ -14,7 +14,7 @@
     Bootstrap VMDisconnectedException
     ObjectReference StringReference
     ThreadReference ThreadGroupReference
-    ReferenceType Locatable StackFrame)
+    ReferenceType Locatable Location StackFrame)
    (com.sun.jdi.event
     VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent VMDeathEvent
     Event)
@@ -88,6 +88,12 @@
 
 (defmethod handle-event :default [event context])
 
+(defn silent-event?
+  [event]
+  (let [event-str (.toString event)]
+    (or (.startsWith event-str "ExceptionEvent@java.net.URLClassLoader")
+        (.startsWith event-str "ExceptionEvent@clojure.lang.RT"))))
+
 (defn handle-event-set
   "NB, this resumes the event-set, so you will need to suspend within
    the handlers if required."
@@ -96,9 +102,8 @@
     (try
       (doseq [event event-set]
         (try
-          (let [s (.toString event)]
-            (when-not (.startsWith s "ExceptionEvent@java.net.URLClassLoader")
-              (logging/trace "jdi/handle-event-set: %s" event)))
+          (when-not (silent-event? event)
+            (logging/trace "jdi/handle-event-set: %s" event))
           (f event context)
           (when (instance? VMDeathEvent event)
             (logging/trace "jdi/handle-event-set: vm death seen")

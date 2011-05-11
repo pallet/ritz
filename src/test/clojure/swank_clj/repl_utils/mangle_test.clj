@@ -4,10 +4,10 @@
    clojure.test))
 
 (deftest clojure->java-test
-  (is (= "a_b_c_BANG__DOLLARSIGN_d" (clojure->java "a-b-c!$d"))))
+  (is (= "a_b_c_BANG_d" (clojure->java "a-b-c!d"))))
 
 (deftest java->clojure-test
-  (is (= "a-b-c!$d" (java->clojure "a_b_c_BANG__DOLLARSIGN_d"))))
+  (is (= "a-b-c!d" (java->clojure "a_b_c_BANG_d"))))
 
 (deftest namespace-name->path-test
   (is (= "a/b_c/d" (namespace-name->path "a.b-c.d"))))

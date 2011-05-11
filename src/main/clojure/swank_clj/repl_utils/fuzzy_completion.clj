@@ -13,7 +13,7 @@
    [swank-clj.repl-utils.clojure :as clj]
    [swank-clj.repl-utils.helpers :as helpers]))
 
-(def *fuzzy-recursion-soft-limit* 30)
+(def ^{:dynamic true} *fuzzy-recursion-soft-limit* 30)
 (defn- compute-most-completions [short full]
   (let [collect-chunk (fn [[pcur [[pa va] ys]] [pb vb]]
                         (let [xs (if (= (dec pb) pcur)
@@ -45,9 +45,9 @@
                  (recur short (rest full) (inc pos) chunk seed false)))]
     (map reverse (step short full 0 [] () false))))
 
-(def *fuzzy-completion-symbol-prefixes* "*+-%&?<")
-(def *fuzzy-completion-word-separators* "-/.")
-(def *fuzzy-completion-symbol-suffixes* "*+->?!")
+(def ^{:dynamic true} *fuzzy-completion-symbol-prefixes* "*+-%&?<")
+(def ^{:dynamic true} *fuzzy-completion-word-separators* "-/.")
+(def ^{:dynamic true} *fuzzy-completion-symbol-suffixes* "*+->?!")
 (defn- score-completion [completion short full]
   (let [find1
         (fn [c s]

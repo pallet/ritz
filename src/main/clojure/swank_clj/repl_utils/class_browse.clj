@@ -27,12 +27,12 @@
 
 ;;; Class file naming, categorization
 
-(defn jar-file? [#^String n] (.endsWith n ".jar"))
-(defn class-file? [#^String n] (.endsWith n ".class"))
-(defn clojure-ns-file? [#^String n] (.endsWith n "__init.class"))
-(defn clojure-fn-file? [#^String n] (re-find #"\$.*__\d+\.class" n))
-(defn top-level-class-file? [#^String n] (re-find #"^[^\$]+\.class" n))
-(defn nested-class-file? [#^String n]
+(defn jar-file? [^String n] (.endsWith n ".jar"))
+(defn class-file? [^String n] (.endsWith n ".class"))
+(defn clojure-ns-file? [^String n] (.endsWith n "__init.class"))
+(defn clojure-fn-file? [^String n] (re-find #"\$.*__\d+\.class" n))
+(defn top-level-class-file? [^String n] (re-find #"^[^\$]+\.class" n))
+(defn nested-class-file? [^String n]
   ;; ^ excludes anonymous classes
   (re-find #"^[^\$]+(\$[^\d]\w*)+\.class" n))
 
@@ -43,7 +43,7 @@
 
 (defn class-or-ns-name
   "Returns the Java class or Clojure namespace name for a class relative path."
-  [#^String n]
+  [^String n]
   (.replace
    (if (clojure-ns-file? n)
      (-> n (.replace "__init.class" "") (.replace "_" "-"))

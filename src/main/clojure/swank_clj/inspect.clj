@@ -14,7 +14,7 @@
 (defmethod value-as-string :default
   [context obj] (pr-str obj))
 
-(def *lazy-seq-items-sample-size* 10)
+(def ^{:dynamic true} *lazy-seq-items-sample-size* 10)
 
 (defmethod value-as-string clojure.lang.LazySeq
   [context obj]
@@ -25,7 +25,7 @@
            " ...")
          ")>")))
 
-(def *sequential-items-sample-size* 10)
+(def ^{:dynamic true} *sequential-items-sample-size* 10)
 
 (defmethod value-as-string clojure.lang.APersistentVector
   [context obj]
@@ -162,7 +162,7 @@
            (iterate inc 0)
            obj)))
 
-(defmethod emacs-inspect :var [#^clojure.lang.Var obj]
+(defmethod emacs-inspect :var [^clojure.lang.Var obj]
   (concat
    (label-value-line*
     ("Class" (class obj)))
@@ -207,7 +207,7 @@
       (fn [name val]
         `(~(str "  " name ": ") (:value ~val) (:newline))) names vals))))
 
-(defmethod emacs-inspect :class [#^Class obj]
+(defmethod emacs-inspect :class [^Class obj]
   (let [meths (. obj getMethods)
         fields (. obj getFields)]
     (concat
@@ -221,15 +221,15 @@
      (mapcat (fn [m]
                `("  " (:value ~m) (:newline))) meths))))
 
-(defmethod emacs-inspect :aref [#^clojure.lang.ARef obj]
+(defmethod emacs-inspect :aref [^clojure.lang.ARef obj]
   `("Type: " (:value ~(class obj)) (:newline)
     "Value: " (:value ~(deref obj)) (:newline)))
 
-(defn ns-refers-by-ns [#^clojure.lang.Namespace ns]
-  (group-by (fn [#^clojure.lang.Var v] (. v ns))
+(defn ns-refers-by-ns [^clojure.lang.Namespace ns]
+  (group-by (fn [^clojure.lang.Var v] (. v ns))
             (map val (ns-refers ns))))
 
-(defmethod emacs-inspect :namespace [#^clojure.lang.Namespace obj]
+(defmethod emacs-inspect :namespace [^clojure.lang.Namespace obj]
   (concat
    (label-value-line*
     ("Class" (class obj))

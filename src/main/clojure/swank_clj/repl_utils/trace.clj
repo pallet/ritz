@@ -10,8 +10,8 @@
 
 (defn- trace-fn
   "A traced version of the var v"
-  [v f]
-  (let [fname (str (ns-name (:ns (meta v))) "/" (:name (meta v)))]
+  [old-f m f]
+  (let [fname (str (ns-name (:ns m)) "/" (:name m))]
     (fn [& args]
       (println fname (apply str (take 240 (pr-str args))))
       (let [result (apply f args)]
@@ -23,7 +23,7 @@
   (if (traced v)
     traced
     (let [f (var-get v)]
-      (alter-var-root v trace-fn f)
+      (alter-var-root v trace-fn (meta v) f)
       (assoc traced v f))))
 
 (defn- untrace-var

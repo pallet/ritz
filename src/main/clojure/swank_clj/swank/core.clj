@@ -59,4 +59,4 @@
   "Split a string in"
   [s]
   string/join
-  (.split #^String s (System/getProperty "line.separator")))
+  (.split ^String s (System/getProperty "line.separator")))
