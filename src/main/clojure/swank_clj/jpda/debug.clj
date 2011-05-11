@@ -996,7 +996,8 @@
 
 (defn connection-and-id-from-thread
   "Walk the stack frames to find the eval-for-emacs call and extract
-   the id argument."
+   the id argument.  This finds the connection and id in the target
+   vm"
   [context thread]
   (logging/trace "connection-and-id-from-thread %s" thread)
   (some (fn [frame]
@@ -1033,19 +1034,13 @@
         ;; would like to print this, but can cause hangs
         ;;    (jdi-clj/exception-message context event)
         (if (break-for-exception? event)
-          (let [{:keys [id connection]} (connection-and-id-from-thread
-                                         context thread)
-                connection (or connection (ffirst @connections))]
-            ;; (logging/trace "exception-event: %s %s" id connection)
-            (let []
-              ;; ensure we have started - id and connection need to go
-              (if connection
-                (if (aborting-level? connection)
-                  (logging/trace "Not activating sldb (aborting)")
-                  (do
-                    (logging/trace "Activating sldb")
-                    (invoke-debugger connection event)))
-                (logging/trace "Not activating sldb (no id, connection)"))))
+          (if-let [connection (ffirst @connections)]
+            (if (aborting-level? connection)
+              (logging/trace "Not activating sldb (aborting)")
+              (do
+                (logging/trace "Activating sldb")
+                (invoke-debugger connection event)))
+            (logging/trace "Not activating sldb (no connection)"))
           ;; (logging/trace "Not activating sldb (break-for-exception?)")
           ))
       (when-not silent?
@@ -1061,31 +1056,23 @@
   (logging/trace "BREAKPOINT")
   (let [thread (jdi/event-thread event)]
     (when (and (:control-thread context) (:RT context))
-      (let [{:keys [id connection]} (connection-and-id-from-thread
-                                     context thread)
-            connection (or connection (ffirst @connections))]
-        ;; ensure we have started - id and connection need to go
-        (if connection
-          (do
-            (logging/trace "Activating sldb for breakpoint")
-            (invoke-debugger connection event))
-          (logging/trace "Not activating sldb (no connection)"))))))
+      (if-let [connection (ffirst @connections)]
+        (do
+          (logging/trace "Activating sldb for breakpoint")
+          (invoke-debugger connection event))
+        (logging/trace "Not activating sldb (no connection)")))))
 
 (defmethod jdi/handle-event StepEvent
   [event context]
   (logging/trace "STEP")
   (let [thread (jdi/event-thread event)]
     (when (and (:control-thread context) (:RT context))
-      (let [{:keys [id connection]} (connection-and-id-from-thread
-                                     context thread)
-            connection (or connection (ffirst @connections))]
-        ;; ensure we have started - id and connection need to go
-        (if connection
-          (do
-            (logging/trace "Activating sldb for stepping")
-            (invoke-debugger connection event)
-            (jdi/discard-event-request (:vm context) (.. event request)))
-          (logging/trace "Not activating sldb (no connection)"))))))
+      (if-let [connection (ffirst @connections)]
+        (do
+          (logging/trace "Activating sldb for stepping")
+          (invoke-debugger connection event)
+          (jdi/discard-event-request (:vm context) (.. event request)))
+        (logging/trace "Not activating sldb (no connection)")))))
 
 (defmethod jdi/handle-event VMDeathEvent
   [event context-atom]
