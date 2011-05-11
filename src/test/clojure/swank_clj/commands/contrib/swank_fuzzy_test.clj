@@ -15,6 +15,6 @@
 (deftest fuzzy-completions-test
   ;; (logging/set-level :trace)
   (test-utils/eval-for-emacs-test
-   (swank/fuzzy-completions "shutdown-a" "clojure.core"
+   `(~'swank/fuzzy-completions "shutdown-a" "clojure.core"
                             :limit 10 :time-limit-in-msec 1000)
    #"00005\d\(:return \(:ok \(\(\(\"shutdown-agents\" \"[\d]+.\d\d\" \(\(0 \"shutdown-a\"\)\) \"-f------\"\)\) nil\)\) 1\)"))

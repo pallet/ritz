@@ -86,9 +86,10 @@
 (defn start
   "Start the given server wrapped in a repl. Use this to embed swank in your
    code."
-  [{:keys [port encoding server-ns backlog host]
+  [{:keys [port encoding server-ns backlog host port-file]
     :or {server-ns 'swank-clj.proxy}
     :as options}]
+  (logging/trace "socket-server/start")
   (let [stop (atom false)
         options (-> options
                     (update-in
@@ -107,9 +108,10 @@
                      (ns-resolve
                       '~server-ns
                       (symbol "serve-connection"))
-                     (-> "java.io.tmpdir"
-                         (System/getProperty)
-                         (File. "slime-port.txt")
-                         (.getCanonicalPath))
+                     (or ~port-file
+                         (-> "java.io.tmpdir"
+                             (System/getProperty)
+                             (File. "slime-port.txt")
+                             (.getCanonicalPath)))
                      '~options))))
      :need-prompt (constantly false))))

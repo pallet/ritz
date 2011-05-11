@@ -112,6 +112,7 @@ From slime-goto-source-location docstring:
 (defn debug
   "Provide debugger information"
   [thread-id level condition-map restarts backtrace continutions]
+  (logging/trace "building debug info message")
   (list*
    :debug thread-id level
    (debug-info condition-map restarts backtrace continutions)))
@@ -144,7 +145,7 @@ From slime-goto-source-location docstring:
   `(:message ~(:message m)
              :severity ~(:severity m :error)
              :location ~(if-let [l (:location m)]
-                          (apply location l)
+                          (location l)
                           '(:error "No error location available"))
              :references ~(:references m)
              :short-message ~(:message m)))

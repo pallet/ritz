@@ -1,4 +1,4 @@
-(defproject swank-clj "0.1.0-SNAPSHOT"
+(defproject swank-clj "0.1.0"
   :description "Another swank for clojure"
   :source-path "src/main/clojure"
   :resources-path "src/main/resources"
@@ -7,4 +7,5 @@
   :dependencies [[org.clojure/clojure "1.2.0"]]
   :dev-dependencies [[swank-clojure "1.2.1"]
                      [lein-swank-clj "1.0.0-SNAPSHOT"]
-                     [clojure-source "1.2.0"]])
+                     [clojure-source "1.2.0"]]
+  :tasks [cake.tasks.swank-clj])

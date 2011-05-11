@@ -15,7 +15,7 @@
    namespaces. Instead, we only check whether the set of namespaces in
    the cache match the set of currently defined namespaces."
   [connection]
-  (not= (hash (all-ns)) (hash (:indent-cache-pkg @connection))))
+  (not= (hash (all-ns)) (:indent-cache-hash @connection)))
 
 (defn- find-args-body-position
   "Given an arglist, return the number of arguments before
@@ -91,12 +91,11 @@
   (let [cache (:indent-cache @connection)]
     (let [delta (update-indentation-delta
                  (connection/request-ns connection) cache force)]
-      (dosync
-       (ref-set (:indent-cache-pkg @connection) (hash (all-ns)))
-       (when (seq delta)
-         (connection/send-to-emacs
-          connection
-          (messages/indentation-update delta)))))))
+      (reset! (:indent-cache-hash @connection) (hash (all-ns)))
+      (when (seq delta)
+        (connection/send-to-emacs
+         connection
+         (messages/indentation-update delta))))))
 
 (defn- sync-indentation-to-emacs
   "Send any indentation updates to Emacs via emacs-connection"

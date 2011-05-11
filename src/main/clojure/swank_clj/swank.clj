@@ -3,7 +3,7 @@
   (:require
    [swank-clj.commands :as commands]
    [swank-clj.connection :as connection]
-   [swank-clj.debug :as debug]
+   [swank-clj.jpda.debug :as debug]
    [swank-clj.executor :as executor]
    [swank-clj.hooks :as hooks]
    [swank-clj.logging :as logging]
@@ -53,8 +53,7 @@
                (hooks/run core/pre-reply-hook connection)
                (connection/remove-pending-id connection id)
                (logging/trace "swank/eval-for-emacs: result %s %s" result id)
-               (connection/send-to-emacs
-                connection (messages/ok result id)))))
+               (connection/send-to-emacs connection (messages/ok result id)))))
     (catch Throwable t
       ;; Thread/interrupted clears this thread's interrupted status; if
       ;; Thread.stop was called on us it may be set and will cause an
@@ -91,8 +90,6 @@
   "Executes a message."
   [ev connection]
   (logging/trace "swank/dispatch-event: %s" (pr-str ev))
-  (when debug/vm
-    (debug/ensure-exception-event-request))
   (let [[action & args] ev]
     (logging/trace "swank/dispatch-event: %s -> %s" action (pr-str args))
     (case action

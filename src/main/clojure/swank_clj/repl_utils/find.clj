@@ -37,7 +37,8 @@
 
 (defn source-form-path?
   [source-path]
-  (.startsWith source-path source-form-name))
+  (when source-path
+    (.startsWith source-path source-form-name)))
 
 ;;; File and Resource Paths
 (defn- clean-windows-path
@@ -120,13 +121,21 @@
   "Try and find the source location for a var"
   [v]
   (when-let [m (and v (meta v))]
-    (when-let [path (find-source-path (:file meta))]
-      [path {:line (:line meta)}])))
+    (when-let [path (find-source-path (:file m))]
+      [path {:line (:line m)}])))
 
 (defn source-location-for-namespace-sym
   "Try and find the source location for a namespace"
   [sym]
   (when-let [n (and sym (name sym))]
     (when-let [path (find-source-path
-                     (str (mangle/namespace-name->path) ".clj"))]
+                     (str (mangle/namespace-name->path n) ".clj"))]
+      [path {:line (:line 1)}])))
+
+(defn source-location-for-class
+  "Try and find the source location for a class"
+  [sym]
+  (when-let [class-name (and sym (name sym))]
+    (when-let [path (find-source-path
+                     (str (mangle/namespace-name->path class-name) ".java"))]
       [path {:line (:line 1)}])))

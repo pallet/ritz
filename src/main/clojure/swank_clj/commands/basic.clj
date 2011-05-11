@@ -55,9 +55,10 @@
    0))
 
 (defn interactive-eval* [connection string]
+  (logging/trace "basic/interactive-eval* %s" string)
   (pr-str
    (first
-    (core/with-namespace-tracking
+    (core/with-namespace-tracking connection
       (eval-region connection string)))))
 
 (defslimefn interactive-eval-region [connection string]
@@ -94,15 +95,25 @@
          [(str s#) result#]))))
 
 (defslimefn eval-and-grab-output [connection string]
-  (let [[output value] (with-out-str-and-value (eval-region connection string))]
-    (list output (pr-str (first value)))))
+  (let [value (promise)]
+    (list
+     (with-out-str
+       (binding [*err* *out*]
+         (deliver value (eval-region connection string))))
+     (pr-str (first @value)))))
 
 (defslimefn pprint-eval [connection string]
   (format/pprint-code (first (eval-region connection string))))
 
 ;;;; Macro expansion
 (defn- apply-macro-expander [expander string]
-  (format/pprint-code (expander (read-string string))))
+  (format/pprint-code (expander (read-string string)) false))
+
+;; (defmacro apply-macro-expander* [expander string]
+;;   `(~expander ~string))
+
+;; (defn- apply-macro-expander [expander string]
+;;   (format/pprint-code (read-string (apply-macro-expander* expander string)) false))
 
 (defslimefn swank-macroexpand-1 [connection string]
   (apply-macro-expander macroexpand-1 string))
@@ -168,12 +179,12 @@
         line (line-at-position directory position)
         ret (do
               (when (not= (name (ns-name *ns*))
-                          (connection/request-ns connection))
+                          (connection/buffer-ns-name connection))
                 (throw (clojure.lang.Compiler$CompilerException.
                         directory line
                         (Exception.
                          (str "No such namespace: "
-                              (connection/request-ns connection))))))
+                              (connection/buffer-ns-name connection))))))
               (compile/compile-region string directory line))
         delta (- (System/nanoTime) start)]
     (messages/compilation-result nil ret (/ delta 1000000000.0))))
@@ -245,7 +256,7 @@
 ;;;; Package Commands
 (defslimefn list-all-package-names
   ([connection] (map (comp str ns-name) (all-ns)))
-  ([connection nicknames?] (list-all-package-names)))
+  ([connection nicknames?] (list-all-package-names connection)))
 
 (defslimefn set-package [connection name]
   (let [ns (utils/maybe-ns name)]
@@ -273,24 +284,33 @@
 
 
 ;;;; meta dot find
+(defn- find-class-definition [sym]
+  (or
+   (when-let [ns (namespace sym)]
+     (when-let [location (find/source-location-for-class (symbol ns))]
+       `((~ns ~(messages/location location)))))
+   (when-let [location (find/source-location-for-class sym)]
+     `((~(name sym) ~(messages/location location))))))
+
 (defn- find-ns-definition [ns]
   (when-let [location (find/source-location-for-namespace-sym ns)]
-    `((~(str ns) ~(apply messages/location location)))))
+    `((~(str ns) ~(messages/location location)))))
 
-(defn- find-var-definition [ns sym-name]
+(defn- find-var-definition [ns sym]
   (try
-    (let [sym-var (ns-resolve ns sym-name)]
+    (when-let [sym-var (ns-resolve ns sym)]
       (when-let [location (find/source-location-for-var sym-var)]
         `((~(str "(defn " (:name (meta sym-var)) ")")
-           ~(apply messages/location location)))))
+           ~(messages/location location)))))
     (catch java.lang.ClassNotFoundException e nil)))
 
 (defslimefn find-definitions-for-emacs [connection name]
-  (let [sym (read-string name)]
+  (let [sym (symbol name)]
     (or
      (find-var-definition (connection/request-ns connection) sym)
      (find-ns-definition ((ns-aliases (connection/request-ns connection)) sym))
      (find-ns-definition (find-ns sym))
+     (find-class-definition sym)
      `((~name (:error "Source definition not found."))))))
 
 (defslimefn throw-to-toplevel [connection]
@@ -347,8 +367,7 @@
 
 (defslimefn eval-string-in-frame [connection expr n]
   ;; (if (and (zero? n) *current-env*)
-  ;;   (with-bindings *current-env*
-  ;;     (eval expr)))
+  ;;   (with-bindings *current-env* (eval expr)))
   )
 
 (defslimefn frame-source-location [connection n]

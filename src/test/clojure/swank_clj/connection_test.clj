@@ -18,10 +18,11 @@
     (try
       (is (:reader @c))
       (is (:writer @c))
-      (is (:indent-cache-pkg @c))
+      (is (:indent-cache-hash @c))
       (is (deref (:indent-cache @c)))
       (is (:writer-redir @c))
       (is (set? (:pending @c)))
+      (is (map? @(:inspector @c)))
       (finally
        (when-not (.isClosed s) (.close s))
        (when-not (.isClosed a) (.close a))))))
