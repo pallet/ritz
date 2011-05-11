@@ -164,10 +164,18 @@
         `(swank:breakpoint-location ,id)
       #'slime-show-source-location)))
 
+;;; swank development helpers
 (defun slime-toggle-swank-logging ()
   "Toggle logging in swank"
   (interactive)
   (slime-eval-with-transcript
    `(swank:toggle-swank-logging)))
 
+(defun slime-resume-vm ()
+  "Resume a suspended vm"
+  (interactive)
+  (slime-eval-with-transcript
+   `(swank:resume-vm)))
+
 (provide 'slime-clj)
+;;; slime-clj.el ends here

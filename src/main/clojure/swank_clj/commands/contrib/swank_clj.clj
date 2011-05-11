@@ -26,12 +26,8 @@
 ;;   "Control which expressions are trapped in the debugger"
 ;;   [connection filter-caught? class-exclusions])
 
-(defslimefn toggle-swank-logging
-  "Control logging level"
-  [connection]
-  (swap! logging/log-level (fn [lvl] (if lvl nil :trace))))
-
 (defslimefn quit-breakpoint-browser [connection])
+
 
 (def ^{:private true} breakpoint-data-fn
   (comp
@@ -68,3 +64,16 @@ corresponding attribute values per thread."
   (messages/location
    (debug/breakpoint-location
     (connection/vm-context connection) breakpoint-id)))
+
+
+;;; swank development utilities
+(defslimefn toggle-swank-logging
+  "Control logging level"
+  [connection]
+  (swap! logging/log-level (fn [lvl] (if lvl nil :trace))))
+
+(defslimefn resume-vm
+  "Resume the vm.  If the vm becomes suspended for some reason, you can
+   use this to unsuspend it"
+  [connection]
+  (.resume (:vm (connection/vm-context connection))))
