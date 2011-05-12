@@ -52,8 +52,9 @@
         (frame-catch-tags-for-emacs connection n)))
 
 (defslimefn frame-source-location [connection frame-number]
-  (messages/location
-   (debug/frame-source-location connection frame-number)))
+  (let [[level-info level] (connection/current-sldb-level-info connection)]
+    (messages/location
+     (debug/frame-source-location (:thread level-info) frame-number))))
 
 (defslimefn inspect-frame-var [connection frame index]
   (let [inspector (connection/inspector connection)

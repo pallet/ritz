@@ -31,6 +31,7 @@
    com.sun.jdi.event.VMDeathEvent
    com.sun.jdi.VirtualMachine
    com.sun.jdi.ObjectReference
+   com.sun.jdi.ThreadReference
    (com.sun.jdi
     BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
     LongValue ShortValue StringReference)))
@@ -280,23 +281,22 @@
   (.uniqueID (:thread level-info)))
 
 
-
-
-
 ;;; stacktrace
 (defn- frame-data
   "Extract data from a stack frame"
-  [frame]
+  [^StackFrame frame]
   (jdi/location-data (jdi/location frame)))
 
 (defn- exception-stacktrace [frames]
   (logging/trace "exception-stacktrace")
+  (logging/trace "exception-stacktrace: %s frames" (count frames))
   (map frame-data frames))
 
 (defn- build-backtrace
-  ([thread]
+  ([^ThreadReference thread]
      (doall (exception-stacktrace (.frames thread))))
-  ([thread start end]
+  ([^ThreadReference thread start end]
+     (logging/trace "build-backtrace: %s %s" start end)
      (doall (exception-stacktrace
              (take (- end start) (drop start (.frames thread)))))))
 
@@ -312,12 +312,11 @@
 (defn frame-source-location
   "Return a source location vector [buffer position] for the specified
    frame number."
-  [connection frame-number]
-  (let [[level-info level] (connection/current-sldb-level-info connection)]
-    (when-let [frame (nth (.frames (:thread level-info)) frame-number nil)]
-      (let [location (.location frame)]
-        [(find/find-source-path (jdi/location-source-path location))
-         {:line (jdi/location-line-number location)}]))))
+  [thread frame-number]
+  (when-let [frame (nth (.frames thread) frame-number nil)]
+    (let [location (.location frame)]
+      [(find/find-source-path (jdi/location-source-path location))
+       {:line (jdi/location-line-number location)}])))
 
 ;;; breakpoints
 ;;; todo - use the event manager's event list
@@ -565,9 +564,9 @@
       :type (str "  [Thrown " (.. exception referenceType name) "]")}))
 
   (restarts
-   [exception connection]
+   [^ExceptionEvent exception connection]
    (logging/trace "calculate-restarts exception")
-   (let [thread (jdi/event-thread exception)]
+   (let [thread (.thread exception)]
      (if (.request exception)
        (filter
         identity
@@ -604,9 +603,9 @@
    {:message "BREAKPOINT"})
 
   (restarts
-   [breakpoint connection]
+   [^BreakpointEvent breakpoint connection]
    (logging/trace "calculate-restarts breakpoint")
-   (let [thread (jdi/event-thread breakpoint)]
+   (let [thread (.thread breakpoint)]
      (concat
       [(make-restart
         :continue "CONTINUE" "Continue from breakpoint"
@@ -618,7 +617,7 @@
         "Continue and clear breakpoint"
         (fn [connection]
           (logging/trace "restart Continue clear")
-          (remove-breakpoint connection breakpoint)
+          (remove-breakpoint (connection/vm-context connection) breakpoint)
           (continue-level connection)))]
       (stepping-restarts thread)))))
 
@@ -630,9 +629,9 @@
    {:message "STEPPING"})
 
   (restarts
-   [step-event connection]
+   [^StepEvent step-event connection]
    (logging/trace "calculate-restarts step-event")
-   (let [thread (jdi/event-thread step-event)]
+   (let [thread (.thread step-event)]
      (concat
       [(make-restart
         :continue "CONTINUE" "Continue normal execution"
@@ -648,6 +647,7 @@
   (let [thread (jdi/event-thread event)
         thread-id (.uniqueID thread)
         restarts (restarts event connection)
+        _ (logging/trace "adding sldb level")
         level-info {:restarts restarts :thread thread :event event}
         level (connection/next-sldb-level connection level-info)
         _ (logging/trace "building condition")
@@ -669,12 +669,13 @@
   "Calculate debugger information and invoke"
   [connection event]
   (logging/trace "invoke-debugger")
+  ;; The handler resumes threads, so make sure we suspend them
+  ;; again first. The restart from the sldb buffer will resume these
+  ;; threads.
+  (jdi/suspend-event-threads event)
   ;; Invoke debugger from a new thread, so we don't block the
   ;; event loop
-  (executor/execute #(invoke-debugger* connection event))
-  ;; the handler resumes threads, so make sure we suspend them
-  ;; again first
-  (jdi/suspend-event-threads event))
+  (executor/execute #(invoke-debugger* connection event)))
 
 (defn debugger-info-for-emacs
   "Calculate debugger information and invoke"
@@ -694,7 +695,7 @@
 
 (defn invoke-restart
   [connection level n]
-  (let [level-info (connection/sldb-level-info connection level)]
+  (when-let [level-info (connection/sldb-level-info connection level)]
     (logging/trace "invoke-restart %s of %s" n (count (:restarts level-info)))
     (when-let [f (:f (nth (:restarts level-info) n))]
       (inspect/reset-inspector (:inspector @connection))
@@ -769,8 +770,8 @@
    context
    (:current-thread context)
    (jdi-clj/invoke-clojure-fn
+    context (:current-thread context) jdi/invoke-single-threaded
     "swank-clj.inspect" "object-nth-part"
-    (:current-thread context) jdi/invoke-single-threaded
     nil object
     (jdi/mirror-of (:vm context) n)
     (jdi/mirror-of (:vm context) max-index))))
@@ -1019,9 +1020,9 @@
         (.frames thread)))
 
 (defmethod jdi/handle-event ExceptionEvent
-  [event context]
+  [^ExceptionEvent event context]
   (let [exception (.exception event)
-        thread (jdi/event-thread event)
+        thread (.thread event)
         silent? (jdi/silent-event? event)]
     (if (and
          (:control-thread context)
@@ -1039,11 +1040,13 @@
               (logging/trace "Not activating sldb (aborting)")
               (do
                 (logging/trace "Activating sldb")
+                ;; invoke the debugger to show the stack trace and restarts
                 (invoke-debugger connection event)))
             (logging/trace "Not activating sldb (no connection)"))
           ;; (logging/trace "Not activating sldb (break-for-exception?)")
           ))
-      (when-not silent?
+      (if silent?
+        (logging/trace-str "@")
         (logging/trace
          "jdi/handle-event ExceptionEvent: Can't handle EXCEPTION %s %s"
          event
@@ -1052,9 +1055,9 @@
          )))))
 
 (defmethod jdi/handle-event BreakpointEvent
-  [event context]
+  [^BreakpointEvent event context]
   (logging/trace "BREAKPOINT")
-  (let [thread (jdi/event-thread event)]
+  (let [thread (.thread event)]
     (when (and (:control-thread context) (:RT context))
       (if-let [connection (ffirst @connections)]
         (do
@@ -1063,15 +1066,16 @@
         (logging/trace "Not activating sldb (no connection)")))))
 
 (defmethod jdi/handle-event StepEvent
-  [event context]
+  [^StepEvent event context]
   (logging/trace "STEP")
-  (let [thread (jdi/event-thread event)]
+  (let [thread (.thread event)]
     (when (and (:control-thread context) (:RT context))
       (if-let [connection (ffirst @connections)]
         (do
           (logging/trace "Activating sldb for stepping")
-          (invoke-debugger connection event)
-          (jdi/discard-event-request (:vm context) (.. event request)))
+          ;; The step event is completed, so we discard it's request
+          (jdi/discard-event-request (:vm context) (.. event request))
+          (invoke-debugger connection event))
         (logging/trace "Not activating sldb (no connection)")))))
 
 (defmethod jdi/handle-event VMDeathEvent

@@ -17,12 +17,14 @@
 (defslimefn inspect-nth-part [connection index]
   (let [inspector (connection/inspector connection)
         vm-context (connection/vm-context connection)]
-    (inspect/inspect-object inspector (inspect/nth-part inspector index))
+    (inspect/inspect-object
+     inspector (inspect/nth-part vm-context inspector index))
     (messages/inspector (inspect/display-values vm-context inspector))))
 
 (defslimefn inspector-range [connection from to]
-  (let [inspector (connection/inspector connection)]
-    (inspect/content-range inspector from to)))
+  (let [inspector (connection/inspector connection)
+        vm-context (connection/vm-context connection)]
+    (inspect/content-range vm-context inspector from to)))
 
 (defslimefn inspector-call-nth-action [connection index & args]
   (let [inspector (connection/inspector connection)

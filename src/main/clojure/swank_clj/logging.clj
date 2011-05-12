@@ -20,6 +20,17 @@
        (.write logging-out "\n")
        (.flush logging-out))))
 
+(defmacro log-str
+  "Log without newline or flushing"
+  [level fmt-str & args]
+  `(when (= ~level @log-level)
+     (locking monitor
+       (.write logging-out (format ~fmt-str ~@args)))))
+
 (defmacro trace
   [fmt-str & args]
   `(log :trace ~fmt-str ~@args))
+
+(defmacro trace-str
+  [fmt-str & args]
+  `(log-str :trace ~fmt-str ~@args))
