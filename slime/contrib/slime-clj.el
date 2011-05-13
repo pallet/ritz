@@ -182,5 +182,18 @@
   (slime-eval-with-transcript
    `(swank:resume-vm)))
 
+;;; Initialization
+
+(defun slime-clj-init ()
+  (slime-clj-bind-keys))
+
+(defun slime-clj-bind-keys ()
+  (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint))
+
+(slime-require :slime-clj)
+
+;;;###autoload
+(add-hook 'slime-load-hook 'slime-clj-init)
+
 (provide 'slime-clj)
 ;;; slime-clj.el ends here
