@@ -11,8 +11,10 @@
    [swank-clj.jpda.jdi :as jdi]
    [swank-clj.jpda.jdi-clj :as jdi-clj]
    [swank-clj.jpda.jdi-vm :as jdi-vm]
-   swank-clj.commands.debugger
+   ;; order is important for these to overide functions defined on local
+   ;; vm, vs functions defined for jpda/jdi connection
    swank-clj.commands.inspector
+   swank-clj.commands.debugger
    swank-clj.commands.contrib.swank-clj))
 
 (defn forward-commands

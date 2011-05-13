@@ -167,10 +167,10 @@
      "inspect-if-inspector-active %s %s %s"
      f
      (re-find #"inspect" (name (first form)))
-     (inspect/content (connection/inspector connection)))
+     (inspect/inspecting? (connection/inspector connection)))
     (if (and f
              (re-find #"inspect" (name (first form)))
-             (inspect/content (connection/inspector connection)))
+             (inspect/inspecting? (connection/inspector connection)))
       (core/execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
 
@@ -766,15 +766,14 @@
 
 (defmethod inspect/object-nth-part com.sun.jdi.Value
   [context object n max-index]
-  (jdi-clj/read-arg
-   context
-   (:current-thread context)
-   (jdi-clj/invoke-clojure-fn
-    context (:current-thread context) jdi/invoke-single-threaded
-    "swank-clj.inspect" "object-nth-part"
-    nil object
-    (jdi/mirror-of (:vm context) n)
-    (jdi/mirror-of (:vm context) max-index))))
+  (jdi-clj/invoke-clojure-fn
+   context (:current-thread context) jdi/invoke-single-threaded
+   "swank-clj.inspect" "object-nth-part"
+   nil object
+   (jdi-clj/eval-to-value
+    context (:current-thread context) jdi/invoke-single-threaded n)
+   (jdi-clj/eval-to-value
+    context (:current-thread context) jdi/invoke-single-threaded max-index)))
 
 (defmethod inspect/object-call-nth-action :default com.sun.jdi.Value
   [context object n max-index args]
@@ -787,10 +786,12 @@
     jdi/invoke-multi-threaded
     "swank-clj.inspect" "object-call-nth-action"
     object
-    (jdi/mirror-of (:vm context) n)
-    (jdi/mirror-of (:vm context) max-index)
-    (jdi-clj/eval
-     (:vm context) (:current-thread context)
+    (jdi-clj/eval-to-value
+     context (:current-thread context) jdi/invoke-single-threaded n)
+    (jdi-clj/eval-to-value
+     context (:current-thread context) jdi/invoke-single-threaded max-index)
+    (jdi-clj/eval-to-value
+     context (:current-thread context)
      jdi/invoke-single-threaded
      args))))
 

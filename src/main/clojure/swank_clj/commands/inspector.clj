@@ -33,9 +33,13 @@
       (messages/inspector (inspect/display-values vm-context inspector)))))
 
 (defslimefn inspector-pop [connection]
-  (messages/inspector
-   (inspect/pop-inspectee
-    (connection/inspector connection))))
+  (let [inspector (inspect/pop-inspectee (connection/inspector connection))]
+    (when (inspect/inspecting? inspector)
+      (let [[level-info level] (connection/current-sldb-level-info connection)
+            vm-context (connection/vm-context connection)
+            thread (or (:thread level-info) (:control-thread vm-context))
+            vm-context (assoc vm-context :current-thread thread)]
+        (messages/inspector (inspect/display-values vm-context inspector))))))
 
 (defslimefn inspector-next [connection]
   (messages/inspector

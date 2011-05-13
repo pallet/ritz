@@ -77,7 +77,7 @@
   "Acquire the control thread."
   [context]
   (let [control-thread (atom nil)
-        vm (:vm context)
+        ^VirtualMachine vm (:vm context)
         connected (:connected context)
         queue (.eventQueue vm)]
     (loop []
