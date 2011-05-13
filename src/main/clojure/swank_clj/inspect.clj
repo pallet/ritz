@@ -6,7 +6,8 @@
    [clojure.string :as string]))
 
 (defn reset-inspector [inspector]
-  (swap! inspector {:part-index (atom 0)}))
+  (reset! inspector {})
+  inspector)
 
 (defmulti value-as-string
   (fn [context obj] (type obj)))
@@ -293,7 +294,7 @@
       (list (seq (first content)) (+ end 500) start end))))
 
 (defn content-range [context inspector start end]
-  (swap! inspector update-in [:end-index] (fn [x] (max (or x 0) end)))
+  (swap! inspector update-in [:end-index] (fn [x] (max (or x 500) end)))
   (object-content-range context (:inspectee @inspector) start end))
 
 (defmulti object-nth-part
@@ -301,6 +302,7 @@
 
 (defmethod object-nth-part :default
   [context object n max-index]
+  (logging/trace "object-nth-part %s %s" n max-index)
   (let [[content parts actions] (inspector-content
                                  context
                                  (take max-index (emacs-inspect object)))]
@@ -309,7 +311,7 @@
 
 (defn nth-part
   [context inspector index]
-  (let [{:keys [inspectee end-index] :or {end-index 0}} @inspector]
+  (let [{:keys [inspectee end-index] :or {end-index 500}} @inspector]
     (object-nth-part context inspectee index end-index)))
 
 (defmulti object-call-nth-action
@@ -335,14 +337,19 @@
   (swap!
    inspector
    (fn [current]
-     (merge
+     (->
       current
-      {:inspectee object
-       :inspector-stack (conj (:inspector-stack current) object)
-       :inspector-history (if (filter #(identical? object %)
-                                      (:inspector-history current))
-                            (:inspector-history current)
-                            (conj (:inspector-history current) object))})))
+      (assoc :inspectee object)
+      (update-in [:inspector-stack]
+                 (fn [stack]
+                   (if (identical? object (first stack))
+                     stack
+                     (conj stack object))))
+      (update-in [:inspector-history]
+                 (fn [history]
+                   (if (seq (filter #(identical? object %) history))
+                     history
+                     (conj history object)))))))
   inspector)
 
 (defn display-values
@@ -355,9 +362,12 @@
       (content-range context inspector start end)]))
 
 (defn pop-inspectee [inspector]
-  (swap! inspector update-in :inspector-stack pop)
-  (when-let [object (first (:inspector-stack @inspector))]
-    (inspect-object inspector object)))
+  (logging/trace "pop-inspectee %s" (pr-str (:inspector-stack @inspector)))
+  (if-let [object (first
+                   (:inspector-stack
+                    (swap! inspector update-in [:inspector-stack] pop)))]
+    (inspect-object inspector object)
+    (reset-inspector inspector)))
 
 
 (defn next-inspectee [inspector]
@@ -372,5 +382,5 @@
 (defn describe-inspectee [inspector]
   (str (:inspectee @inspector)))
 
-(defn content [inspector]
-  (:inspector-content @inspector))
+(defn inspecting? [inspector]
+  (boolean (:inspectee @inspector)))

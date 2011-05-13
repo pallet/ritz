@@ -17,7 +17,7 @@
     ReferenceType Locatable Location StackFrame)
    (com.sun.jdi.event
     VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent VMDeathEvent
-    Event)
+    BreakpointEvent Event EventSet EventQueue)
    (com.sun.jdi.request
     ExceptionRequest EventRequest StepRequest EventRequestManager)))
 
@@ -86,7 +86,8 @@
    By default, events are ignored."
   (fn [event _] (class event)))
 
-(defmethod handle-event :default [event context])
+(defmethod handle-event :default [event context]
+  (logging/trace "Unhandled event: %s" event))
 
 (defn silent-event?
   [event]
@@ -97,18 +98,21 @@
 (defn handle-event-set
   "NB, this resumes the event-set, so you will need to suspend within
    the handlers if required."
-  [queue connected context f]
-  (let [event-set (.remove queue)]
+  [^EventQueue queue connected context f]
+  (let [^EventSet event-set (.remove queue)]
     (try
       (doseq [event event-set]
         (try
-          (when-not (silent-event? event)
+          (if (silent-event? event)
+            (logging/trace-str "!")
             (logging/trace "jdi/handle-event-set: %s" event))
           (f event context)
           (when (instance? VMDeathEvent event)
             (logging/trace "jdi/handle-event-set: vm death seen")
             (reset! connected false))
           (catch VMDisconnectedException e
+            (logging/trace
+             "jdi/handle-event-set: vm disconnected exception seen")
             (reset! connected false))
           (catch Throwable e
             (logging/trace "jdi/handle-event-set: Unexpected exeception %s" e)
@@ -350,8 +354,10 @@
     (depth step-depths StepRequest/STEP_OVER))))
 
 (defn event-thread
-  [^LocatableEvent e]
-  (.thread e))
+  "Return the event's thread - note that there is no common interface for this.
+   A BreakpointEvent just has a thread method."
+  [^LocatableEvent event]
+  (.thread event))
 
 ;;; locations
 (defn catch-location
@@ -363,27 +369,27 @@
   (.location l))
 
 (defn location-type-name
-  [location]
+  [^Location location]
   (.. location declaringType name))
 
 (defn location-method-name
-  [location]
+  [^Location location]
   (.. location method name))
 
 (defn location-source-name
-  [location]
+  [^Location location]
   (try
     (.. location sourceName)
     (catch Exception _)))
 
 (defn location-source-path
-  [location]
+  [^Location location]
   (try
     (.. location sourcePath)
     (catch Exception _)))
 
 (defn location-line-number
-  [location]
+  [^Location location]
   (try
     (.lineNumber location)
     (catch Exception _ -1)))
@@ -509,7 +515,7 @@
 
 (defn breakpoint-data
   "Returns breakpoint data"
-  [breakpoint]
+  [^BreakpointEvent breakpoint]
   (let [location (.location breakpoint)]
     {:file (str (.sourcePath location))
      :line (.lineNumber location)
@@ -517,20 +523,18 @@
 
 (defn breakpoints
   "List breakpoints"
-  [vm]
+  [^VirtualMachine vm]
   (.. vm (eventRequestManager) (breakpointRequests)))
 
 (defn location-data
   "Take a location, and extract function source and line."
-  [location]
+  [^Location location]
   (let [declaring-type (location-type-name location)
         method (location-method-name location)
         line (location-line-number location)
-        source-name (or
-                     (location-source-name location)
-                     "UNKNOWN")]
-    (if (and (= method "invoke") (.endsWith source-name ".clj"))
-      {:function (unmunge-clojure declaring-type)
+        source-name (or (location-source-name location) "UNKNOWN")]
+    (if (and (= method "invoke") source-name (.endsWith source-name ".clj"))
+      {:function (and declaring-type (unmunge-clojure declaring-type))
        :source source-name
        :line line}
       {:function (format "%s.%s" declaring-type method)

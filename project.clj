@@ -1,4 +1,4 @@
-(defproject swank-clj "0.1.1"
+(defproject swank-clj "0.1.2"
   :description "Another swank for clojure"
   :source-path "src/main/clojure"
   :resources-path "src/main/resources"
@@ -7,7 +7,7 @@
   :dependencies [[org.clojure/clojure "1.2.0"]]
   :dev-dependencies [[swank-clojure "1.2.1"]
                      [lein-swank-clj "1.0.0-SNAPSHOT"]
-                     [org.clojure/clojure "1.2.0" :classifier "sources"]]
+                     [clojure-source "1.2.0"]]
   :repositories
   {"sonatype-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"
    "sonatype" "https://oss.sonatype.org/content/repositories/releases/"}

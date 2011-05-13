@@ -10,7 +10,7 @@ This is alpha quality.
 
 ## Install
 
-Add `[swank-clj "0.1.1"]` to your project.clj `:dev-dependencies`.
+Add `[swank-clj "0.1.2"]` to your project.clj `:dev-dependencies`.
 
 Install the slime-clj.el contrib from [marmalade](http://marmalade-repo.org/).
 
@@ -24,7 +24,11 @@ this package to use
 If you would like to browse into the clojure java sources then add the following
 to your `:dev-dependencies`, with the appropriate clojure version.
 
-    [org.clojure/clojure "1.2.0" :classifier "sources"]
+    [org.clojure/clojure "1.2.1" :classifier "sources"]
+
+For clojure 1.2.0, you will need the following instead:
+
+    [clojure-source "1.2.0"]
 
 ## Usage
 

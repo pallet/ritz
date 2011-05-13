@@ -164,6 +164,11 @@
         `(swank:breakpoint-location ,id)
       #'slime-show-source-location)))
 
+(def-slime-selector-method ?b
+  "SLIME Breakpoints buffer"
+  (slime-list-breakpoints)
+  slime-breakpoints-buffer-name)
+
 ;;; swank development helpers
 (defun slime-toggle-swank-logging ()
   "Toggle logging in swank"

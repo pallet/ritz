@@ -45,24 +45,24 @@
   (try
     (cond
      (instance? ExceptionEvent event)
-     (let [thread (jdi/event-thread event)]
+     (let [thread (.thread ^ExceptionEvent event)]
        (if (= control-thread-name (.name thread))
          (do
            (logging/trace
-            "jdi/acquire-control-thread: found-thread")
+            "jdi-vm/acquire-control-thread: found-thread")
            ;; so it remains suspended when the vm is resumed
            (.suspend thread)
            (.. event (virtualMachine) (suspend))
            (reset! control-thread thread))
          (logging/trace
-          "jdi/acquire-control-thread: unexpected exception %s"
+          "jdi-vm/acquire-control-thread: unexpected exception %s"
           (jdi/exception-event-string context event))))
 
      (instance? VMDeathEvent event)
      (do
        (reset! connected false)
        (logging/trace
-        "jdi/acquire-control-thread: unexpected VM shutdown"))
+        "jdi-vm/acquire-control-thread: unexpected VM shutdown"))
 
      :else (logging/trace "Ignoring event %s" event))
 
@@ -77,7 +77,7 @@
   "Acquire the control thread."
   [context]
   (let [control-thread (atom nil)
-        vm (:vm context)
+        ^VirtualMachine vm (:vm context)
         connected (:connected context)
         queue (.eventQueue vm)]
     (loop []
