@@ -69,6 +69,16 @@
        (inspect/display-values
         (assoc vm-context :current-thread thread) inspector)))))
 
+(defslimefn inspect-nth-part [connection index]
+  (let [inspector (connection/inspector connection)
+        [level-info level] (connection/current-sldb-level-info connection)
+        vm-context (connection/vm-context connection)
+        thread (or (:thread level-info) (:control-thread vm-context))
+        vm-context (assoc vm-context :current-thread thread)]
+    (inspect/inspect-object
+     inspector (inspect/nth-part vm-context inspector index))
+    (messages/inspector (inspect/display-values vm-context inspector))))
+
 ;;; Threads
 (def ^{:private true} thread-data-fn
   (comp

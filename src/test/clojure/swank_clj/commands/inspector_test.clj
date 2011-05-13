@@ -7,7 +7,7 @@
    [swank-clj.logging :as logging]
    [swank-clj.test-utils :as test-utils]))
 
-(logging/set-level :trace)
+;; (logging/set-level :trace)
 
 ;; (deftest init-inspector-test
 ;;   (test-utils/eval-for-emacs-test
@@ -20,7 +20,7 @@
     (inspect/inspect-object inspector {:a 1 :b 2})
     (test-utils/eval-for-emacs-test
      `(~'swank/inspect-nth-part 0)
-     "000015(:return (:ok nil) 1)"
+     #"(?s)00[0-9a-f]{4,4}\(:return \(:ok \(:title \"clojure.lang.PersistentArrayMap\".*"
      {:inspector inspector})))
 
 (deftest inspector-range-test)

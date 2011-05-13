@@ -141,6 +141,7 @@
   "Resolve a clojure function in the remote vm. Returns an ObjectReference and
    a Method for n arguments."
   [context thread options ns name n]
+  {:pre [thread]}
   (let [object (jdi/invoke-method
                 thread options
                 (:RT context) (:var context)
