@@ -12,7 +12,6 @@
   "Integration with swank-clj features"
   (:authors "Hugo Duncan <hugo_duncan@yahoo.com>")
   (:license "EPL")
-  (:slime-dependencies slime-repl)
   (:on-load
    (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)))
 
@@ -196,7 +195,10 @@
 (slime-require :slime-clj)
 
 ;;;###autoload
-(add-hook 'slime-load-hook 'slime-clj-init)
+(add-hook 'slime-load-hook
+          (lambda ()
+            (require 'slime-clj)
+            (slime-clj-init)))
 
 (provide 'slime-clj)
 ;;; slime-clj.el ends here
