@@ -32,6 +32,7 @@
    com.sun.jdi.VirtualMachine
    com.sun.jdi.ObjectReference
    com.sun.jdi.ThreadReference
+   com.sun.jdi.StackFrame
    (com.sun.jdi
     BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
     LongValue ShortValue StringReference)))
