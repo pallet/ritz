@@ -12,7 +12,7 @@ rm -rf "marmalade/$dest" "marmalade/slime"
 find slime \( -name '*.el' -or -name 'ChangeLog' \) | cpio -pd marmalade
 
 # remove the slime-clj contrib
-rm marmalade/slime/contrib/slime-clj.el
+rm -f marmalade/slime/contrib/slime-clj.el
 
 # add an elpa style header
 sed -i .bak \

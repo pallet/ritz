@@ -8,15 +8,10 @@ echo "slime-clj version $VERSION"
 
 dest="slime-clj-$VERSION"
 
-rm -rf "marmalade/$dest" "marmalade/slime"
-mkdir marmalade/$dest
-cp slime/contrib/slime-clj.el marmalade/$dest
-
 sed -i .bak \
     -e "s/Version: .*/Version: $VERSION/" \
-    marmalade/$dest/slime-clj.el
+    src/main/elisp/slime-clj.el \
+&& rm src/main/elisp/slime-clj.el.bak \
+&& echo "src/main/elisp/slime-clj.el ready for upload to marmalade if required"
 
-rm marmalade/$dest/slime-clj.el.bak
 
-echo "marmalade/$dest/slime-clj.el"
-ls -l marmalade/$dest | grep -v total
