@@ -5,13 +5,16 @@
 ;; Authors: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/hugoduncan/swank-clj
-;; Version: 0.1.0
+;; Version: 0.1.2.1
 ;; License: GNU GPL (same license as Emacs)
 
 (define-slime-contrib slime-clj
   "Integration with swank-clj features"
   (:authors "Hugo Duncan <hugo_duncan@yahoo.com>")
-  (:license "EPL"))
+  (:license "EPL")
+  (:slime-dependencies slime-repl)
+  (:on-load
+   (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)))
 
 (defun slime-line-breakpoint ()
   "Set a breakpoint at the current line"
