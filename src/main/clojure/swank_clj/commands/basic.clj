@@ -1,10 +1,7 @@
 (ns swank-clj.commands.basic
   (:refer-clojure :exclude [load-file])
   (:use
-   ;; (swank util)
-   ;; (swank.util.concurrent thread)
-   ;; (swank.util string clojure)
-   swank-clj.commands)
+   [swank-clj.swank.commands :only [defslimefn]])
   (:require
    [swank-clj.clj-contrib.macroexpand :as macroexpand]
    [swank-clj.connection :as connection]

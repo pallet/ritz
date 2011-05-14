@@ -1,7 +1,7 @@
 (ns swank-clj.commands.contrib.swank-clj
   "Contrib for providing swank-clj specific functions"
   (:use
-   [swank-clj.commands :only [defslimefn]])
+   [swank-clj.swank.commands :only [defslimefn]])
   (:require
    [swank-clj.connection :as connection]
    [swank-clj.jpda.debug :as debug]

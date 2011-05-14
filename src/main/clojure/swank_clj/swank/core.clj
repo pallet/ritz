@@ -32,10 +32,21 @@
   `(binding [*ns* (connection/request-ns ~connection)]
      ~@body))
 
+;; (defn map-swank-ns
+;;   [form]
+;;   (if (and (list? form) (= 'quote (first form)) (symbol? (second form)))
+;;     (let [sym (second form)]
+;;       (if (= "swank" (namespace sym))
+;;         `'~(symbol "swank-clj.swank.commands" (name sym))
+;;         form))
+;;     form))
+
 (defn execute-slime-fn*
   [connection f args-form buffer-package]
   (with-namespace connection
-    (apply f connection (eval (vec args-form)))))
+    (if (:swank-clj.swank.commands/swank-fn (meta f))
+      (apply f connection (eval (vec args-form)))
+      (apply f (eval (vec args-form))))))
 
 (defn execute-slime-fn
   [handler]

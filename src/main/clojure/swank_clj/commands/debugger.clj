@@ -9,7 +9,7 @@
    [swank-clj.swank.messages :as messages]
    [swank-clj.commands.contrib.swank-clj])
   (:use
-   [swank-clj.commands :only [defslimefn]]))
+   [swank-clj.swank.commands :only [defslimefn]]))
 
 (defn invoke-restart [restart]
   ((nth restart 2)))
@@ -102,6 +102,7 @@ corresponding attribute values per thread."
 ;;; TODO: Find a better way, as Thread.stop is deprecated
 (defslimefn kill-nth-thread
   [connection index]
+  (logging/trace "kill-nth-thread %s" index)
   (when index
     (let [context (connection/vm-context connection)]
       (when-let [thread (debug/nth-thread context index)]

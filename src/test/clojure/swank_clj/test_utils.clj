@@ -2,7 +2,6 @@
   "Test functions and macros"
   (:require
    [swank-clj.swank :as swank]
-   [swank-clj.commands :as commands]
    [swank-clj.rpc-socket-connection :as rpc-s-c])
   (:use
    clojure.test))

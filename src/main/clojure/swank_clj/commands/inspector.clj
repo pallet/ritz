@@ -4,7 +4,7 @@
    [swank-clj.swank.messages :as messages]
    [swank-clj.connection :as connection])
   (:use
-   [swank-clj.commands :only [defslimefn]]))
+   [swank-clj.swank.commands :only [defslimefn]]))
 
 
 (defslimefn init-inspector [connection string]

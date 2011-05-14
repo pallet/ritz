@@ -2,7 +2,7 @@
   (:use
    [swank-clj.logging :as logging]
    [swank-clj.repl-utils.helpers :as helpers]
-   [swank-clj.commands :only [defslimefn]]))
+   [swank-clj.swank.commands :only [defslimefn]]))
 
 (defslimefn swank-require [connection keys]
   (binding [*ns* (the-ns 'swank-clj.commands.contrib)]

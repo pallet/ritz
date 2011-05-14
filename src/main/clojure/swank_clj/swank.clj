@@ -1,7 +1,6 @@
 (ns swank-clj.swank
   "Swank protocol"
   (:require
-   [swank-clj.commands :as commands]
    [swank-clj.connection :as connection]
    [swank-clj.jpda.debug :as debug]
    [swank-clj.executor :as executor]
@@ -9,6 +8,7 @@
    [swank-clj.logging :as logging]
    [swank-clj.repl-utils.helpers :as helpers]
    [swank-clj.swank.core :as core]
+   [swank-clj.swank.commands :as commands]
    [swank-clj.swank.indent :as indent]
    [swank-clj.swank.messages :as messages])
   (:import
@@ -27,11 +27,7 @@
   (logging/trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
   (try
     (connection/request! connection buffer-package id)
-    (let [form (if (= 'cl/mapc (first form))
-                 ;; special case for cl:mapc
-                 (list* (eval (second form)) (eval (nth form 2)))
-                 form)
-          f (commands/slime-fn (name (first form)))
+    (let [f (commands/slime-fn (first form))
           handler (or (connection/swank-handler connection) default-pipeline)
           result (handler connection form buffer-package id f)]
       (cond

@@ -51,9 +51,9 @@
            (logging/trace
             "jdi-vm/acquire-control-thread: found-thread")
            ;; so it remains suspended when the vm is resumed
+           (reset! control-thread thread)
            (.suspend thread)
-           (.. event (virtualMachine) (suspend))
-           (reset! control-thread thread))
+           (.. event (virtualMachine) (suspend)))
          (logging/trace
           "jdi-vm/acquire-control-thread: unexpected exception %s"
           (jdi/exception-event-string context event))))

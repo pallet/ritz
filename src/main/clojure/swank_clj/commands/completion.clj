@@ -1,7 +1,7 @@
 (ns swank-clj.commands.completion
   "Symbol completion commands"
   (:use
-   [swank-clj.commands :only [defslimefn]])
+   [swank-clj.swank.commands :only [defslimefn]])
   (:require
    [swank-clj.repl-utils.completion :as completion]))
 

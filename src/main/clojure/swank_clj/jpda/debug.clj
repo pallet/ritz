@@ -184,7 +184,9 @@
 (defn execute-unless-inspect
   [handler]
   (fn [connection form buffer-package id f]
-    (if (and f (not (re-find #"inspect" (name (first form)))))
+    (if (and f
+             (not (re-find #"inspect" (name (first form))))
+             (:swank-clj.swank.commands/swank-fn (meta f)))
       (core/execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
 
