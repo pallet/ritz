@@ -5,6 +5,7 @@
   (:require
    [swank-clj.connection :as connection]
    [swank-clj.executor :as executor]
+   [swank-clj.hooks :as hooks]
    [swank-clj.inspect :as inspect]
    [swank-clj.jpda.jdi :as jdi]
    [swank-clj.jpda.jdi-clj :as jdi-clj]
@@ -137,9 +138,12 @@
     (logging/trace "debug/remote-swank-port: loop")
     (if-let [port (jdi-clj/control-eval
                    context
-                   `(if-let [v# (resolve
-                                 '~'swank-clj.socket-server/acceptor-port)]
-                      (deref (var-get v#))))]
+                   ;; NB very important that this doesn't throw
+                   `(when (find-ns '~'swank-clj.socket-server)
+                      (when-let [v# (resolve
+                                     '~'swank-clj.socket-server/acceptor-port)]
+                        (when-let [a# (var-get v#)]
+                          (deref a#)))))]
       port
       (do
         (logging/trace "debug/remote-swank-port: no port yet ...")
@@ -224,10 +228,11 @@
   (logging/trace
    "debugger/forward-command: waiting reply from proxied connection")
   (let [proxied-connection (:proxy-to @connection)]
-    (let [reply (connection/read-from-connection proxied-connection)]
-      (executor/execute-request
-       (partial connection/send-to-emacs connection reply))
-      (let [id (last reply)]
+    (let [reply (connection/read-from-connection proxied-connection)
+          id (last reply)]
+      (when (or (not (number? id)) (not (zero? id))) ; filter (= id 0)
+        (executor/execute-request
+         (partial connection/send-to-emacs connection reply))
         (logging/trace "removing pending-id %s" id)
         (connection/remove-pending-id connection id)))))
 
@@ -1088,3 +1093,18 @@
     (connection/close proxied-connection)
     (connection/close connection))
   (System/exit 0))
+
+(defn setup-debugee
+  "Forward info to the debuggee. This uses request id 0, which will be
+   filtered from returning a reply to slime."
+  [connection]
+  ((forward-command nil) connection
+   `(~'swank:interactive-eval
+     ~(str
+       `(do
+          (require '~'swank-clj.repl-utils.compile)
+          (reset!
+           (var-get (resolve 'swank-clj.repl-utils.compile/compile-path))
+           ~*compile-path*)))) "user" 0 nil))
+
+(hooks/add core/new-connection-hook setup-debugee)

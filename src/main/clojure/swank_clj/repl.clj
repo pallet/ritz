@@ -3,7 +3,9 @@
   (:require
    [swank-clj.rpc-server :as rpc-server]
    [swank-clj.logging :as logging]
+   [swank-clj.hooks :as hooks]
    [swank-clj.jpda.debug :as debug]
+   [swank-clj.swank.core :as core]
    swank-clj.commands.basic
    swank-clj.commands.inspector
    swank-clj.commands.completion
@@ -17,5 +19,7 @@
   (fn repl-connection-handler
     [socket options]
     (logging/trace "repl/repl-connection-hanler")
-    (rpc-server/serve-connection socket options)
+    (let [[connection future] (rpc-server/serve-connection socket options)]
+      (hooks/run core/new-connection-hook connection)
+      (logging/trace "repl/repl-connection-handler new-connection-hook ran"))
     (logging/trace "repl/repl-connection-handler running")))

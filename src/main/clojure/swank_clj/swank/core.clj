@@ -12,6 +12,7 @@
 (defonce protocol-version "20101113")
 
 (hooks/defhook pre-reply-hook)
+(hooks/defhook new-connection-hook)
 
 (defmacro with-namespace-tracking [connection & body]
   `(let [last-ns# *ns*]

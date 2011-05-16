@@ -55,6 +55,9 @@
                            :as options}]
   (logging/set-level (keyword (:log-level options)))
   (logging/trace "socket-server/start-server")
+  (logging/trace "*compile-path* %s" *compile-path*)
+  (when *compile-path*
+    (alter-var-root #'*compile-path* (constantly *compile-path*)))
   (when (nil? connection-f)
     (throw (IllegalArgumentException. "Null connection function")))
   (let [socket (server-socket options)
