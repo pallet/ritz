@@ -124,12 +124,14 @@
             compiler (first (jdi/classes vm "clojure.lang.Compiler"))
             var (first (jdi/classes vm "clojure.lang.Var"))
             throwable (first (jdi/classes vm "java.lang.Throwable"))
+            deref (first (jdi/classes vm "clojure.lang.IDeref"))
             context (clojure.core/assoc
                      context
                      :RT rt
                      :Compiler compiler
                      :Var var
-                     :Throwable throwable)]
+                     :Throwable throwable
+                     :Deref deref)]
         (logging/trace "vm-rt: classes found")
         (clojure.core/assoc
          context
@@ -137,6 +139,7 @@
          :var (first (jdi/methods rt "var" var-signature))
          :eval (first (jdi/methods compiler "eval"))
          :get (first (jdi/methods var "get"))
+         :deref (first (jdi/methods deref "deref"))
          :assoc (first (jdi/methods rt "assoc"))
          :swap-root (first (jdi/methods var "swapRoot"))
          :exception-message (first (jdi/methods throwable "getMessage"))))

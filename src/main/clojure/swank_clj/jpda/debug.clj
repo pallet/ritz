@@ -7,6 +7,7 @@
    [swank-clj.executor :as executor]
    [swank-clj.hooks :as hooks]
    [swank-clj.inspect :as inspect]
+   [swank-clj.jpda.disassemble :as disassemble]
    [swank-clj.jpda.jdi :as jdi]
    [swank-clj.jpda.jdi-clj :as jdi-clj]
    [swank-clj.jpda.jdi-vm :as jdi-vm]
@@ -64,13 +65,11 @@
 (defn remove-connection [connection]
   (swap! connections dissoc connection))
 
-
 (defn log-exception [e]
   (logging/trace
    "Caught exception %s %s"
    (pr-str e)
    (helpers/stack-trace-string e)))
-
 
 ;; (defn request-events
 ;;   "Add event requests that should be set before resuming the vm."
@@ -346,7 +345,6 @@
   (let [breakpoints (jdi/line-breakpoints
                      (:vm context) breakpoint-suspend-policy
                      namespace filename line)]
-    (println (format "line-breakpoint %s %s %s" namespace filename line))
     (update-in context [:breakpoints] concat breakpoints)))
 
 (defn remove-breakpoint
@@ -1108,3 +1106,67 @@
            ~*compile-path*)))) "user" 0 nil))
 
 (hooks/add core/new-connection-hook setup-debugee)
+
+(defn add-op-location [method {:keys [code-index] :as op}]
+  (if code-index
+    (merge op (jdi/location-data (.locationOfCodeIndex method code-index)))
+    op))
+
+(defn format-arg
+  [arg]
+  (case (:type arg)
+        :methodref (format
+                    "%s/%s%s"
+                    (string/replace (:class-name arg) "/" ".")
+                    (:name arg) (:descriptor arg))
+        :fieldref (format
+                    "^%s %s.%s"
+                     (:descriptor arg)
+                     (string/replace (:class-name arg) "/" ".")
+                     (:name arg))
+        :interfacemethodref (format
+                             "%s/%s%s"
+                             (string/replace (:class-name arg) "/" ".")
+                             (:name arg) (:descriptor arg))
+        :nameandtype (format "%s%s" (:name arg) (:descriptor arg))
+        :class (format "%s" (:name arg))
+        (if-let [value (:value arg)]
+          (format "%s" (pr-str value))
+          (format "%s" (pr-str arg)))))
+
+(defn format-ops
+  [ops]
+  (first
+   (reduce
+    (fn [[output location] op]
+      (let [line (:line location)
+            s (format
+               "%5d  %s %s%s"
+               (:code-index op) (:mnemonic op)
+               (string/join " " (map format-arg (:args op)))
+               (string/join " " (map format-arg (:implicit-args op))))]
+        (if (= line (:line op))
+          [(conj output s) location]
+          [(->
+            output
+            (conj (format "%s:%s" (:function op) (:line op)))
+            (conj s))
+           (select-keys op [:function :line])])))
+    [[] {}]
+    ops)))
+
+(defn disassemble-method
+  "Dissasemble a method, adding location info"
+  [const-pool method]
+  (let [ops (disassemble/disassemble const-pool (.bytecodes method))]
+    (format-ops (map #(add-op-location method %) ops))))
+
+(defn disassemble-frame
+  [context ^ThreadReference thread frame-index]
+  (let [^StackFrame frame (nth (.frames thread) frame-index)
+        location (.location frame)]
+    (if-let [method (.method location)]
+      (let [const-pool (disassemble/constant-pool
+                        (.. method (declaringType) (constantPool)))]
+        (disassemble-method const-pool method))
+      "Method not found")))

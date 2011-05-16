@@ -2,6 +2,8 @@
   "Debugger commands.  Everything that the proxy responds to."
   (:require
    [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
+   [clojure.string :as string]
    [swank-clj.connection :as connection]
    [swank-clj.jpda.debug :as debug]
    [swank-clj.inspect :as inspect]
@@ -124,3 +126,14 @@ corresponding attribute values per thread."
         thread (:thread level-info)]
     (debug/eval-string-in-frame
      (connection/vm-context connection) thread expr n)))
+
+(defslimefn pprint-eval-string-in-frame [connection expr n]
+  (pprint/pprint (eval-string-in-frame connection expr n)))
+
+;; disassemble
+(defslimefn sldb-disassemble [connection frame-index]
+  (let [[level-info level] (connection/current-sldb-level-info connection)
+        thread (:thread level-info)]
+    (string/join \newline
+     (debug/disassemble-frame
+      (connection/vm-context connection) thread frame-index))))
