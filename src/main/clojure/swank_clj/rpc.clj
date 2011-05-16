@@ -29,47 +29,48 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
       (condp = (char c)
           \" (let [sb (StringBuilder.)]
                (loop []
-                (let [c (.read rdr)]
-                 (if (= c -1)
-                   (throw
-                    (java.io.EOFException.
-                     "Incomplete reading of quoted string."))
-                   (condp = (char c)
-                     \" (str sb)
-                     \\ (do (.append sb (char (.read rdr)))
-                            (recur))
-                    (do (.append sb (char c))
-                        (recur)))))))
+                 (let [c (.read rdr)]
+                   (if (= c -1)
+                     (throw
+                      (java.io.EOFException.
+                       "Incomplete reading of quoted string."))
+                     (condp = (char c)
+                         \" (str sb)
+                         \\ (do (.append sb (char (.read rdr)))
+                                (recur))
+                         (do (.append sb (char c))
+                             (recur)))))))
           \( (loop [result []]
                (let [form (read-form rdr)]
-                     (let [c (.read rdr)]
-                       (if (= c -1)
-                         (throw
-                          (java.io.EOFException. "Incomplete reading of list."))
-                         (condp = (char c)
-                           \) (sequence (conj result form))
-                           \space (recur (conj result form)))))))
+                 (let [c (.read rdr)]
+                   (if (= c -1)
+                     (throw
+                      (java.io.EOFException.
+                       "Incomplete reading of list."))
+                     (condp = (char c)
+                         \) (sequence (conj result form))
+                         \space (recur (conj result form)))))))
           \' (list 'quote (read-form rdr))
           (let [sb (StringBuilder.)]
             (loop [c c]
               (if (not= c -1)
                 (condp = (char c)
-                  \\ (do (.append sb (char (.read rdr)))
-                         (recur (.read rdr)))
-                  \space (.unread rdr c)
-                  \) (.unread rdr c)
-                  (do (.append sb (char c))
-                      (recur (.read rdr))))))
+                    \\ (do (.append sb (char (.read rdr)))
+                           (recur (.read rdr)))
+                    \space (.unread rdr c)
+                    \) (.unread rdr c)
+                    (do (.append sb (char c))
+                        (recur (.read rdr))))))
             (let [str (str sb)]
               (cond
-                (Character/isDigit c) (read-string str)
-                (= "nil" str) nil
-                (= "t" str) true
-                (.startsWith str ":") (keyword (.substring str 1))
-                :else
-                (if-let [m (re-matches #"(.+):(.+)" str)]
-                  (apply symbol (drop 1 m))
-                  (symbol str)))))))))
+               (Character/isDigit c) (read-string str)
+               (= "nil" str) nil
+               (= "t" str) true
+               (.startsWith str ":") (keyword (.substring str 1))
+               :else
+               (if-let [m (re-matches #"(.+):(.+)" str)]
+                 (apply symbol (drop 1 m))
+                 (symbol str)))))))))
 
 (defn- read-packet
   ([^Reader reader]

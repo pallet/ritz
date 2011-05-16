@@ -3,6 +3,7 @@
   (:require
    [clojure.pprint :as pprint]
    [swank-clj.executor :as executor]
+   [swank-clj.hooks :as hooks]
    [swank-clj.swank :as swank]
    [swank-clj.swank.core :as core]
    [swank-clj.rpc-server :as rpc-server]
@@ -82,4 +83,6 @@
             (executor/execute-loop
              (partial debug/forward-reply connection) :name "Reply pump")
             (logging/trace "proxy/connection-handler reply-pump running")
+            (hooks/run core/new-connection-hook connection)
+            (logging/trace "proxy/connection-handler new-connection-hook ran")
             (debug/add-connection connection proxied-connection)))))))

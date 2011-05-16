@@ -7,10 +7,11 @@ This is alpha quality.
 - Breaks on uncaught exceptions and breakpoints.
 - Allows stepping from breakpoints
 - Allows evaluation of expressions in the context of a stack frame
+- Inspection of locals in any stack frame
 
 ## Install
 
-Add `[swank-clj "0.1.2"]` to your project.clj `:dev-dependencies`.
+Add `[swank-clj "0.1.3"]` to your project.clj `:dev-dependencies`.
 
 Install the slime-clj.el contrib from [marmalade](http://marmalade-repo.org/).
 
@@ -47,8 +48,8 @@ on the line where you want a breakpoint, and `M-x slime-line-breakpoint`.
 
 Note that breakpoints disappear on recompilation at the moment.
 
-To list breakpoints, use `M-x slime-list-breakpoints`.  In the listing you can
-use the following keys
+To list breakpoints, use `M-x slime-list-breakpoints` or press `b` in the
+`slime-selector`.  In the listing you can use the following keys
 
  - e enable
  - d disable

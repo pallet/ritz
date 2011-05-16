@@ -51,9 +51,9 @@
            (logging/trace
             "jdi-vm/acquire-control-thread: found-thread")
            ;; so it remains suspended when the vm is resumed
+           (reset! control-thread thread)
            (.suspend thread)
-           (.. event (virtualMachine) (suspend))
-           (reset! control-thread thread))
+           (.. event (virtualMachine) (suspend)))
          (logging/trace
           "jdi-vm/acquire-control-thread: unexpected exception %s"
           (jdi/exception-event-string context event))))
@@ -124,12 +124,14 @@
             compiler (first (jdi/classes vm "clojure.lang.Compiler"))
             var (first (jdi/classes vm "clojure.lang.Var"))
             throwable (first (jdi/classes vm "java.lang.Throwable"))
+            deref (first (jdi/classes vm "clojure.lang.IDeref"))
             context (clojure.core/assoc
                      context
                      :RT rt
                      :Compiler compiler
                      :Var var
-                     :Throwable throwable)]
+                     :Throwable throwable
+                     :Deref deref)]
         (logging/trace "vm-rt: classes found")
         (clojure.core/assoc
          context
@@ -137,6 +139,7 @@
          :var (first (jdi/methods rt "var" var-signature))
          :eval (first (jdi/methods compiler "eval"))
          :get (first (jdi/methods var "get"))
+         :deref (first (jdi/methods deref "deref"))
          :assoc (first (jdi/methods rt "assoc"))
          :swap-root (first (jdi/methods var "swapRoot"))
          :exception-message (first (jdi/methods throwable "getMessage"))))

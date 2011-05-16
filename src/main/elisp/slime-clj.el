@@ -5,13 +5,15 @@
 ;; Authors: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/hugoduncan/swank-clj
-;; Version: 0.1.0
+;; Version: 0.1.3
 ;; License: GNU GPL (same license as Emacs)
 
 (define-slime-contrib slime-clj
   "Integration with swank-clj features"
   (:authors "Hugo Duncan <hugo_duncan@yahoo.com>")
-  (:license "EPL"))
+  (:license "EPL")
+  (:on-load
+   (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)))
 
 (defun slime-line-breakpoint ()
   "Set a breakpoint at the current line"
@@ -169,6 +171,14 @@
   (slime-list-breakpoints)
   slime-breakpoints-buffer-name)
 
+;;; repl forms
+(defun slime-list-repl-forms ()
+  "List the source forms"
+  (interactive)
+  (slime-eval-async `(swank:list-repl-source-forms)
+    (lambda (result)
+      (slime-show-description result nil))))
+
 ;;; swank development helpers
 (defun slime-toggle-swank-logging ()
   "Toggle logging in swank"
@@ -181,6 +191,22 @@
   (interactive)
   (slime-eval-with-transcript
    `(swank:resume-vm)))
+
+;;; Initialization
+
+(defun slime-clj-init ()
+  (slime-clj-bind-keys))
+
+(defun slime-clj-bind-keys ()
+  (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint))
+
+(slime-require :slime-clj)
+
+;;;###autoload
+(add-hook 'slime-load-hook
+          (lambda ()
+            (require 'slime-clj)
+            (slime-clj-init)))
 
 (provide 'slime-clj)
 ;;; slime-clj.el ends here

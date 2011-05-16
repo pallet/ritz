@@ -1,11 +1,13 @@
 (ns swank-clj.commands.contrib.swank-clj
   "Contrib for providing swank-clj specific functions"
   (:use
-   [swank-clj.commands :only [defslimefn]])
+   [swank-clj.swank.commands :only [defslimefn]])
   (:require
+   [clojure.string :as string]
    [swank-clj.connection :as connection]
    [swank-clj.jpda.debug :as debug]
    [swank-clj.logging :as logging]
+   [swank-clj.repl-utils.find :as find]
    [swank-clj.swank.messages :as messages]))
 
 ;;; Breakpoints
@@ -65,6 +67,11 @@ corresponding attribute values per thread."
    (debug/breakpoint-location
     (connection/vm-context connection) breakpoint-id)))
 
+;;; list repl source forms
+(defslimefn list-repl-source-forms
+  "List all the source forms entered in the REPL"
+  [connection]
+  (string/join \newline (find/source-forms)))
 
 ;;; swank development utilities
 (defslimefn toggle-swank-logging

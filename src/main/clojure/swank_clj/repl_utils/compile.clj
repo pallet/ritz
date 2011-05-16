@@ -6,6 +6,8 @@
    java.util.zip.ZipFile
    clojure.lang.LineNumberingPushbackReader))
 
+(def compile-path (atom nil))
+
 (defn- reader
   "This is a hack to get a line numbering pushback reader that
    doesn't start at line 1"
@@ -29,4 +31,6 @@
             (if (= form rdr)
               last-form
               (recur (read rdr false rdr) form))))]
-    [(compile-region string file line) last-form]))
+    [(binding [*compile-path* @compile-path]
+       (compile-region string file line))
+     last-form]))

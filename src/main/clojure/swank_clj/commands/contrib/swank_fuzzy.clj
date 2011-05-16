@@ -12,7 +12,7 @@
   (:require
    [swank-clj.repl-utils.fuzzy-completion :as fuzzy-completion]
    [swank-clj.swank.utils :as utils]
-   [swank-clj.commands :as commands]))
+   [swank-clj.swank.commands :as commands]))
 
 (defn- call-with-timeout [time-limit-in-msec proc]
   "Create a thunk that returns true if given time-limit-in-msec has been

@@ -5,7 +5,9 @@
   (:require
    [swank-clj.connection :as connection]
    [swank-clj.executor :as executor]
+   [swank-clj.hooks :as hooks]
    [swank-clj.inspect :as inspect]
+   [swank-clj.jpda.disassemble :as disassemble]
    [swank-clj.jpda.jdi :as jdi]
    [swank-clj.jpda.jdi-clj :as jdi-clj]
    [swank-clj.jpda.jdi-vm :as jdi-vm]
@@ -32,6 +34,7 @@
    com.sun.jdi.VirtualMachine
    com.sun.jdi.ObjectReference
    com.sun.jdi.ThreadReference
+   com.sun.jdi.StackFrame
    (com.sun.jdi
     BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
     LongValue ShortValue StringReference)))
@@ -62,13 +65,11 @@
 (defn remove-connection [connection]
   (swap! connections dissoc connection))
 
-
 (defn log-exception [e]
   (logging/trace
    "Caught exception %s %s"
    (pr-str e)
    (helpers/stack-trace-string e)))
-
 
 ;; (defn request-events
 ;;   "Add event requests that should be set before resuming the vm."
@@ -136,9 +137,12 @@
     (logging/trace "debug/remote-swank-port: loop")
     (if-let [port (jdi-clj/control-eval
                    context
-                   `(if-let [v# (resolve
-                                 '~'swank-clj.socket-server/acceptor-port)]
-                      (deref (var-get v#))))]
+                   ;; NB very important that this doesn't throw
+                   `(when (find-ns '~'swank-clj.socket-server)
+                      (when-let [v# (resolve
+                                     '~'swank-clj.socket-server/acceptor-port)]
+                        (when-let [a# (var-get v#)]
+                          (deref a#)))))]
       port
       (do
         (logging/trace "debug/remote-swank-port: no port yet ...")
@@ -183,7 +187,9 @@
 (defn execute-unless-inspect
   [handler]
   (fn [connection form buffer-package id f]
-    (if (and f (not (re-find #"inspect" (name (first form)))))
+    (if (and f
+             (not (re-find #"inspect" (name (first form))))
+             (:swank-clj.swank.commands/swank-fn (meta f)))
       (core/execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
 
@@ -221,10 +227,11 @@
   (logging/trace
    "debugger/forward-command: waiting reply from proxied connection")
   (let [proxied-connection (:proxy-to @connection)]
-    (let [reply (connection/read-from-connection proxied-connection)]
-      (executor/execute-request
-       (partial connection/send-to-emacs connection reply))
-      (let [id (last reply)]
+    (let [reply (connection/read-from-connection proxied-connection)
+          id (last reply)]
+      (when (or (not (number? id)) (not (zero? id))) ; filter (= id 0)
+        (executor/execute-request
+         (partial connection/send-to-emacs connection reply))
         (logging/trace "removing pending-id %s" id)
         (connection/remove-pending-id connection id)))))
 
@@ -338,7 +345,6 @@
   (let [breakpoints (jdi/line-breakpoints
                      (:vm context) breakpoint-suspend-policy
                      namespace filename line)]
-    (println (format "line-breakpoint %s %s %s" namespace filename line))
     (update-in context [:breakpoints] concat breakpoints)))
 
 (defn remove-breakpoint
@@ -1085,3 +1091,82 @@
     (connection/close proxied-connection)
     (connection/close connection))
   (System/exit 0))
+
+(defn setup-debugee
+  "Forward info to the debuggee. This uses request id 0, which will be
+   filtered from returning a reply to slime."
+  [connection]
+  ((forward-command nil) connection
+   `(~'swank:interactive-eval
+     ~(str
+       `(do
+          (require '~'swank-clj.repl-utils.compile)
+          (reset!
+           (var-get (resolve 'swank-clj.repl-utils.compile/compile-path))
+           ~*compile-path*)))) "user" 0 nil))
+
+(hooks/add core/new-connection-hook setup-debugee)
+
+(defn add-op-location [method {:keys [code-index] :as op}]
+  (if code-index
+    (merge op (jdi/location-data (.locationOfCodeIndex method code-index)))
+    op))
+
+(defn format-arg
+  [arg]
+  (case (:type arg)
+        :methodref (format
+                    "%s/%s%s"
+                    (string/replace (:class-name arg) "/" ".")
+                    (:name arg) (:descriptor arg))
+        :fieldref (format
+                    "^%s %s.%s"
+                     (:descriptor arg)
+                     (string/replace (:class-name arg) "/" ".")
+                     (:name arg))
+        :interfacemethodref (format
+                             "%s/%s%s"
+                             (string/replace (:class-name arg) "/" ".")
+                             (:name arg) (:descriptor arg))
+        :nameandtype (format "%s%s" (:name arg) (:descriptor arg))
+        :class (format "%s" (:name arg))
+        (if-let [value (:value arg)]
+          (format "%s" (pr-str value))
+          (format "%s" (pr-str arg)))))
+
+(defn format-ops
+  [ops]
+  (first
+   (reduce
+    (fn [[output location] op]
+      (let [line (:line location)
+            s (format
+               "%5d  %s %s%s"
+               (:code-index op) (:mnemonic op)
+               (string/join " " (map format-arg (:args op)))
+               (string/join " " (map format-arg (:implicit-args op))))]
+        (if (= line (:line op))
+          [(conj output s) location]
+          [(->
+            output
+            (conj (format "%s:%s" (:function op) (:line op)))
+            (conj s))
+           (select-keys op [:function :line])])))
+    [[] {}]
+    ops)))
+
+(defn disassemble-method
+  "Dissasemble a method, adding location info"
+  [const-pool method]
+  (let [ops (disassemble/disassemble const-pool (.bytecodes method))]
+    (format-ops (map #(add-op-location method %) ops))))
+
+(defn disassemble-frame
+  [context ^ThreadReference thread frame-index]
+  (let [^StackFrame frame (nth (.frames thread) frame-index)
+        location (.location frame)]
+    (if-let [method (.method location)]
+      (let [const-pool (disassemble/constant-pool
+                        (.. method (declaringType) (constantPool)))]
+        (disassemble-method const-pool method))
+      "Method not found")))

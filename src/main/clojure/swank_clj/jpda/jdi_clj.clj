@@ -150,6 +150,21 @@
     [object (first (jdi/methods
                     (.referenceType object) "invoke" (invoke-signature n)))]))
 
+(defn clojure-fn-deref
+  "Resolve a clojure function in the remote vm. Returns an ObjectReference and
+   a Method for n arguments."
+  [context thread options ns name n]
+  {:pre [thread]}
+  (when-let [var (jdi/invoke-method
+                  thread options
+                  (:RT context) (:var context)
+                  [(jdi/mirror-of (:vm context) ns)
+                   (jdi/mirror-of (:vm context) name)])]
+    (when-let [f (jdi/invoke-method thread options var (:deref context) [])]
+      [f
+       (first
+        (jdi/methods (.referenceType f) "invoke" (invoke-signature n)))])))
+
 (defn invoke-clojure-fn
   "Invoke a clojure function on the specified thread with the given remote
    arguments."
@@ -168,6 +183,16 @@
                          (namespace sym) (name sym) (count args))]
     (logging/trace "clojure fn is  %s %s" object method)
     (jdi/invoke-method thread options object method args)))
+
+(defn remote-thread
+  "Start a remote thread"
+  [context thread options form]
+  (eval-to-value
+   context thread options
+   `(do
+      (let [thread# (Thread. (fn [] ~form))]
+        (.start thread#)
+        thread#))))
 
 (defn var-get
   [context thread options value]
