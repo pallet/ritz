@@ -171,6 +171,14 @@
   (slime-list-breakpoints)
   slime-breakpoints-buffer-name)
 
+;;; repl forms
+(defun slime-list-repl-forms ()
+  "List the source forms"
+  (interactive)
+  (slime-eval-async `(swank:list-repl-source-forms)
+    (lambda (result)
+      (slime-show-description result nil))))
+
 ;;; swank development helpers
 (defun slime-toggle-swank-logging ()
   "Toggle logging in swank"

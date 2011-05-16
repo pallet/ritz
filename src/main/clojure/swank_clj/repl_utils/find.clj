@@ -6,19 +6,24 @@
 
 ;;; Provide source form tracking
 ;; TODO work out how to call eval-clear-form, or use weak refs
-(def ^{:private true} source-forms (atom {}))
+(def ^{:private true} source-form-map (atom {}))
 
 (defn source-form!
   [id form]
-  (swap! source-forms assoc id form))
+  (swap! source-form-map assoc id form))
 
 (defn source-form
   [id]
-  (@source-forms id))
+  (@source-form-map id))
+
+(defn source-forms
+  "All source forms entered at the reply"
+  []
+  (map second (sort-by key @source-form-map)))
 
 (defn source-form-clear
   [id]
-  (swap! source-forms dissoc id))
+  (swap! source-form-map dissoc id))
 
 ;;; Provide a mapping from source path to source form
 (def ^{:private true} source-form-name "SOURCE_FORM_")
