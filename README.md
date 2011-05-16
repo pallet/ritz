@@ -11,7 +11,7 @@ This is alpha quality.
 
 ## Install
 
-Add `[swank-clj "0.1.2"]` to your project.clj `:dev-dependencies`.
+Add `[swank-clj "0.1.3"]` to your project.clj `:dev-dependencies`.
 
 Install the slime-clj.el contrib from [marmalade](http://marmalade-repo.org/).
 
