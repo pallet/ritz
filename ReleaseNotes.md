@@ -1,8 +1,18 @@
 # Release Notes
 
-Current release is 0.1.3.
+Current release is 0.1.4.
+
+* 0.1.4
+
+- Fix broken lein swank plugin
 
 * 0.1.3
+
+## Known Issues
+
+- Broken lein swank plugin
+
+## Changes
 
 - Add slime-disassemble to show bytecode for a frame
   When debugging it is sometimes useful to see the bytecode generated for a
