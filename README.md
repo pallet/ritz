@@ -11,13 +11,13 @@ This is alpha quality.
 
 ## Install
 
-Add `[swank-clj "0.1.4"]` to your project.clj `:dev-dependencies`.
+Add `[swank-clj "0.1.5"]` to your project.clj `:dev-dependencies`.
 
 Install the slime-clj.el contrib from [marmalade](http://marmalade-repo.org/).
 
 A compatible slime.el is in slime/slime.el. It is available as a `package.el`
 package file you can
-[download](https://github.com/downloads/hugoduncan/swank-clj/slime-20101113.tar)
+[download](https://github.com/downloads/hugoduncan/swank-clj/slime-20101113.1.tar)
 and install with `M-x package-install-file`.  Note that you may need to remove
 this package to use
 [swank-clojure](https://github.com/technomancy/swank-clojure) again.
@@ -56,6 +56,19 @@ To list breakpoints, use `M-x slime-list-breakpoints` or press `b` in the
  - g refresh list
  - k remove breakpoint
  - v view source location
+
+### Javadoc
+
+Specify the location of local javadoc using `slime-javadoc-local-paths` in
+your `.emacs` file.
+
+`slime-javadoc`, bound to `C-c b` by default, will open javadoc in the
+browser you have set up in emacs.
+
+### SLIME configuration
+
+If you use slime with multiple lisps, you can isolate clojure specific
+setup by using `slime-clj-connected-hook` and `slime-clj-repl-mode-hook`.
 
 ## Open Problems
 

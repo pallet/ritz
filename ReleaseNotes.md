@@ -1,6 +1,25 @@
 # Release Notes
 
-Current release is 0.1.4.
+Current release is 0.1.5.
+
+* 0.1.5
+
+- Add slime-javadoc-local-paths and slime-javadoc
+  slime-javadoc-local-paths can be used to set paths to local javadoc.
+
+  slime-javadoc opens the javadoc for the symbol at point in a browser. It
+  is bound to C-c b by default.
+
+- Make compile-string-for-emacs more robust
+  Do a better job of finding the namespace for compilation, and don't
+  complain if the namespace is not found (use the repl's current namespace)
+
+- Add slime-clj-connected-hook and slime-clj-repl-mode-hook
+  When using slime with multiple lists, allow easy segregation of clojure
+  specific setup
+
+- Implement disassemble-form for slime-disassemble-symbol
+  Enables disassembly of a function given its symbol
 
 * 0.1.4
 
