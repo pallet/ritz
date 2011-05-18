@@ -137,3 +137,13 @@ corresponding attribute values per thread."
     (string/join \newline
      (debug/disassemble-frame
       (connection/vm-context connection) thread frame-index))))
+
+(defslimefn disassemble-form [connection form-string]
+  (when (.startsWith form-string "'")
+    (let [sym (eval (read-string form-string))
+          vm-context (connection/vm-context connection)]
+      (string/join \newline
+                   (debug/disassemble-symbol
+                    vm-context (:control-thread vm-context)
+                    (or (namespace sym) (connection/buffer-ns-name))
+                    (name sym))))))

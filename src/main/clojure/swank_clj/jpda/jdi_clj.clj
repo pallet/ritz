@@ -153,17 +153,27 @@
 (defn clojure-fn-deref
   "Resolve a clojure function in the remote vm. Returns an ObjectReference and
    a Method for n arguments."
-  [context thread options ns name n]
-  {:pre [thread]}
-  (when-let [var (jdi/invoke-method
-                  thread options
-                  (:RT context) (:var context)
-                  [(jdi/mirror-of (:vm context) ns)
-                   (jdi/mirror-of (:vm context) name)])]
-    (when-let [f (jdi/invoke-method thread options var (:deref context) [])]
-      [f
-       (first
-        (jdi/methods (.referenceType f) "invoke" (invoke-signature n)))])))
+  ([context thread options ns name n]
+     {:pre [thread]}
+     (when-let [var (jdi/invoke-method
+                     thread options
+                     (:RT context) (:var context)
+                     [(jdi/mirror-of (:vm context) ns)
+                      (jdi/mirror-of (:vm context) name)])]
+       (when-let [f (jdi/invoke-method thread options var (:deref context) [])]
+         [f (first
+             (jdi/methods (.referenceType f) "invoke" (invoke-signature n)))])))
+  ([context thread options ns name]
+     {:pre [thread]}
+     (when-let [var (jdi/invoke-method
+                     thread options
+                     (:RT context) (:var context)
+                     [(jdi/mirror-of (:vm context) ns)
+                      (jdi/mirror-of (:vm context) name)])]
+       (when-let [f (jdi/invoke-method thread options var (:deref context) [])]
+         [f (remove
+             #(or (.isAbstract %) (.isObsolete %))
+             (jdi/methods (.referenceType f) "invoke"))]))))
 
 (defn invoke-clojure-fn
   "Invoke a clojure function on the specified thread with the given remote
