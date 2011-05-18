@@ -193,14 +193,48 @@
    `(swank:resume-vm)))
 
 ;;; Initialization
+(defcustom slime-clj-connected-hook nil
+  "List of functions to call when SLIME connects to clojure."
+  :type 'hook
+  :group 'slime-lisp)
+
+(defcustom slime-clj-repl-mode-hook nil
+  "List of functions to call when a SLIME clojure repl starts."
+  :type 'hook
+  :group 'slime-lisp)
+
+(defun slime-connection-is-clojure-p ()
+  (compare-strings "clojure" 0 7 (slime-connection-name) 0 7))
 
 (defun slime-clj-init ()
+  "Initialise slime-clj.  Creates clojure specific slime hooks."
+  (add-hook
+   'slime-connected-hook
+   (lambda ()
+     (slime-clj-bind-keys)
+     (when (slime-connection-is-clojure-p)
+       (run-hooks 'slime-clj-connected-hook))))
+  (add-hook
+   'slime-repl-mode-hook
+   (lambda ()
+     (when (slime-connection-is-clojure-p)
+       (run-hooks 'slime-clj-repl-mode-hook)))))
+
+(add-hook 'slime-clj-connected-hook 'slime-clojure-connection-setup)
+(add-hook 'slime-clj-repl-mode-hook 'slime-clojure-repl-setup)
+
+(defun slime-clojure-connection-setup ()
   (slime-clj-bind-keys))
 
-(defun slime-clj-bind-keys ()
-  (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint))
+(defun slime-clojure-repl-setup ()
+  (slime-clj-bind-repl-keys))
 
-(slime-require :slime-clj)
+(defun slime-clj-bind-keys ()
+  (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)
+  (define-key slime-mode-map (kbd "C-c b") 'slime-javadoc))
+
+(defun slime-clj-bind-repl-keys ()
+  (define-key slime-repl-mode-map (kbd "C-c b") 'slime-javadoc))
 
 ;;;###autoload
 (add-hook 'slime-load-hook
