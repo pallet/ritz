@@ -192,6 +192,27 @@
   (slime-eval-with-transcript
    `(swank:resume-vm)))
 
+;;; javadoc browsing
+(defun slime-javadoc-local-paths (local-paths)
+  "Require JavaDoc namespace, adding a list of local paths."
+  (slime-eval-async `(swank:javadoc-local-paths ,@local-paths)))
+
+(defun slime-javadoc (symbol-name)
+  "Browse javadoc on the Java class at point."
+  (interactive (list (slime-read-symbol-name "Javadoc for: ")))
+  (when (not symbol-name)
+    (error "No symbol given"))
+  (set-buffer (slime-output-buffer))
+  (unless (eq (current-buffer) (window-buffer))
+    (pop-to-buffer (current-buffer) t))
+  (goto-char (point-max))
+  (slime-eval-async
+      `(swank:javadoc-url ,symbol-name)
+    (lambda (url)
+      (if url
+          (browse-url url)
+        (error "No javadoc url for %S" url)))))
+
 ;;; Initialization
 (defcustom slime-clj-connected-hook nil
   "List of functions to call when SLIME connects to clojure."

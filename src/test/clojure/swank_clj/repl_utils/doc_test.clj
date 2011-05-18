@@ -47,3 +47,9 @@
 (deftest arglist-test
   (is (= "([map])" (doc/arglist :kw (the-ns 'clojure.core))))
   (is (= "([name] [ns name])" (doc/arglist 'symbol (the-ns 'clojure.core)))))
+
+(deftest javadoc-url-test
+  (is (= "http://java.sun.com/javase/6/docs/api/java/io/File.html"
+         (doc/javadoc-url "java.io.File")))
+  (is (= "http://java.sun.com/javase/6/docs/api/java/io/File.html"
+         (doc/javadoc-url "java.io.File."))))
