@@ -1,6 +1,11 @@
 (ns swank-clj.repl-utils.doc
   "Documentation utils"
-  (:refer-clojure :exclude [print-doc]))
+  (:refer-clojure :exclude [print-doc])
+  (:require
+   [clojure.java.javadoc :as javadoc]
+   [clojure.java.io :as io])
+  (:import
+   java.io.File))
 
 (defn- print-doc*
   "Replacement for clojure.core/print-doc"
@@ -101,3 +106,61 @@ that symbols accessible in the current namespace go first."
                             (when-let [args (and var (:arglists (meta var)))]
                               (pr-str args)))
    :else nil))
+
+;;; javadoc
+(alter-var-root
+ #'javadoc/*feeling-lucky-url*
+ (constantly "http://www.google.com/search?q=%2Bjavadoc+"))
+
+(defn javadoc-local-paths
+  "Set javadoc paths, filtering duplicates"
+  [paths]
+  (dosync (commute
+           @#'javadoc/*local-javadocs*
+           (fn [p] (distinct (concat p paths))))))
+
+(defn javadoc-partial-match [file-path files]
+  (let [re (re-pattern (str "HREF=\"(.*/" file-path ")"))
+        finder (fn [classes-file]
+                 (when-let [[s m] (re-find
+                                   re
+                                   (slurp classes-file))]
+                   (str (.toURI (io/file (.getParent classes-file) m)))))]
+    (first (filter identity (map finder files)))))
+
+(defn javadoc-url
+  "Searches for a URL for the given class name.  Tries
+  *local-javadocs* first, then *remote-javadocs*.  Returns a string."
+  {:tag String,
+   :added "1.2"}
+  [^String classname]
+  (let [classname (if (.endsWith classname ".")
+                    (.substring classname 0 (dec (count classname)))
+                    classname)
+        file-path (str (-> classname
+                           (.replace  \. java.io.File/separatorChar)
+                           (.replace \$ \.))
+                       ".html")
+        url-path (.replace classname \. \/)
+        files (mapcat
+               (fn [base]
+                 (filter
+                  #(= "allclasses-noframe.html" (.getName %))
+                  (file-seq (File. base))))
+               @@#'javadoc/*local-javadocs*)]
+    (if-let [file ^File (first
+                         (filter
+                          #(.exists ^File %)
+                          (map #(io/file (.getParent %) file-path) files)))]
+      (-> file .toURI str)
+      ;; If no local file, try remote URLs:
+      (or
+       (some (fn [[prefix url]]
+               (when (.startsWith classname prefix)
+                 (str url url-path ".html")))
+             @@#'javadoc/*remote-javadocs*)
+       ;; lookup in indexes for partial match
+       (javadoc-partial-match file-path files)
+       ;; if *feeling-lucky* try a web search
+       (when @#'javadoc/*feeling-lucky*
+         (str @#'javadoc/*feeling-lucky-url* classname))))))

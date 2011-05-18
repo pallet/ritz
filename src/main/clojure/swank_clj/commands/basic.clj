@@ -170,19 +170,32 @@
       (.getLineNumber f))
     (catch Exception e 1)))
 
+(defn read-position-line [file position]
+  (if (number? position)
+    (if (.isFile file)
+      (line-at-position file  position)
+      0)
+    (when (list? position)
+      (or
+       (second (first (filter #(= :line (first %)) position)))
+       (when-let [p (second (first (filter #(= :position (first %)) position)))]
+         (line-at-position file p))))))
+
+(defn guess-namespace [file]
+  (->>
+   (reverse (.split (.getParent file) "/"))
+   (reductions #(str %1 "." %2))
+   (map symbol)
+   (filter find-ns)
+   first))
+
 (defslimefn compile-string-for-emacs
-  [connection string buffer position directory debug]
+  [connection string buffer position buffer-path debug]
   (let [start (System/nanoTime)
-        line (line-at-position directory position)
-        ret (do
-              (when (not= (name (ns-name *ns*))
-                          (connection/buffer-ns-name connection))
-                (throw (clojure.lang.Compiler$CompilerException.
-                        directory line
-                        (Exception.
-                         (str "No such namespace: "
-                              (connection/buffer-ns-name connection))))))
-              (compile/compile-region string directory line))
+        file (java.io.File. buffer-path)
+        line (read-position-line file position)
+        ret (binding [*ns* (or (guess-namespace file) *ns*)]
+              (compile/compile-region string buffer-path line))
         delta (- (System/nanoTime) start)]
     (messages/compilation-result nil ret (/ delta 1000000000.0))))
 

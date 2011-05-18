@@ -18,9 +18,9 @@
 
 (defn compile-region
   "Compile region."
-  ([string file line]
-     (with-open [rdr (reader string line)]
-       (clojure.lang.Compiler/load rdr file (.getName (File. file))))))
+  [string file line]
+  (with-open [rdr (reader string line)]
+    (clojure.lang.Compiler/load rdr file (.getName (File. file)))))
 
 (defn eval-region
   "Evaluate string, and return the results of the last form and the last form."

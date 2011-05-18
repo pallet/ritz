@@ -1,15 +1,18 @@
 #!/bin/bash
 
+if [[ $# -eq 1 ]]; then
+    RELEASE=".$1"
+fi
 
 ## Build an elpa package for slime
-
 VERSION=$(grep -E -o "[0-9]{4,4}-[0-9]{1,2}-[0-9]{1,2}" slime/ChangeLog | head -1 | sed -e "s/-//g" )
+VERSION=${VERSION}${RELEASE}
 echo "SLIME version $VERSION"
 
 dest="slime-$VERSION"
 
 rm -rf "marmalade/$dest" "marmalade/slime"
-find slime \( -name '*.el' -or -name 'ChangeLog' \) | cpio -pd marmalade
+find slime | cpio -pd marmalade
 
 # remove the slime-clj contrib
 rm -f marmalade/slime/contrib/slime-clj.el

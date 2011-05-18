@@ -4,9 +4,11 @@
    [swank-clj.swank.commands :only [defslimefn]])
   (:require
    [clojure.string :as string]
+   [clojure.java.javadoc :as javadoc]
    [swank-clj.connection :as connection]
    [swank-clj.jpda.debug :as debug]
    [swank-clj.logging :as logging]
+   [swank-clj.repl-utils.doc :as doc]
    [swank-clj.repl-utils.find :as find]
    [swank-clj.swank.messages :as messages]))
 
@@ -66,6 +68,16 @@ corresponding attribute values per thread."
   (messages/location
    (debug/breakpoint-location
     (connection/vm-context connection) breakpoint-id)))
+
+;;; javadoc
+(defslimefn javadoc-local-paths
+  [connection & paths]
+  (doc/javadoc-local-paths paths)
+  nil)
+
+(defslimefn javadoc-url
+  [connection symbol-name]
+  (doc/javadoc-url symbol-name))
 
 ;;; list repl source forms
 (defslimefn list-repl-source-forms

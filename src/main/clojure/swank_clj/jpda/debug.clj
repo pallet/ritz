@@ -808,7 +808,7 @@
   (let [frame (nth (.frames thread) n)]
     (sort-by
      #(.name (key %))
-     (merge {} (jdi/frame-locals frame) (jdi/clojure-locals frame)))))
+     (merge {} (jdi/clojure-locals frame) (jdi/frame-locals frame)))))
 
 (defn frame-locals-with-string-values
   "Return frame locals for slime"
@@ -1141,10 +1141,9 @@
     (fn [[output location] op]
       (let [line (:line location)
             s (format
-               "%5d  %s %s%s"
+               "%5d  %s %s"
                (:code-index op) (:mnemonic op)
-               (string/join " " (map format-arg (:args op)))
-               (string/join " " (map format-arg (:implicit-args op))))]
+               (string/join " " (map format-arg (:args op))))]
         (if (= line (:line op))
           [(conj output s) location]
           [(->
@@ -1167,6 +1166,28 @@
         location (.location frame)]
     (if-let [method (.method location)]
       (let [const-pool (disassemble/constant-pool
-                        (.. method (declaringType) (constantPool)))]
+                        (.. method declaringType constantPool))]
         (disassemble-method const-pool method))
       "Method not found")))
+
+(defn disassemble-symbol
+  "Dissasemble a symbol var"
+  [context ^ThreadReference thread sym-ns sym-name]
+  (logging/trace "disassemble-symbol %s %s" sym-ns sym-name)
+  (when-let [[f methods] (jdi-clj/clojure-fn-deref
+                          context thread
+                          jdi/invoke-single-threaded
+                          sym-ns sym-name)]
+    (let [const-pool (disassemble/constant-pool
+                      (.. f referenceType constantPool))]
+      (apply
+       concat
+       (for [method methods
+             :let [ops (disassemble-method const-pool method)]
+             :let [clinit (first (drop 3 ops))]
+             :when (not (.contains clinit ":invokevirtual \"<clinit>\""))]
+         (concat
+          [(str sym-ns "/" sym-name
+                "(" (string/join " " (.argumentTypeNames method)) ")\n")]
+          ops
+          ["\n\n"]))))))

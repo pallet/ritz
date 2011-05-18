@@ -72,5 +72,7 @@
                    method)]
           ;; (clojure.pprint/pprint ops)
           (is (seq ops))))
+      (is (debug/disassemble-symbol
+           context (:control-thread context) "fred" "f"))
       (finally
        (jdi/shutdown (:vm context))))))

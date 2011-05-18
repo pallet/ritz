@@ -194,7 +194,7 @@
      (resolve-pool-index-values
       (resolve-pool-index-values (index-consts consts))))))
 
-(def pool-indices
+(def local-indices
   {:local-0 0
    :local-1 1
    :local-2 2
@@ -203,10 +203,7 @@
 (defn implicit-arg-values
   "Obtain opcode implicit arguments"
   [const-pool args]
-  (->>
-   args
-   (map pool-indices)
-   (map const-pool)))
+  (map #(hash-map :type :local-index :value (local-indices %)) args))
 
 (defn pad-to-4byte [address]
   (let [al (rem address 4)]
@@ -217,12 +214,14 @@
   (loop [args args
          address address
          bytecode bytecode
-         results []]
+         results []
+         result-types []]
     (if (seq args)
       (let [a1 (first args)
             a2 (second args)
-            arg-size (if (= :const-index-high a1) 2 1)
+            arg-size (if (#{:branch-byte-high :const-index-high} a1) 2 1)
             byte-size (case a1
+                            :branch-byte-high 2
                             :const-index-high 2
                             :4byte-align-pad (pad-to-4byte address)
                             :int-value 4
@@ -232,6 +231,9 @@
                             :match-offset-pairs (* 8 (last results))
                             1)
             result (case a1
+                         :branch-index-high (const-pool
+                                             (dec
+                                              (bytes-to-int (take 2 bytecode))))
                          :const-index-high (const-pool
                                             (dec
                                              (bytes-to-int (take 2 bytecode))))
@@ -257,13 +259,21 @@
                                                 (partition 8 bytecode)))
                          :4byte-align-pad (symbol
                                            (str "pad-" (pad-to-4byte address)))
-                         (first bytecode))]
+                         (first bytecode))
+            result-type (case a1
+                              :branch-index-high :branch
+                              :const-index-high :const
+                              :const-index :const
+                              :offsets :tableswitch-offsets
+                              :match-offset-pairs :lookupswitch-pairs
+                              a1)]
         (recur
          (drop arg-size args)
          (+ address arg-size)
          (drop byte-size bytecode)
-         (conj results result)))
-      results)))
+         (conj results result)
+         (conj result-types result-type)))
+      [results result-types])))
 
 (defn tableswitch-size [address bytecode]
   (let [pad (pad-to-4byte (inc address))
@@ -291,11 +301,14 @@
       (let [[_ mnemonic desc args stack-in stack-out implicit-args
              size-fn] (opcodes opcode)
              arg-size (or (and size-fn (size-fn address bytecode))
-                          (count args))]
-        {:mnemonic mnemonic
-         :args (explicit-arg-values
-                const-pool args (inc address) (rest bytecode))
-         :implicit-args (implicit-arg-values const-pool implicit-args)
+                          (count args))
+             [args arg-types] (explicit-arg-values
+                               const-pool args (inc address) (rest bytecode))]
+        {:opcode opcode
+         :mnemonic mnemonic
+         :args args
+         :arg-types arg-types
+         :implicit-args implicit-args
          :arg-size arg-size
          :code-index address}))))
 
@@ -522,35 +535,35 @@
    [152 :dcmpg "Compare double (1 if NaN)"
     [] [:double-value :double-value] [:int-value]]
    [153 :ifeq "Branch if int comparison with 0 equal"
-    [:branch-byte-hi :branch-byte-low] [:int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type]]
    [154 :ifne  "Branch if int comparison with 0 not equal"
-    [:branch-byte-hi :branch-byte-low] [:int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type]]
    [155 :iflt  "Branch if int comparison with 0 less"
-    [:branch-byte-hi :branch-byte-low] [:int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type]]
    [156 :ifge  "Branch if int comparison with 0 greater equal"
-    [:branch-byte-hi :branch-byte-low] [:int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type]]
    [157 :ifgt "Branch if int comparison with 0 greater"
-    [:branch-byte-hi :branch-byte-low] [:int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type]]
    [158 :ifle "Branch if int comparison with 0 less or equal"
-    [:branch-byte-hi :branch-byte-low] [:int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type]]
    [159 :if_icmpeq "Branch if int comparison equal"
-    [:branch-byte-hi :branch-byte-low] [:int-type :int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type :int-type]]
    [160 :if_icmpne  "Branch if int comparison not equal"
-    [:branch-byte-hi :branch-byte-low] [:int-type :int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type :int-type]]
    [161 :if_icmplt "Branch if int comparison less than"
-    [:branch-byte-hi :branch-byte-low] [:int-type :int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type :int-type]]
    [162 :if_icmpge "Branch if int comparison greater or equal"
-    [:branch-byte-hi :branch-byte-low] [:int-type :int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type :int-type]]
    [163 :if_icmpgt "Branch if int comparison greater than"
-    [:branch-byte-hi :branch-byte-low] [:int-type :int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type :int-type]]
    [164 :if_icmple "Branch if int comparison less or equal"
-    [:branch-byte-hi :branch-byte-low] [:int-type :int-type]]
+    [:branch-byte-high :branch-byte-low] [:int-type :int-type]]
    [165 :if_acmpeq "Branch if reference comparison equal"
-    [:branch-byte-hi :branch-byte-low] [:reference-type :reference-type] []]
+    [:branch-byte-high :branch-byte-low] [:reference-type :reference-type] []]
    [166 :if_acmpne "Branch if reference comparison not equal"
-    [:branch-byte-hi :branch-byte-low] [:reference-type :reference-type] []]
-   [167 :goto "Branch always" [:branch-byte-hi :branch-byte-low] [] []]
-   [168 :jsr "Jump subroutine" [:branch-byte-hi :branch-byte-low] [] [:address]]
+    [:branch-byte-high :branch-byte-low] [:reference-type :reference-type] []]
+   [167 :goto "Branch always" [:branch-byte-high :branch-byte-low] [] []]
+   [168 :jsr "Jump subroutine" [:branch-byte-high :branch-byte-low] [] [:address]]
    [169 :ret "Return from subroutine" [] [:return-address] []]
    [170 :tableswitch "Access jump table by index and jump"
     [:4byte-align-pad :int-value :int-value :int-value :offsets] [:int-value] []
@@ -602,14 +615,14 @@
    [197 :multianewarray "Create new multidimensional array"
     [:const-index-high :const-index-low :int-value] [:int-values] [:array-ref]]
    [198 :ifnull "Branch if reference null"
-    [:branch-byte-hi :branch-byte-low] [:object-ref] []]
+    [:branch-byte-high :branch-byte-low] [:object-ref] []]
    [199 :ifnonnull "Branch if reference not null"
-    [:branch-byte-hi :branch-byte-low] [:object-ref] []]
+    [:branch-byte-high :branch-byte-low] [:object-ref] []]
    [200 :goto_w "Branch always (wide index)"
-    [:branch-byte-hi-hi :branch-byte-low
+    [:branch-byte-high-hi :branch-byte-low
      :branch-byte-low-high :branch-byte-low-low] [] []]
    [201 :jsr_w "Jump subroutine (wide index)"
-    [:branch-byte-hi-hi :branch-byte-low
+    [:branch-byte-high-hi :branch-byte-low
      :branch-byte-low-high :branch-byte-low-low] [] []]
    [202 :breakpoint "Breakpoint" [] [] []]
    [254 :impdep1 "Implementation dependent" [] [] []]
