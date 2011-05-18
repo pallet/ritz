@@ -2,7 +2,7 @@
 ;;
 ;; Copyright 2011 Hugo Duncan
 ;;
-;; Authors: Hugo Duncan <hugo_duncan@yahoo.com>
+;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/hugoduncan/swank-clj
 ;; Version: 0.1.3
