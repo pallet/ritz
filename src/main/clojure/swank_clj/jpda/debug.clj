@@ -900,7 +900,7 @@
 
 (defn eval-string-in-frame
   "Eval the string `expr` in the context of the specified `frame-number`."
-  [context thread expr frame-number]
+  [connection context thread expr frame-number]
   (try
     (let [_ (assert (.isSuspended thread))
           locals (frame-locals thread frame-number)
@@ -924,7 +924,7 @@
          (clear-remote-values context thread map-var))))
     (catch com.sun.jdi.InvocationException e
       (invoke-debugger*
-       context (InvocationExceptionEvent. (.exception e) thread)))))
+       connection (InvocationExceptionEvent. (.exception e) thread)))))
 
 ;;; events
 (defn add-exception-event-request
