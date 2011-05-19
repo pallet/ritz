@@ -1185,7 +1185,7 @@
        (for [method methods
              :let [ops (disassemble-method const-pool method)]
              :let [clinit (first (drop 3 ops))]
-             :when (not (.contains clinit ":invokevirtual \"<clinit>\""))]
+             :when (not (.contains clinit ":invokevirtual \""))]
          (concat
           [(str sym-ns "/" sym-name
                 "(" (string/join " " (.argumentTypeNames method)) ")\n")]
