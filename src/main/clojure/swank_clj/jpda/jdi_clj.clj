@@ -147,8 +147,13 @@
                 (:RT context) (:var context)
                 [(jdi/mirror-of (:vm context) ns)
                  (jdi/mirror-of (:vm context) name)])]
-    [object (first (jdi/methods
-                    (.referenceType object) "invoke" (invoke-signature n)))]))
+    [object (or
+             (first
+              (jdi/methods
+               (.referenceType object) "invoke" (invoke-signature n)))
+             (first
+              (jdi/methods
+               (.referenceType object) "invokePrim" (invoke-signature n)))) ]))
 
 (defn clojure-fn-deref
   "Resolve a clojure function in the remote vm. Returns an ObjectReference and
@@ -173,7 +178,9 @@
        (when-let [f (jdi/invoke-method thread options var (:deref context) [])]
          [f (remove
              #(or (.isAbstract %) (.isObsolete %))
-             (jdi/methods (.referenceType f) "invoke"))]))))
+             (concat
+              (jdi/methods (.referenceType f) "invoke")
+              (jdi/methods (.referenceType f) "invokePrim")))]))))
 
 (defn invoke-clojure-fn
   "Invoke a clojure function on the specified thread with the given remote
