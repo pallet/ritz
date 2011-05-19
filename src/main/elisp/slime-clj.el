@@ -202,12 +202,7 @@
   (interactive (list (slime-read-symbol-name "Javadoc for: ")))
   (when (not symbol-name)
     (error "No symbol given"))
-  (set-buffer (slime-output-buffer))
-  (unless (eq (current-buffer) (window-buffer))
-    (pop-to-buffer (current-buffer) t))
-  (goto-char (point-max))
-  (slime-eval-async
-      `(swank:javadoc-url ,symbol-name)
+  (slime-eval-async `(swank:javadoc-url ,symbol-name)
     (lambda (url)
       (if url
           (browse-url url)
