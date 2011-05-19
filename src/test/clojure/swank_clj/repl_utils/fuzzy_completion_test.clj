@@ -98,3 +98,16 @@
      (try!
       (remove-ns 'testing-testing0)
       (remove-ns 'testing-testing1)))))
+
+(deftest fuzzy-generate-matchings-test
+  (let [ns (the-ns 'user)]
+    (try
+      (is
+       (= ["swank-clj.repl-utils.fuzzy-completion-test/testing-testing0"]
+          (->>
+           (#'sf/fuzzy-generate-matchings
+            "swank-clj.repl-utils.fuzzy-completion-test/testing"
+            ns
+            (fn [] false))
+           (map #(str (:ns-name %) "/" (name (:symbol %))))
+           (filter #(re-find #"/test" %))))))))
