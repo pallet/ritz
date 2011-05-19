@@ -81,16 +81,18 @@
 (def ^{:private true
        :doc "Regex for extacting file and line from a compiler exception"}
   compiler-exception-location-re
-  #"Exception:.*\(([^:]+):([0-9]+)\)")
+  #".*Exception:.*\(([^:]+):([0-9]+)\)")
 
 (defn find-compiler-exception-location
   "Return a location vector [source-buffer position], for the given
    throwable."
   [^Throwable t]
-  (when (instance? clojure.lang.Compiler$CompilerException t)
-    (let [[match file line] (re-find compiler-exception-location-re (str t))]
-      (when (and file line)
-        [{:file file} {:line (Integer/parseInt line)}]))))
+  (let [[match file line] (re-find compiler-exception-location-re (str t))]
+    (when (and file line)
+      [{:file (or (when (instance? clojure.lang.Compiler$CompilerException t)
+                    (try (.source t) (catch Exception _)))
+                  file)}
+       {:line (Integer/parseInt line)}])))
 
 (defn java-source-path
   "Take a class-name and a file-name, and generate a file path"
