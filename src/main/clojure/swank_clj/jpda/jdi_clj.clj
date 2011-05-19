@@ -57,7 +57,7 @@
          "Unexpected exception %s %s" e)
         (throw e))
       (catch Exception e
-        (if (= "Unreadable form" (.getMessage e))
+        (if (and (.getMessage e) (re-find #"Unreadable form" (.getMessage e)))
           s
           (throw e))))))
 
