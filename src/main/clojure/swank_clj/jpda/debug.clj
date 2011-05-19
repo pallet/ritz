@@ -801,25 +801,15 @@
      jdi/invoke-single-threaded
      args))))
 
-(defn frame-locals
-  "Return frame locals for slime, a sequence of [LocalVariable Value]
-   sorted by name."
-  [thread n]
-  (let [frame (nth (.frames thread) n)]
-    (sort-by
-     #(.name (key %))
-     (merge {} (jdi/clojure-locals frame) (jdi/frame-locals frame)))))
-
 (defn frame-locals-with-string-values
   "Return frame locals for slime"
   [context thread n]
   (doall
-   (for [map-entry (seq (frame-locals thread n))]
-     {:name (.name (key map-entry))
-      :value (val map-entry)
-      :string-value (inspect/value-as-string
-                     (assoc context :current-thread thread)
-                     (val map-entry))})))
+   (for [{:keys [value] :as map-entry} (jdi/unmangled-frame-locals
+                                        (nth (.frames thread) n))]
+     (assoc map-entry
+       :string-value (inspect/value-as-string
+                      (assoc context :current-thread thread) value)))))
 
 (defn nth-frame-var
   "Return the var-index'th var in the frame-index'th frame"
@@ -836,7 +826,7 @@
   [map-sym locals]
   (mapcat
    (fn [local]
-     (let [local (.name (key local))]
+     (let [local (:unmangled-name local)]
        `[~(symbol local) ((var-get (ns-resolve '~'user '~map-sym)) ~local)]))
    locals))
 
@@ -875,10 +865,10 @@
   "Assoc a local variable into a remote var"
   [context thread map-var local]
   (jdi-clj/remote-call
-   context thread (invoke-option-for (val local))
+   context thread (invoke-option-for (:value local))
    `assoc map-var
-   (jdi-clj/remote-str context (.name (key local)))
-   (when-let [value (val local)]
+   (jdi-clj/remote-str context (:unmangled-name local))
+   (when-let [value (:value local)]
      (jdi-clj/remote-object value context thread))))
 
 (defn set-remote-values
@@ -903,7 +893,8 @@
   [connection context thread expr frame-number]
   (try
     (let [_ (assert (.isSuspended thread))
-          locals (frame-locals thread frame-number)
+          locals (jdi/unmangled-frame-locals
+                  (nth (.frames thread) frame-number))
           _ (logging/trace "eval-string-in-frame: map-sym")
           map-sym (remote-map-sym context thread)
           _ (logging/trace "eval-string-in-frame: map-var for %s" map-sym)
