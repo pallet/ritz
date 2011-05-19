@@ -128,7 +128,7 @@ corresponding attribute values per thread."
      connection (connection/vm-context connection) thread expr n)))
 
 (defslimefn pprint-eval-string-in-frame [connection expr n]
-  (pprint/pprint (eval-string-in-frame connection expr n)))
+  (with-out-str (pprint/pprint (eval-string-in-frame connection expr n))))
 
 ;; disassemble
 (defslimefn sldb-disassemble [connection frame-index]
