@@ -900,17 +900,55 @@
                    context thread jdi/invoke-single-threaded
                    `(intern '~'user '~map-sym {}))
           form (with-local-bindings-form map-sym locals (read-string expr))]
-      (try
-        (set-remote-values context thread map-var locals)
-        (let [v (jdi-clj/eval-to-value
-                 context thread jdi/invoke-single-threaded form)]
-          (inspect/value-as-string (assoc context :current-thread thread) v))
-        (finally
-         (clear-remote-values context thread map-var))))
+      (locking remote-map-sym
+        (try
+          (set-remote-values context thread map-var locals)
+          (let [v (jdi-clj/eval-to-value
+                   context thread jdi/invoke-single-threaded form)]
+            (inspect/value-as-string (assoc context :current-thread thread) v))
+          (finally
+           (clear-remote-values context thread map-var)))))
     (catch com.sun.jdi.InvocationException e
-      (when connection
+      (if connection
         (invoke-debugger*
-         connection (InvocationExceptionEvent. (.exception e) thread))))))
+         connection (InvocationExceptionEvent. (.exception e) thread))
+        (do
+          (println (.exception e))
+          (println e)
+          (.printStackTrace e))))))
+
+(defn pprint-eval-string-in-frame
+  "Eval the string `expr` in the context of the specified `frame-number`,
+   and pretty print the result"
+  [connection context thread expr frame-number]
+  (try
+    (let [_ (assert (.isSuspended thread))
+          locals (jdi/unmangled-frame-locals
+                  (nth (.frames thread) frame-number))
+          map-sym (remote-map-sym context thread)
+          map-var (jdi-clj/eval-to-value
+                   context thread jdi/invoke-single-threaded
+                   `(intern '~'user '~map-sym {}))
+          form `(with-out-str
+                  (require 'clojure.pprint)
+                  ((resolve 'clojure.pprint/pprint)
+                   ~(with-local-bindings-form
+                      map-sym locals (read-string expr))))]
+      (locking remote-map-sym
+        (try
+          (set-remote-values context thread map-var locals)
+          (jdi-clj/eval-to-string
+           context thread jdi/invoke-single-threaded form)
+          (finally
+           (clear-remote-values context thread map-var)))))
+    (catch com.sun.jdi.InvocationException e
+      (if connection
+        (invoke-debugger*
+         connection (InvocationExceptionEvent. (.exception e) thread))
+        (do
+          (println (.exception e))
+          (println e)
+          (.printStackTrace e))))))
 
 ;;; events
 (defn add-exception-event-request

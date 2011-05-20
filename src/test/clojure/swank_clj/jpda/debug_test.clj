@@ -69,33 +69,71 @@
       (finally
        (jdi/shutdown context)))))
 
+
+(defn eval-in-frame-test [context thread]
+  (testing "atomic eval"
+    (is (re-matches
+         #"#<Atom@[0-9a-f]+: \{:a 1\}>"
+         (debug/eval-string-in-frame nil context thread "a" 0)))
+    (is (= "{:m 2}"
+           (debug/eval-string-in-frame nil context thread "m" 0)))
+    (is (= "1" (debug/eval-string-in-frame nil context thread "i" 0)))
+    (is (= "1.0" (debug/eval-string-in-frame nil context thread "d" 0)))
+    (is (= "nil" (debug/eval-string-in-frame nil context thread "n" 0)))
+    (is (= "#'clojure.core/slurp"
+           (debug/eval-string-in-frame nil context thread "v" 0)))
+    (is (= "\"a string\""
+           (debug/eval-string-in-frame nil context thread "s" 0)))
+    (is (= "1"
+           (debug/eval-string-in-frame nil context thread "w-dash" 0))))
+  (testing "form eval"
+    (is (= "{:m 3}"
+           (debug/eval-string-in-frame
+            nil context thread
+            "(zipmap (keys m) (map inc (vals m)))" 0)))
+    (is (= "2"
+           (debug/eval-string-in-frame nil context thread "(inc i)" 0)))
+    (is (= "2.0"
+           (debug/eval-string-in-frame nil context thread "(inc d)" 0)))
+    (is (= "2"
+           (debug/eval-string-in-frame nil context thread "(inc w-dash)" 0)))))
+
+(defn pprint-eval-in-frame-test [context thread]
+  (testing "atomic eval"
+    (is (re-matches
+         #"#<Atom@[0-9a-f]+: \{:a 1\}>\n"
+         (debug/pprint-eval-string-in-frame nil context thread "a" 0)))
+    (is (= "{:m 2}\n"
+           (debug/pprint-eval-string-in-frame nil context thread "m" 0)))
+    (is (= "1\n"
+           (debug/pprint-eval-string-in-frame nil context thread "i" 0)))
+    (is (= "1.0\n"
+           (debug/pprint-eval-string-in-frame nil context thread "d" 0)))
+    (is (= "nil\n"
+           (debug/pprint-eval-string-in-frame nil context thread "n" 0)))
+    (is (re-matches
+         #"#<Var@[0-9a-f]+: #<core\$slurp clojure.core\$slurp@[0-9a-f]+>>\n"
+         (debug/pprint-eval-string-in-frame nil context thread "v" 0)))
+    (is (= "\"a string\"\n"
+           (debug/pprint-eval-string-in-frame nil context thread "s" 0))))
+  (testing "form eval"
+    (is (= "{:m 3}\n"
+           (debug/pprint-eval-string-in-frame
+            nil context thread
+            "(zipmap (keys m) (map inc (vals m)))" 0)))
+    (is (= "2\n"
+           (debug/pprint-eval-string-in-frame nil context thread "(inc i)" 0)))
+    (is (= "2.0\n"
+           (debug/pprint-eval-string-in-frame
+            nil context thread "(inc d)" 0)))))
+
 (let [test-finished (promise)]
   (defn handler-for-frame-test [^ExceptionEvent event context]
     (try
       (logging/trace "handler-for-frame-test")
       (let [thread (.thread event)]
-        (testing "atomic eval"
-          (is (re-matches
-               #"#<Atom@[0-9a-f]+: \{:a 1\}>"
-               (debug/eval-string-in-frame nil context thread "a" 0)))
-          (is (= "{:m 2}"
-                 (debug/eval-string-in-frame nil context thread "m" 0)))
-          (is (= "1" (debug/eval-string-in-frame nil context thread "i" 0)))
-          (is (= "1.0" (debug/eval-string-in-frame nil context thread "d" 0)))
-          (is (= "nil" (debug/eval-string-in-frame nil context thread "n" 0)))
-          (is (= "#'clojure.core/slurp"
-                 (debug/eval-string-in-frame nil context thread "v" 0)))
-          (is (= "\"a string\""
-                 (debug/eval-string-in-frame nil context thread "s" 0))))
-        (testing "form eval"
-          (is (= "{:m 3}"
-                 (debug/eval-string-in-frame
-                  nil context thread
-                  "(zipmap (keys m) (map inc (vals m)))" 0)))
-          (is (= "2"
-                 (debug/eval-string-in-frame nil context thread "(inc i)" 0)))
-          (is (= "2.0"
-                 (debug/eval-string-in-frame nil context thread "(inc d)" 0)))))
+        (eval-in-frame-test context thread)
+        (pprint-eval-in-frame-test context thread))
       (finally
        (jdi/resume-event-threads event)
        (deliver test-finished nil))))
@@ -118,7 +156,8 @@
                 ~'d 1.0
                 ~'n nil
                 ~'v #'clojure.core/slurp ; arbitrary var
-                ~'s "a string"]
+                ~'s "a string"
+                ~'w-dash 1]
             (throw (Exception. "go do handler-for-frame-test"))
             ;; prevent local clearing before the exception
             [~'a ~'m ~'i ~'d ~'n ~'v ~'s])
