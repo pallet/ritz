@@ -51,7 +51,8 @@
   [context thread options form]
   (let [s (eval-to-string context thread options `(pr-str ~form))]
     (try
-      (read-string s)
+      (when s
+        (read-string s))
       (catch com.sun.jdi.InvocationException e
         (logging/trace
          "Unexpected exception %s %s" e)
@@ -201,15 +202,24 @@
     (logging/trace "clojure fn is  %s %s" object method)
     (jdi/invoke-method thread options object method args)))
 
+(defn remote-thread-form
+  "Returns a form to start a thread to execute the specified form."
+  [form thread-options]
+  `(do
+      (doto (Thread. (fn [] ~form))
+        ~@(when-let [thread-name (:name thread-options)]
+            `[(.setName ~thread-name)])
+        ~@(when-let [daemon (:daemon thread-options)]
+            `[(.setDaemon (boolean ~daemon))])
+        (.start))))
+
 (defn remote-thread
-  "Start a remote thread"
-  [context thread options form]
+  "Start a remote thread. `thread-options are:
+   - :name    set the name of the thread
+   - :daemon  daemonise the thread"
+  [context thread options form thread-options]
   (eval-to-value
-   context thread options
-   `(do
-      (let [thread# (Thread. (fn [] ~form))]
-        (.start thread#)
-        thread#))))
+   context thread options (remote-thread-form form thread-options)))
 
 (defn var-get
   [context thread options value]

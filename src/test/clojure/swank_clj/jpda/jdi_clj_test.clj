@@ -59,4 +59,4 @@
             (jdi-clj/invoke-clojure-fn
              context thread jdi/invoke-single-threaded "clojure.core" "pr-str"
              (jdi-clj/remote-str context "a")))))
-    (jdi/shutdown (:vm context))))
+    (jdi/shutdown context)))

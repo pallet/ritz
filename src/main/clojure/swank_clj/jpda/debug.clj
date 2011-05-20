@@ -895,27 +895,22 @@
     (let [_ (assert (.isSuspended thread))
           locals (jdi/unmangled-frame-locals
                   (nth (.frames thread) frame-number))
-          _ (logging/trace "eval-string-in-frame: map-sym")
           map-sym (remote-map-sym context thread)
-          _ (logging/trace "eval-string-in-frame: map-var for %s" map-sym)
           map-var (jdi-clj/eval-to-value
                    context thread jdi/invoke-single-threaded
                    `(intern '~'user '~map-sym {}))
-          _ (logging/trace "eval-string-in-frame: form")
           form (with-local-bindings-form map-sym locals (read-string expr))]
-      (logging/trace "eval-string-in-frame: form %s" form)
       (try
-        (logging/trace "eval-string-in-frame: set-remote-values")
         (set-remote-values context thread map-var locals)
-        ;; create a bindings form
-        (logging/trace "eval-string-in-frame: eval")
-        (jdi-clj/eval context thread jdi/invoke-single-threaded form)
+        (let [v (jdi-clj/eval-to-value
+                 context thread jdi/invoke-single-threaded form)]
+          (inspect/value-as-string (assoc context :current-thread thread) v))
         (finally
-         (logging/trace "eval-string-in-frame: clear-remote-values")
          (clear-remote-values context thread map-var))))
     (catch com.sun.jdi.InvocationException e
-      (invoke-debugger*
-       connection (InvocationExceptionEvent. (.exception e) thread)))))
+      (when connection
+        (invoke-debugger*
+         connection (InvocationExceptionEvent. (.exception e) thread))))))
 
 ;;; events
 (defn add-exception-event-request

@@ -55,11 +55,20 @@
     (.setValue main-args (str "-cp " classpath " clojure.main -e \"" expr "\""))
     (.launch launch-connector arguments)))
 
+(defn interrupt-if-alive
+  [^Thread thread]
+  (when (.isAlive thread)
+    (.interrupt thread)))
+
 (defn shutdown
   "Shut down virtual machine."
-  [^VirtualMachine vm]
-  (.exit vm 0))
+  [context]
+  (.exit (:vm context) 0)
+  (interrupt-if-alive (:vm-out-thread context))
+  (interrupt-if-alive (:vm-in-thread context))
+  (interrupt-if-alive (:vm-err-thread context)))
 
+Thread
 ;;; Streams
 (defn vm-stream-daemons
   "Start threads to copy standard input, output and error streams"

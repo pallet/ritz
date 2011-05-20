@@ -6,6 +6,7 @@
    [swank-clj.inspect :as inspect]
    [swank-clj.jpda.jdi :as jdi]
    [swank-clj.jpda.jdi-clj :as jdi-clj]
+   [swank-clj.jpda.jdi-test-handler :as jdi-test-handler] ;; after jpda.debug
    [swank-clj.jpda.jdi-vm :as jdi-vm]
    [clojure.string :as string])
   (:import
@@ -23,15 +24,6 @@
   (:use clojure.test))
 
 ;; (logging/set-level :trace)
-
-;; (use-fixtures :once
-;;               (fn [f]
-;;                 (let [context (jdi-vm/launch-vm (jdi-vm/current-classpath) nil)
-;;                       context (jdi-clj/vm-rt context)
-;;                       thread (:control-thread context)]
-;;                   (is thread)
-;;                   (f)
-;;                   (jdi/shutdown (:vm context)))))
 
 
 (deftest vm-swank-main-test
@@ -75,4 +67,62 @@
       (is (debug/disassemble-symbol
            context (:control-thread context) "fred" "f"))
       (finally
-       (jdi/shutdown (:vm context))))))
+       (jdi/shutdown context)))))
+
+(let [test-finished (promise)]
+  (defn handler-for-frame-test [^ExceptionEvent event context]
+    (try
+      (logging/trace "handler-for-frame-test")
+      (let [thread (.thread event)]
+        (testing "atomic eval"
+          (is (re-matches
+               #"#<Atom@[0-9a-f]+: \{:a 1\}>"
+               (debug/eval-string-in-frame nil context thread "a" 0)))
+          (is (= "{:m 2}"
+                 (debug/eval-string-in-frame nil context thread "m" 0)))
+          (is (= "1" (debug/eval-string-in-frame nil context thread "i" 0)))
+          (is (= "1.0" (debug/eval-string-in-frame nil context thread "d" 0)))
+          (is (= "nil" (debug/eval-string-in-frame nil context thread "n" 0)))
+          (is (= "#'clojure.core/slurp"
+                 (debug/eval-string-in-frame nil context thread "v" 0)))
+          (is (= "\"a string\""
+                 (debug/eval-string-in-frame nil context thread "s" 0))))
+        (testing "form eval"
+          (is (= "{:m 3}"
+                 (debug/eval-string-in-frame
+                  nil context thread
+                  "(zipmap (keys m) (map inc (vals m)))" 0)))
+          (is (= "2"
+                 (debug/eval-string-in-frame nil context thread "(inc i)" 0)))
+          (is (= "2.0"
+                 (debug/eval-string-in-frame nil context thread "(inc d)" 0)))))
+      (finally
+       (jdi/resume-event-threads event)
+       (deliver test-finished nil))))
+
+  (deftest frame-test
+    (let [context (debug/launch-vm {:main `(deref (promise))})
+          context (assoc context :current-thread (:control-thread context))
+          vm (:vm context)]
+      (debug/add-exception-event-request context)
+      (.resume (:vm context))
+
+      (try
+        (jdi-test-handler/add-one-shot-event-handler
+         handler-for-frame-test "frame-test")
+        (jdi-clj/remote-thread
+         context (:control-thread context) jdi/invoke-single-threaded
+         `(let [~'a (atom {:a 1})
+                ~'m {:m 2}
+                ~'i 1
+                ~'d 1.0
+                ~'n nil
+                ~'v #'clojure.core/slurp ; arbitrary var
+                ~'s "a string"]
+            (throw (Exception. "go do handler-for-frame-test"))
+            ;; prevent local clearing before the exception
+            [~'a ~'m ~'i ~'d ~'n ~'v ~'s])
+         {:name "frame-test"})
+        @test-finished
+        (finally
+         (jdi/shutdown context))))))

@@ -20,4 +20,4 @@
              (is (:control-thread context))
              (is (.isSuspended (:control-thread context)))
              (Thread/sleep 1000)
-             (jdi/shutdown (:vm context)))))))
+             (jdi/shutdown context))))))
