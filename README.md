@@ -8,10 +8,13 @@ This is alpha quality.
 - Allows stepping from breakpoints
 - Allows evaluation of expressions in the context of a stack frame
 - Inspection of locals in any stack frame
+- Disassembly of functions from symbol or stack frame
+
+Should work with clojure 1.3.0-alpha7.
 
 ## Install
 
-Add `[swank-clj "0.1.5"]` to your project.clj `:dev-dependencies`.
+Add `[swank-clj "0.1.6"]` to your project.clj `:dev-dependencies`.
 
 Install the slime-clj.el contrib from [marmalade](http://marmalade-repo.org/).
 

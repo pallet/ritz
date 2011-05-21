@@ -1,4 +1,4 @@
-(defproject swank-clj "0.1.6-SNAPSHOT"
+(defproject swank-clj "0.1.6"
   :description "Another swank for clojure"
   :source-path "src/main/clojure"
   :resources-path "src/main/resources"
