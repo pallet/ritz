@@ -1,6 +1,34 @@
 # Release Notes
 
-Current release is 0.1.5.
+Current release is 0.1.6.
+
+* 0.1.6
+
+- Add debug/pprint-eval-string-in-frame
+  This moves the pretty printing into the debugee
+
+- Unmangle clojure names for local variables
+
+- Fix pprint-eval-string-in-frame to correctly output a string
+
+- Fix generation of nested exceptions on eval-in-frame
+
+- Fix fuzzy completion of explicitly namespaced symbols
+
+- Improve filtering of unimplimented arities in disassembly listings
+
+- Try harder to maintain relative source paths when compiling
+
+- Stop focussing repl on slime-javadoc
+
+- Add support for invokePrim
+  Clojure 1.3 introduces a new function invokePrim to handle primitive
+  arguments.
+
+- disable AOT
+  In order for swank-clj to work across clojure versions, remove the aot.
+
+- Fix return value of fuzzy-completions when no completions found
 
 * 0.1.5
 

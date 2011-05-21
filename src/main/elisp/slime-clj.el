@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/hugoduncan/swank-clj
-;; Version: 0.1.5
+;; Version: 0.1.6
 ;; License: GNU GPL (same license as Emacs)
 
 (define-slime-contrib slime-clj
