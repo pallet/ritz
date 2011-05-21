@@ -106,9 +106,9 @@
   (let [[xs x] (fuzzy-completion-set string default-package-name
                                      limit time-limit-in-msec)]
     (list
-     (map (fn [[symbol score chunks class]]
-            (list symbol score (map (partial apply list) chunks) class))
-          xs)
+     (seq (map (fn [[symbol score chunks class]]
+                 (list symbol score (map (partial apply list) chunks) class))
+               xs))
      (when x 't))))
 
 (commands/defslimefn fuzzy-completion-selected [_ _ _] nil)

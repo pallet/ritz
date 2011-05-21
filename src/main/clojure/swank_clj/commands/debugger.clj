@@ -125,10 +125,13 @@ corresponding attribute values per thread."
   (let [[level-info level] (connection/current-sldb-level-info connection)
         thread (:thread level-info)]
     (debug/eval-string-in-frame
-     (connection/vm-context connection) thread expr n)))
+     connection (connection/vm-context connection) thread expr n)))
 
 (defslimefn pprint-eval-string-in-frame [connection expr n]
-  (pprint/pprint (eval-string-in-frame connection expr n)))
+  (let [[level-info level] (connection/current-sldb-level-info connection)
+        thread (:thread level-info)]
+    (debug/pprint-eval-string-in-frame
+     connection (connection/vm-context connection) thread expr n)))
 
 ;; disassemble
 (defslimefn sldb-disassemble [connection frame-index]

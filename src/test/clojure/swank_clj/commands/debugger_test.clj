@@ -41,4 +41,4 @@
                    (filter
                     #(= "debugger-test-thread" (second %))
                     threads))))))
-    (jdi/shutdown (:vm context))))
+    (jdi/shutdown context)))

@@ -151,14 +151,15 @@
 (defn- fuzzy-find-matching-nss
   [string]
   (let [compute (partial compute-highest-scoring-completion string)]
-    (map (fn [[match-result score ns ns-sym]]
-           (FuzzyMatching. nil ns ns-sym (str ns-sym) score match-result nil))
-         (filter (fn [[match-result & _]] (not-empty match-result))
-                 (map (fn [[ns-sym ns]]
-                        (conj (compute (str ns-sym)) ns ns-sym))
-                      (concat
-                       (map (fn [ns] [(symbol (str ns)) ns]) (all-ns))
-                       (ns-aliases *ns*)))))))
+    (->>
+     (concat
+      (map (fn [ns] [(symbol (str ns)) ns]) (all-ns))
+      (ns-aliases *ns*))
+     (map (fn [[ns-sym ns]] (conj (compute (str ns-sym)) ns ns-sym)))
+     (filter (fn [[match-result & _]] (not-empty match-result)))
+     (map (fn [[match-result score ns ns-sym]]
+            (FuzzyMatching.
+             nil ns ns-sym (str ns-sym) score match-result nil))))))
 
 (defn fuzzy-generate-matchings
   [string default-ns timed-out?]
@@ -172,10 +173,8 @@
           ([designator ns var-filter]
              (find-vars designator ns var-filter nil))
           ([designator ns var-filter external-only?]
-             (take* (fuzzy-find-matching-vars designator
-                                              ns
-                                              var-filter
-                                              external-only?))))
+             (take* (fuzzy-find-matching-vars
+                     designator ns var-filter external-only?))))
         find-nss (comp take* fuzzy-find-matching-nss)
         make-duplicate-var-filter
         (fn [fuzzy-ns-matchings]
@@ -211,18 +210,22 @@
             ;;                                (maybe-ns default-ns)))
             ;;                  #(binding [*ns* ns]
             ;;                     (find-nss parsed-symbol-name)))))
+
             (= "" parsed-ns-name)
             (find-vars parsed-symbol-name (the-ns default-ns))
+
             :else
             (let [found-nss (find-nss parsed-ns-name)
                   find-vars1 (fn [ns-matching]
                                (fix-up
-                                (find-vars parsed-symbol-name
-                                           (:ns ns-matching)
-                                           (make-duplicate-var-filter
-                                            (filter (partial = ns-matching)
-                                                    found-nss))
-                                           true)
+                                (find-vars
+                                 parsed-symbol-name
+                                 (:ns ns-matching)
+                                 (make-duplicate-var-filter
+                                  (filter
+                                   #(= ns-matching (:ns-name %))
+                                   found-nss))
+                                 true)
                                 ns-matching))]
               (concat
                (apply concat

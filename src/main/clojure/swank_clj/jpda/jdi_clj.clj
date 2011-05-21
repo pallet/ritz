@@ -51,13 +51,14 @@
   [context thread options form]
   (let [s (eval-to-string context thread options `(pr-str ~form))]
     (try
-      (read-string s)
+      (when s
+        (read-string s))
       (catch com.sun.jdi.InvocationException e
         (logging/trace
          "Unexpected exception %s %s" e)
         (throw e))
       (catch Exception e
-        (if (= "Unreadable form" (.getMessage e))
+        (if (and (.getMessage e) (re-find #"Unreadable form" (.getMessage e)))
           s
           (throw e))))))
 
@@ -147,8 +148,13 @@
                 (:RT context) (:var context)
                 [(jdi/mirror-of (:vm context) ns)
                  (jdi/mirror-of (:vm context) name)])]
-    [object (first (jdi/methods
-                    (.referenceType object) "invoke" (invoke-signature n)))]))
+    [object (or
+             (first
+              (jdi/methods
+               (.referenceType object) "invoke" (invoke-signature n)))
+             (first
+              (jdi/methods
+               (.referenceType object) "invokePrim" (invoke-signature n)))) ]))
 
 (defn clojure-fn-deref
   "Resolve a clojure function in the remote vm. Returns an ObjectReference and
@@ -173,7 +179,9 @@
        (when-let [f (jdi/invoke-method thread options var (:deref context) [])]
          [f (remove
              #(or (.isAbstract %) (.isObsolete %))
-             (jdi/methods (.referenceType f) "invoke"))]))))
+             (concat
+              (jdi/methods (.referenceType f) "invoke")
+              (jdi/methods (.referenceType f) "invokePrim")))]))))
 
 (defn invoke-clojure-fn
   "Invoke a clojure function on the specified thread with the given remote
@@ -194,15 +202,24 @@
     (logging/trace "clojure fn is  %s %s" object method)
     (jdi/invoke-method thread options object method args)))
 
+(defn remote-thread-form
+  "Returns a form to start a thread to execute the specified form."
+  [form thread-options]
+  `(do
+      (doto (Thread. (fn [] ~form))
+        ~@(when-let [thread-name (:name thread-options)]
+            `[(.setName ~thread-name)])
+        ~@(when-let [daemon (:daemon thread-options)]
+            `[(.setDaemon (boolean ~daemon))])
+        (.start))))
+
 (defn remote-thread
-  "Start a remote thread"
-  [context thread options form]
+  "Start a remote thread. `thread-options are:
+   - :name    set the name of the thread
+   - :daemon  daemonise the thread"
+  [context thread options form thread-options]
   (eval-to-value
-   context thread options
-   `(do
-      (let [thread# (Thread. (fn [] ~form))]
-        (.start thread#)
-        thread#))))
+   context thread options (remote-thread-form form thread-options)))
 
 (defn var-get
   [context thread options value]

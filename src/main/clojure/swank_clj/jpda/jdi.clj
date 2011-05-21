@@ -14,7 +14,8 @@
     Bootstrap VMDisconnectedException
     ObjectReference StringReference
     ThreadReference ThreadGroupReference
-    ReferenceType Locatable Location StackFrame)
+    ReferenceType Locatable Location StackFrame
+    Field LocalVariable)
    (com.sun.jdi.event
     VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent VMDeathEvent
     BreakpointEvent Event EventSet EventQueue)
@@ -54,11 +55,20 @@
     (.setValue main-args (str "-cp " classpath " clojure.main -e \"" expr "\""))
     (.launch launch-connector arguments)))
 
+(defn interrupt-if-alive
+  [^Thread thread]
+  (when (.isAlive thread)
+    (.interrupt thread)))
+
 (defn shutdown
   "Shut down virtual machine."
-  [^VirtualMachine vm]
-  (.exit vm 0))
+  [context]
+  (.exit (:vm context) 0)
+  (interrupt-if-alive (:vm-out-thread context))
+  (interrupt-if-alive (:vm-in-thread context))
+  (interrupt-if-alive (:vm-err-thread context)))
 
+Thread
 ;;; Streams
 (defn vm-stream-daemons
   "Start threads to copy standard input, output and error streams"
@@ -430,40 +440,51 @@
   "Predicate to test if a frame is a clojure frame. Checks the for the extension
    of the frame location's source name, or for the presence of well know clojure
    field prefixes."
-  [frame fields]
-  (let [names (map #(.name %) fields)
-        source-path (location-source-path (.location frame))]
+  [^StackFrame frame fields]
+  (let [source-path (location-source-path (.location frame))]
     (or (and source-path (.endsWith source-path ".clj"))
-        (some #{"__meta"} names))))
+        (and
+         (some #{"__meta"} (map #(.name ^Field %) fields))
+         ;;(or (nil? source-path) (not (.endsWith source-path ".java")))
+         ))))
 
 (def clojure-implementation-regex
   #"(^const__\d*$|^__meta$|^__var__callsite__\d*$|^__site__\d*__$|^__thunk__\d*__$)")
 
-(defn filter-implementation-fields [fields]
-  (seq (remove #(re-find clojure-implementation-regex (.name %)) fields)))
+(defn visible-clojure-fields
+  "Return the subset of fields that should be visible."
+  [fields]
+  (remove
+   #(re-find clojure-implementation-regex (.name ^Field %))
+   fields))
 
-(defn clojure-fields
-  "Closure locals are fields on the frame's this object."
-  [frame]
+(defn ^String unmunge-clojure
+  "unmunge a clojure name"
+  [^String munged-name]
+  {:pre [(string? munged-name)]}
+  (reduce
+   #(string/replace %1 (val %2) (str (key %2)))
+   (string/replace munged-name "$" "/")
+   clojure.lang.Compiler/CHAR_MAP))
+
+(defn frame-fields
+  "Fields for the frame's this object."
+  [^StackFrame frame]
   (try
     (when-let [this (.thisObject frame)]
-      (let [fields (.. this referenceType fields)]
-        (when (clojure-frame? frame fields)
-          (logging/trace "Field names %s" (vec (map #(.name %) fields)))
-          (filter-implementation-fields fields))))
+      (.. this referenceType fields))
     (catch com.sun.jdi.AbsentInformationException e
-      (logging/trace "fields unavailable")
-      nil)))
+      (logging/trace "fields unavailable"))))
 
-(defn clojure-locals
-  "Returns a map from LocalVariable to Value"
-  [frame]
-  (when-let [fields (clojure-fields frame)]
-    (.getValues (.thisObject frame) fields)))
+(defn frame-field-values
+  "Fields for the frame's this object."
+  [^StackFrame frame fields]
+  (when-let [this (.thisObject frame)]
+    (.. this (getValues fields))))
 
 (defn frame-locals
   "Returns a map from LocalVariable to Value"
-  [frame]
+  [^StackFrame frame]
   (try
     (when-let [locals (.visibleVariables frame)]
       (.getValues frame locals))
@@ -471,14 +492,38 @@
       (logging/trace "locals unavailable")
       nil)))
 
-(defn unmunge-clojure
-  "unmunge a clojure name"
-  [munged-name]
-  {:pre [(string? munged-name)]}
-  (reduce
-   #(string/replace %1 (val %2) (str (key %2)))
-   (string/replace munged-name "$" "/")
-   clojure.lang.Compiler/CHAR_MAP))
+(defn field-maps
+  "Returns a sequence of maps representing unmangled clojure fields."
+  [fields]
+  (for [[^Field field value] fields
+        :let [field-name (.name field)]]
+    {:field field
+     :name field-name
+     :unmangled-name (unmunge-clojure field-name)
+     :value value}))
+
+(defn local-maps
+  "Returns a sequence of maps representing unmangled clojure locals."
+  [locals unmangle?]
+  (for [[^LocalVariable local value] locals
+        :let [local-name (.name local)]]
+    {:local local
+     :name local-name
+     :unmangled-name (if unmangle? (unmunge-clojure local-name) local-name)
+     :value value}))
+
+(defn unmangled-frame-locals
+  "Return a sequence of maps, representing the fields and locals in a frame.
+   Each map has :name, :unmangled-name and :value keys, and either a :field
+   or a :local key."
+  [frame]
+  (let [fields (frame-fields frame)
+        locals (frame-locals frame)]
+    (if (clojure-frame? frame fields)
+      (concat
+       (field-maps (frame-field-values frame (visible-clojure-fields fields)))
+       (local-maps locals true))
+      (local-maps locals false))))
 
 (defn threads
   [vm]

@@ -126,4 +126,4 @@
         ;; (pprint/pprint ops)
         (is (= :aload_1 (:mnemonic (first ops)))))
       (finally
-       (jdi/shutdown (:vm context))))))
+       (jdi/shutdown context)))))

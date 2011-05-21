@@ -801,25 +801,15 @@
      jdi/invoke-single-threaded
      args))))
 
-(defn frame-locals
-  "Return frame locals for slime, a sequence of [LocalVariable Value]
-   sorted by name."
-  [thread n]
-  (let [frame (nth (.frames thread) n)]
-    (sort-by
-     #(.name (key %))
-     (merge {} (jdi/clojure-locals frame) (jdi/frame-locals frame)))))
-
 (defn frame-locals-with-string-values
   "Return frame locals for slime"
   [context thread n]
   (doall
-   (for [map-entry (seq (frame-locals thread n))]
-     {:name (.name (key map-entry))
-      :value (val map-entry)
-      :string-value (inspect/value-as-string
-                     (assoc context :current-thread thread)
-                     (val map-entry))})))
+   (for [{:keys [value] :as map-entry} (jdi/unmangled-frame-locals
+                                        (nth (.frames thread) n))]
+     (assoc map-entry
+       :string-value (inspect/value-as-string
+                      (assoc context :current-thread thread) value)))))
 
 (defn nth-frame-var
   "Return the var-index'th var in the frame-index'th frame"
@@ -836,7 +826,7 @@
   [map-sym locals]
   (mapcat
    (fn [local]
-     (let [local (.name (key local))]
+     (let [local (:unmangled-name local)]
        `[~(symbol local) ((var-get (ns-resolve '~'user '~map-sym)) ~local)]))
    locals))
 
@@ -875,10 +865,10 @@
   "Assoc a local variable into a remote var"
   [context thread map-var local]
   (jdi-clj/remote-call
-   context thread (invoke-option-for (val local))
+   context thread (invoke-option-for (:value local))
    `assoc map-var
-   (jdi-clj/remote-str context (.name (key local)))
-   (when-let [value (val local)]
+   (jdi-clj/remote-str context (:unmangled-name local))
+   (when-let [value (:value local)]
      (jdi-clj/remote-object value context thread))))
 
 (defn set-remote-values
@@ -900,31 +890,65 @@
 
 (defn eval-string-in-frame
   "Eval the string `expr` in the context of the specified `frame-number`."
-  [context thread expr frame-number]
+  [connection context thread expr frame-number]
   (try
     (let [_ (assert (.isSuspended thread))
-          locals (frame-locals thread frame-number)
-          _ (logging/trace "eval-string-in-frame: map-sym")
+          locals (jdi/unmangled-frame-locals
+                  (nth (.frames thread) frame-number))
           map-sym (remote-map-sym context thread)
-          _ (logging/trace "eval-string-in-frame: map-var for %s" map-sym)
           map-var (jdi-clj/eval-to-value
                    context thread jdi/invoke-single-threaded
                    `(intern '~'user '~map-sym {}))
-          _ (logging/trace "eval-string-in-frame: form")
           form (with-local-bindings-form map-sym locals (read-string expr))]
-      (logging/trace "eval-string-in-frame: form %s" form)
-      (try
-        (logging/trace "eval-string-in-frame: set-remote-values")
-        (set-remote-values context thread map-var locals)
-        ;; create a bindings form
-        (logging/trace "eval-string-in-frame: eval")
-        (jdi-clj/eval context thread jdi/invoke-single-threaded form)
-        (finally
-         (logging/trace "eval-string-in-frame: clear-remote-values")
-         (clear-remote-values context thread map-var))))
+      (locking remote-map-sym
+        (try
+          (set-remote-values context thread map-var locals)
+          (let [v (jdi-clj/eval-to-value
+                   context thread jdi/invoke-single-threaded form)]
+            (inspect/value-as-string (assoc context :current-thread thread) v))
+          (finally
+           (clear-remote-values context thread map-var)))))
     (catch com.sun.jdi.InvocationException e
-      (invoke-debugger*
-       context (InvocationExceptionEvent. (.exception e) thread)))))
+      (if connection
+        (invoke-debugger*
+         connection (InvocationExceptionEvent. (.exception e) thread))
+        (do
+          (println (.exception e))
+          (println e)
+          (.printStackTrace e))))))
+
+(defn pprint-eval-string-in-frame
+  "Eval the string `expr` in the context of the specified `frame-number`,
+   and pretty print the result"
+  [connection context thread expr frame-number]
+  (try
+    (let [_ (assert (.isSuspended thread))
+          locals (jdi/unmangled-frame-locals
+                  (nth (.frames thread) frame-number))
+          map-sym (remote-map-sym context thread)
+          map-var (jdi-clj/eval-to-value
+                   context thread jdi/invoke-single-threaded
+                   `(intern '~'user '~map-sym {}))
+          form `(with-out-str
+                  (require 'clojure.pprint)
+                  ((resolve 'clojure.pprint/pprint)
+                   ~(with-local-bindings-form
+                      map-sym locals (read-string expr))))]
+      (locking remote-map-sym
+        (try
+          (set-remote-values context thread map-var locals)
+          (jdi-clj/eval-to-string
+           context thread jdi/invoke-single-threaded form)
+          (finally
+           (clear-remote-values context thread map-var)))))
+    (catch com.sun.jdi.InvocationException e
+      (if connection
+        (invoke-debugger*
+         connection (InvocationExceptionEvent. (.exception e) thread))
+        (do
+          (println (.exception e))
+          (println e)
+          (.printStackTrace e))))))
 
 ;;; events
 (defn add-exception-event-request
@@ -1185,7 +1209,7 @@
        (for [method methods
              :let [ops (disassemble-method const-pool method)]
              :let [clinit (first (drop 3 ops))]
-             :when (not (.contains clinit ":invokevirtual \"<clinit>\""))]
+             :when (not (.contains clinit ":invokevirtual \""))]
          (concat
           [(str sym-ns "/" sym-name
                 "(" (string/join " " (.argumentTypeNames method)) ")\n")]

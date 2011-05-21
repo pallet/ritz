@@ -49,7 +49,7 @@
    (sort-by
     second
     (map
-     #(list :name (:name %) :id 0 :value (:string-value %))
+     #(list :name (:unmangled-name %) :id 0 :value (:string-value %))
      locals-map))))
 
 (defn location

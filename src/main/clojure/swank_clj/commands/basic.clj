@@ -151,9 +151,21 @@
       (catch Throwable t
         (.printStackTrace t) ;; prints to *inferior-lisp*
         (messages/compilation-result
-         (map exception-message (helpers/exception-causes t)) ; notes
-         nil                                                  ; results
-         (secs-for-ns (- (System/nanoTime) start)))))))       ; durations
+         [(exception-message t)]                        ; notes
+         nil                                            ; results
+         (secs-for-ns (- (System/nanoTime) start))))))) ; durations
+
+(defn possibly-relative-path
+  "If file-path can be expressed relative tot he classloader root, then
+   do so"
+  [file-path]
+  (try
+    (let [base (File. (System/getProperty "user.dir"))
+          file (File. file-path)]
+      (if (.startsWith (.getCanonicalPath file) (.getCanonicalPath base))
+        (.substring
+         (.getAbsolutePath file) (inc (count (.getAbsolutePath base))))
+        file-path))))
 
 (defslimefn compile-file-for-emacs
   [connection file-name load? & compile-options]
