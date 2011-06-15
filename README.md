@@ -34,6 +34,20 @@ For clojure 1.2.0, you will need the following instead:
 
     [clojure-source "1.2.0"]
 
+To use the Sun/Oracle JDK, you
+[need to add](http://download.oracle.com/javase/1.5.0/docs/tooldocs/findingclasses.html)
+`tools.jar` from your JDK install to your classpath. If you are using maven then
+there are
+[instructions in the FAQ](http://maven.apache.org/general.html#tools-jar-dependency).
+
+For cake, add the following (with the correct jdk path), to
+`PROJECT_ROOT/.cake/config`:
+    project.classpath = /usr/lib/jvm/java-6-sun/lib/tools.jar
+
+For lein, add the tools.jar to the dev-resources-path:
+
+    :dev-resources-path "/usr/lib/jvm/java-6-sun/lib/tools.jar"
+
 ## Usage
 
 To run with jpda:
