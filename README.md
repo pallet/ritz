@@ -77,10 +77,17 @@ To list breakpoints, use `M-x slime-list-breakpoints` or press `b` in the
 ### Javadoc
 
 Specify the location of local javadoc using `slime-javadoc-local-paths` in
-your `.emacs` file.
+your `.emacs` file. Note that this requires a connection, so should be in
+your `slime-connected-hook` or `slime-clj-connected-hook`. e.g.
 
-`slime-javadoc`, bound to `C-c b` by default, will open javadoc in the
-browser you have set up in emacs.
+    (defun my-javadoc-setup ()
+      (slime-javadoc-local-paths
+        (list (concat (expand-file-name "~") "/lisp/docs/java"))))
+
+    (add-hook 'slime-connected-hook 'my-javadoc-setup)
+
+The command `slime-javadoc`, bound to `C-c b` by default, will open javadoc in
+the browser you have set up in emacs.
 
 ### SLIME configuration
 
