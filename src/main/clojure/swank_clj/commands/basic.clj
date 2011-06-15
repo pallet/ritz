@@ -272,6 +272,7 @@
 ;;;; Operator messages
 (defslimefn operator-arglist [connection name package]
   (try
+    (logging/trace "operator-arglist %s %s" name package)
     (doc/arglist (read-string name) (utils/maybe-ns package))
     (catch Throwable t nil)))
 

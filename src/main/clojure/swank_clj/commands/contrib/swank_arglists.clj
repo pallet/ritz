@@ -1,109 +1,63 @@
 (ns swank-clj.commands.contrib.swank-arglists
-  (:use (swank util core commands)))
+  (:use
+   [swank-clj.swank.commands :only [defslimefn]])
+  (:require
+   [swank-clj.commands.basic :as basic]
+   [swank-clj.connection :as connection]
+   [swank-clj.logging :as logging]
+   [swank-clj.swank.utils :as utils]
+   [swank-clj.swank.commands :as commands]))
 
-((slime-fn 'swank-require) :swank-c-p-c)
 
-;;; pos starts at 1 bc 0 is function name
-(defn position-in-arglist? [arglist pos]
-  (or (some #(= '& %) arglist)
-      (<= pos (count arglist))))
-
-;; (position-in-arglist? '[x y] 2)
-;; => true
-
-(defn highlight-position [arglist pos]
-  (if (zero? pos)
-    arglist
-    ;; i.e. not rest args
-    (let [num-normal-args (count (take-while #(not= % '&) arglist))]
-      (if (<= pos num-normal-args)
-        (into [] (concat (take (dec pos) arglist)
-                         '(===>)
-                         (list (nth arglist (dec pos)))
-                         '(<===)
-                         (drop pos arglist)))
-        (let [rest-arg? (some #(= % '&) arglist)]
-          (if rest-arg?
-            (into [] (concat (take-while #(not= % '&) arglist)
-                             '(===>)
-                             '(&)
-                             (list (last arglist))
-                             '(<===)))))))))
-
-;; (highlight-position '[x y] 0)
-;; => [===> x <=== y]
-
-(defn highlight-arglists [arglists pos]
-  (let [arglists (read-string arglists)]
-    (loop [checked []
-           current (first arglists)
-           remaining (rest arglists)]
-      (if (position-in-arglist? current pos)
-        (apply list (concat checked
-                            [(highlight-position current pos)]
-                            remaining))
-        (when (seq remaining)
-          (recur (conj checked current)
-                 (first remaining)
-                 (rest remaining)))))))
-
-;; (highlight-arglists "([x] [x & more])" 1)
-;; => ([===> x <===] [x & more])
-
-;;(defmacro dbg[x] `(let [x# ~x] (println '~x "->" x#) x#))
-
-(defn arglists-for-fname [connection fname]
-  ((slime-fn 'operator-arglist) connection fname (connection/ns connection)))
-
-(defn message-format [cmd arglists pos]
-  (str (when cmd (str cmd ": "))
-       (when arglists
-         (if pos
-           (highlight-arglists arglists pos)
-           arglists))))
-
-(defn handle-apply [connection raw-specs pos]
-  (let [fname (second (first raw-specs))]
-    (message-format fname (arglists-for-fname connection fname) (dec pos))))
-
-(defslimefn arglist-for-echo-area [raw-specs & options]
+(defslimefn arglist-for-echo-area [connection raw-specs & options]
   (let [{:keys [arg-indices
                 print-right-margin
                 print-lines]} (apply hash-map options)]
-    (if-not (and raw-specs
-                 (seq? raw-specs)
-                 (seq? (first raw-specs)))
-      nil ;; problem?
-      (let [pos (first (second options))
-            top-level? (= 1 (count raw-specs))
-            parent-pos (when-not top-level?
-                         (second (second options)))
-            fname (ffirst raw-specs)
-            parent-fname (when-not top-level?
-                           (first (second raw-specs)))
-            arglists (arglists-for-fname fname)
-            inside-binding? (and (not top-level?)
-                                 (#{"let" "binding" "doseq" "for" "loop"}
-                                  parent-fname)
-                                 (= 1 parent-pos))]
-;;         (dbg raw-specs)
-;;         (dbg options)
-        (cond
-         ;; display arglists for function being applied unless on top of apply
-         (and (= fname "apply") (not= pos 0)) (handle-apply connection raw-specs pos)
-         ;; highlight binding inside binding forms unless >1 level deep
-         inside-binding? (message-format parent-fname
-                                         (arglists-for-fname parent-fname)
-                                         1)
-         :else  (message-format fname arglists pos))))))
+    ;; Yeah, I'm lazy -- I'll flesh this out later
+    (if (and raw-specs
+             (seq? raw-specs)
+             (seq? (first raw-specs)))
+      (basic/operator-arglist
+       connection (ffirst raw-specs)
+       (connection/request-ns connection/request-ns))
+      nil)))
 
-(defslimefn variable-desc-for-echo-area [variable-name]
-  (with-emacs-package
-   (or
-    (try
+(defslimefn variable-desc-for-echo-area [connection variable-name]
+  (or
+   (try
      (when-let [sym (read-string variable-name)]
        (when-let [var (resolve sym)]
-         (when (.isBound ^clojure.lang.Var var)
+         (when (.isBound #^clojure.lang.Var var)
            (str variable-name " => " (var-get var)))))
      (catch Exception e nil))
-    "")))
+   ""))
+
+
+(defn autodoc* [connection raw-specs & options]
+  (logging/trace "autodoc*")
+  (let [{:keys [print-right-margin
+                print-lines]} (if (first options)
+                                (apply hash-map options)
+                                {})]
+    (if (and raw-specs (seq? raw-specs))
+      (let [expr (some
+                  #(and (seq? %) (some #{:swank-clj/cursor-marker} %) %)
+                  (tree-seq seq? seq raw-specs))]
+        (logging/trace "autodoc* expr %s" expr)
+        (if (and (seq? expr) (not (= (first expr) "")))
+          (or
+           (basic/operator-arglist
+            connection
+            (first expr)
+            (connection/request-ns connection))
+           `:not-available)
+          `:not-available))
+      `:not-available)))
+
+(defslimefn autodoc
+  "Return a string representing the arglist for the deepest subform in
+RAW-FORM that does have an arglist.
+TODO: The highlighted parameter is wrapped in ===> X <===."
+  [connection raw-specs & options]
+  (logging/trace "autodoc")
+  (apply autodoc* connection raw-specs options))

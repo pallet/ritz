@@ -69,7 +69,9 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
                (.startsWith str ":") (keyword (.substring str 1))
                :else
                (if-let [m (re-matches #"(.+):(.+)" str)]
-                 (apply symbol (drop 1 m))
+                 (if (= "swank::%cursor-marker%" str)
+                   :swank-clj/cursor-marker
+                   (apply symbol (rest m)))
                  (symbol str)))))))))
 
 (defn- read-packet
