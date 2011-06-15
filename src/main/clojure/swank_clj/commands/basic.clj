@@ -6,6 +6,7 @@
    [swank-clj.clj-contrib.macroexpand :as macroexpand]
    [swank-clj.connection :as connection]
    [swank-clj.logging :as logging]
+   [swank-clj.repl-utils.arglist :as arglist]
    [swank-clj.repl-utils.compile :as compile]
    [swank-clj.repl-utils.doc :as doc]
    [swank-clj.repl-utils.find :as find]
@@ -273,7 +274,9 @@
 (defslimefn operator-arglist [connection name package]
   (try
     (logging/trace "operator-arglist %s %s" name package)
-    (doc/arglist (read-string name) (utils/maybe-ns package))
+    (when-let [arglist (arglist/arglist
+                        (read-string name) (utils/maybe-ns package))]
+      (pr-str arglist))
     (catch Throwable t nil)))
 
 ;;;; Package Commands

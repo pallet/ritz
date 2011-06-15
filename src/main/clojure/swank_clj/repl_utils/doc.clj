@@ -95,18 +95,6 @@ that symbols accessible in the current namespace go first."
    #(present-symbol-before prefer-ns %1 %2)
    (apropos-symbols name ns public-only? case-sensitive?)))
 
-(defn arglist
-  "Given a keyword or symbol and a possibly nil namespace, return an
-   arglist"
-  [kw-or-symbol namespace]
-  (cond
-   (keyword? kw-or-symbol) "([map])"
-   (symbol? kw-or-symbol) (let [var (ns-resolve
-                                     (or namespace *ns*) kw-or-symbol)]
-                            (when-let [args (and var (:arglists (meta var)))]
-                              (pr-str args)))
-   :else nil))
-
 ;;; javadoc
 (alter-var-root
  #'javadoc/*feeling-lucky-url*
