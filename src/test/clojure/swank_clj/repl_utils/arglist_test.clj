@@ -43,4 +43,8 @@
             '("apply" "" ::m ) ::m (the-ns 'clojure.core))))
     (is (= ['([& items]) 0]
            (arglist/arglist-at-terminal
-            '("apply" "list" ::m "q" ) ::m (the-ns 'clojure.core))))))
+            '("apply" "list" ::m "q" ) ::m (the-ns 'clojure.core))))
+    (is (nil? (arglist/arglist-at-terminal
+               '("clojure.core.mvdedad" ::m) ::m (the-ns 'clojure.core))))
+    (is (nil? (arglist/arglist-at-terminal
+               '("deploy/" ::m) ::m (the-ns 'clojure.core))))))

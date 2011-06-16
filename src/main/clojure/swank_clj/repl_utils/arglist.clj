@@ -11,8 +11,10 @@
   [kw-or-symbol namespace]
   (cond
    (keyword? kw-or-symbol) '([map])
-   (symbol? kw-or-symbol) (when-let [var (ns-resolve
-                                          (or namespace *ns*) kw-or-symbol)]
+   (symbol? kw-or-symbol) (when-let [var (try
+                                           (ns-resolve
+                                            (or namespace *ns*) kw-or-symbol)
+                                           (catch ClassNotFoundException _))]
                             (and var (:arglists (meta var))))
    :else nil))
 
@@ -73,6 +75,7 @@
    (fn [[[sym & sexp] index]]
      (let [[sym index] (handle-apply sym sexp index)]
        (when (and (string? sym) (not (string/blank? sym)))
-         (when-let [arglist (arglist (read-string sym) ns)]
-           [arglist (dec index)]))))
+         (when-let [sym (try (read-string sym) (catch Exception _))]
+           (when-let [arglist (arglist sym ns)]
+             [arglist (dec index)])))))
    (indexed-sexps sexp terminal)))
