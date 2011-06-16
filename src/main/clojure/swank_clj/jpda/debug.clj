@@ -556,50 +556,93 @@
    (make-step-restart
     thread :step-out "STEP-OUT" "Step out of current frame" :line :out)])
 
+(def remote-condition-printer-sym-value (atom nil))
+(def remote-condition-printer-fn (atom nil))
+(defn remote-condition-printer
+  "Return the remote symbol for a var to use for the condition printer"
+  [context thread]
+  (or @remote-condition-printer-fn
+      (if (compare-and-set!
+           remote-condition-printer-sym-value
+           nil
+           (jdi-clj/eval
+            context thread jdi/invoke-single-threaded `(gensym "swank")))
+        (let [s (name @remote-condition-printer-sym-value)]
+          (logging/trace
+           "set sym %s" (pr-str s))
+          (jdi-clj/eval
+           context thread jdi/invoke-single-threaded
+           `(do
+              (defn ~(symbol s) [c#]
+                (str (dissoc @(.state c#) :stack-trace :message)))))
+          (logging/trace "defined condition-printer-fn")
+          (reset!
+           remote-condition-printer-fn
+           (jdi-clj/clojure-fn
+            context thread jdi/invoke-single-threaded
+            (jdi-clj/eval-to-string
+             context thread jdi/invoke-single-threaded
+             `(name (ns-name *ns*))) s 1))
+          (logging/trace
+           "resolved condition-printer-fn %s"
+           (pr-str @remote-condition-printer-fn))
+          @remote-condition-printer-fn))
+      @remote-condition-printer-fn))
+
 (defprotocol Debugger
   (condition-info [event context])
   (restarts [event connection]))
 
 (extend-type ExceptionEvent
   Debugger
-
   (condition-info
-   [event context]
-   (let [exception (.exception event)]
-     {:message (or (jdi-clj/exception-message context event) "No message.")
-      :type (str "  [Thrown " (.. exception referenceType name) "]")}))
+    [event context]
+    (let [exception (.exception event)
+          exception-type (.. exception referenceType name)
+          thread (jdi/event-thread event)]
+      {:message (str
+                 (or (jdi-clj/exception-message context event) "No message.")
+                 (if (= exception-type "clojure.contrib.condition.Condition")
+                   (let [[object method] (remote-condition-printer
+                                          context thread)]
+                     (str "\n" (jdi/invoke-method
+                                thread
+                                jdi/invoke-multi-threaded
+                                object method [exception])))
+                   ""))
+       :type (str "  [Thrown " exception-type "]")}))
 
   (restarts
-   [^ExceptionEvent exception connection]
-   (logging/trace "calculate-restarts exception")
-   (let [thread (.thread exception)]
-     (if (.request exception)
-       (filter
-        identity
-        [(make-restart
-          :continue "CONTINUE" "Pass exception to program"
-          (fn [connection]
-            (logging/trace "restart Continuing")
-            (continue-level connection)))
-         (make-restart
-          :abort "ABORT" "Return to SLIME's top level."
-          (fn [connection]
-            (logging/trace "restart Aborting to top level")
-            (abort-all-levels connection)))
-         (when (pos? (connection/sldb-level connection))
-           (make-restart
-            :quit "QUIT" "Return to previous level."
-            (fn [connection]
-              (logging/trace "restart Quiting to previous level")
-              (quit-level connection))))])
-       (filter
-        identity
-        [(when (pos? (connection/sldb-level connection))
-           (make-restart
-            :quit "QUIT" "Return to previous level."
-            (fn [connection]
-              (logging/trace "restart Quiting to previous level")
-              (quit-level connection))))])))))
+    [^ExceptionEvent exception connection]
+    (logging/trace "calculate-restarts exception")
+    (let [thread (.thread exception)]
+      (if (.request exception)
+        (filter
+         identity
+         [(make-restart
+           :continue "CONTINUE" "Pass exception to program"
+           (fn [connection]
+             (logging/trace "restart Continuing")
+             (continue-level connection)))
+          (make-restart
+           :abort "ABORT" "Return to SLIME's top level."
+           (fn [connection]
+             (logging/trace "restart Aborting to top level")
+             (abort-all-levels connection)))
+          (when (pos? (connection/sldb-level connection))
+            (make-restart
+             :quit "QUIT" "Return to previous level."
+             (fn [connection]
+               (logging/trace "restart Quiting to previous level")
+               (quit-level connection))))])
+        (filter
+         identity
+         [(when (pos? (connection/sldb-level connection))
+            (make-restart
+             :quit "QUIT" "Return to previous level."
+             (fn [connection]
+               (logging/trace "restart Quiting to previous level")
+               (quit-level connection))))])))))
 
 (extend-type BreakpointEvent
   Debugger
