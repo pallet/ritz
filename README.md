@@ -48,6 +48,11 @@ For lein, add the tools.jar to the dev-resources-path:
 
     :dev-resources-path "/usr/lib/jvm/java-6-sun/lib/tools.jar"
 
+To be able to see Java sources when using openjdk, add the `src.zip` to you
+classpath. e.g. for lein:
+
+    :dev-resources-path "/usr/lib/jvm/java-6-openjdk/src.zip"
+
 ## Usage
 
 To run with jpda:
