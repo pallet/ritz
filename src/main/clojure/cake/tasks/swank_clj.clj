@@ -1,7 +1,7 @@
 (ns cake.tasks.swank-clj
   "A cake task for running swank-clj. Modified from cake.tasks.swank."
   (:use cake cake.core
-        [cake.utils.useful :only [if-ns]]
+        [useful.utils :only [if-ns]]
         [bake.core :only [current-context]]))
 
 (def current-port (atom nil))
