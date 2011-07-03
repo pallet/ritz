@@ -4,7 +4,8 @@ Ritz is a swank server for running [clojure](http://clojure.org) in
 [slime](http://common-lisp.net/project/slime).
 
 Ritz was originally based on
-[swank-clojure](http://github.com/technomancy/swank-clojure).
+[swank-clojure](http://github.com/technomancy/swank-clojure) and was
+originally called swank-clj.  The last swank-clj release is 0.1.6.
 
 This is alpha quality.
 
@@ -20,9 +21,9 @@ Should work with clojure 1.2.0, 1.2.1 and 1.3.0-alpha7.
 
 ## Install
 
-Add `[ritz "0.1.6"]` to your project.clj `:dev-dependencies`.
+Add `[ritz "0.1.7-SNAPSHOT"]` to your project.clj `:dev-dependencies`.
 
-Install the slime-clj.el contrib from [marmalade](http://marmalade-repo.org/).
+Install the slime-ritz.el contrib from [marmalade](http://marmalade-repo.org/).
 
 A compatible slime.el is in slime/slime.el. It is available as a `package.el`
 package file you can
@@ -89,7 +90,7 @@ To list breakpoints, use `M-x slime-list-breakpoints` or press `b` in the
 
 Specify the location of local javadoc using `slime-javadoc-local-paths` in
 your `.emacs` file. Note that this requires a connection, so should be in
-your `slime-connected-hook` or `slime-clj-connected-hook`. e.g.
+your `slime-connected-hook` or `ritz-connected-hook`. e.g.
 
     (defun my-javadoc-setup ()
       (slime-javadoc-local-paths
@@ -103,7 +104,7 @@ the browser you have set up in emacs.
 ### SLIME configuration
 
 If you use slime with multiple lisps, you can isolate clojure specific
-setup by using `slime-clj-connected-hook` and `slime-clj-repl-mode-hook`.
+setup by using `ritz-connected-hook` and `ritz-repl-mode-hook`.
 
 ## Open Problems
 
