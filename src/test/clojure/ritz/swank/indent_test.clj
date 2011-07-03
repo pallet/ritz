@@ -1,11 +1,11 @@
-(ns swank-clj.swank.indent-test
+(ns ritz.swank.indent-test
   (:use clojure.test)
   (:require
-   [swank-clj.swank.indent :as indent]))
+   [ritz.swank.indent :as indent]))
 
 (deftest update-indentation-delta-test
   (is (nil? (#'indent/update-indentation-delta
-             (the-ns 'swank-clj.swank.indent-test)
+             (the-ns 'ritz.swank.indent-test)
              (ref {})
              false)))
   (is (every?
@@ -16,6 +16,6 @@
                              (or (integer? (nth x 2))
                                  (= 'defun (nth x 2)))) %))
         (#'indent/update-indentation-delta
-         (the-ns 'swank-clj.swank.indent-test)
+         (the-ns 'ritz.swank.indent-test)
          (ref {})
          true)))))

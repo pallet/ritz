@@ -1,10 +1,10 @@
-(ns swank-clj.commands.xref
+(ns ritz.commands.xref
   (:use
    clojure.walk
-   swank-clj.commands)
+   ritz.commands)
   (:require
-   [swank-clj.repl-utils.core :as core]
-   [swank-clj.repl-utils.find :as find])
+   [ritz.repl-utils.core :as core]
+   [ritz.repl-utils.find :as find])
   (:import (clojure.lang RT)
            (java.io LineNumberReader InputStreamReader PushbackReader)))
 

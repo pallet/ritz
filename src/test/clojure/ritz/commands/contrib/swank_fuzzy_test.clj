@@ -1,9 +1,9 @@
-(ns swank-clj.commands.contrib.swank-fuzzy-test
+(ns ritz.commands.contrib.swank-fuzzy-test
   (:use
-   [swank-clj.commands.contrib.swank-fuzzy :as sf]
+   [ritz.commands.contrib.swank-fuzzy :as sf]
    clojure.test)
   (:require
-   [swank-clj.test-utils :as test-utils]))
+   [ritz.test-utils :as test-utils]))
 
 (deftest call-with-timeout-test
   (are [to? ret to proc] (= [ret to?]

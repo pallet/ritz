@@ -1,6 +1,6 @@
-(ns swank-clj.repl-utils.arglist-test
+(ns ritz.repl-utils.arglist-test
   (:require
-   [swank-clj.repl-utils.arglist :as arglist])
+   [ritz.repl-utils.arglist :as arglist])
   (:use
    clojure.test))
 

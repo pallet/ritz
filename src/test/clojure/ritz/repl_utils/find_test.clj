@@ -1,6 +1,6 @@
-(ns swank-clj.repl-utils.find-test
+(ns ritz.repl-utils.find-test
   (:use
-   swank-clj.repl-utils.find
+   ritz.repl-utils.find
    clojure.test))
 
 (deftest java-source-path-test

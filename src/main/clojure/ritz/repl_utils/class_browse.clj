@@ -10,7 +10,7 @@
 ;;   http://java.sun.com/javase/6/docs/technotes/tools/findingclasses.html
 ;;   http://java.sun.com/javase/6/docs/technotes/tools/solaris/classpath.html
 
-(ns swank-clj.repl-utils.class-browse
+(ns ritz.repl-utils.class-browse
   "Provides Java classpath and (compiled) Clojure namespace browsing.
   Scans the classpath for all class files, and provides functions for
   categorizing them. Classes are resolved on the start-up classpath only.

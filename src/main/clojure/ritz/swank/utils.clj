@@ -1,4 +1,4 @@
-(ns swank-clj.swank.utils
+(ns ritz.swank.utils
   "Utils for swank implementation")
 
 (defn maybe-ns [package]

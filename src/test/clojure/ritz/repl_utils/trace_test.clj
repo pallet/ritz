@@ -1,13 +1,13 @@
-(ns swank-clj.repl-utils.trace-test
+(ns ritz.repl-utils.trace-test
   (:use
    clojure.test
-   swank-clj.repl-utils.trace))
+   ritz.repl-utils.trace))
 
 (defn f [x] x)
 
 (deftest trace-test
-  (let [op (str "swank-clj.repl-utils.trace-test/f (1)\n"
-                "swank-clj.repl-utils.trace-test/f => 1\n")]
+  (let [op (str "ritz.repl-utils.trace-test/f (1)\n"
+                "ritz.repl-utils.trace-test/f => 1\n")]
     (is (= "" (with-out-str (f 1))))
     (is (= op (do (trace! #'f) (with-out-str (#'f 1)))))
     (is (= "" (do (untrace! #'f) (with-out-str (#'f 1)))))

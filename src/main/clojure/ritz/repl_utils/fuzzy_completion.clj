@@ -8,10 +8,10 @@
 ;; This progam is based on the swank-fuzzy.lisp.
 ;; Thanks the CL implementation authors for that useful software.
 
-(ns swank-clj.repl-utils.fuzzy-completion
+(ns ritz.repl-utils.fuzzy-completion
   (:require
-   [swank-clj.repl-utils.clojure :as clj]
-   [swank-clj.repl-utils.helpers :as helpers]))
+   [ritz.repl-utils.clojure :as clj]
+   [ritz.repl-utils.helpers :as helpers]))
 
 (def ^{:dynamic true} *fuzzy-recursion-soft-limit* 30)
 (defn- compute-most-completions [short full]

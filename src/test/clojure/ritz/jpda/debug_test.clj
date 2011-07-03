@@ -1,13 +1,13 @@
-(ns swank-clj.jpda.debug-test
+(ns ritz.jpda.debug-test
   (:require
-   [swank-clj.logging :as logging]
-   [swank-clj.jpda.debug :as debug]
-   [swank-clj.jpda.disassemble :as disassemble]
-   [swank-clj.inspect :as inspect]
-   [swank-clj.jpda.jdi :as jdi]
-   [swank-clj.jpda.jdi-clj :as jdi-clj]
-   [swank-clj.jpda.jdi-test-handler :as jdi-test-handler] ;; after jpda.debug
-   [swank-clj.jpda.jdi-vm :as jdi-vm]
+   [ritz.logging :as logging]
+   [ritz.jpda.debug :as debug]
+   [ritz.jpda.disassemble :as disassemble]
+   [ritz.inspect :as inspect]
+   [ritz.jpda.jdi :as jdi]
+   [ritz.jpda.jdi-clj :as jdi-clj]
+   [ritz.jpda.jdi-test-handler :as jdi-test-handler] ;; after jpda.debug
+   [ritz.jpda.jdi-vm :as jdi-vm]
    [clojure.string :as string])
   (:import
    com.sun.jdi.event.BreakpointEvent
@@ -28,7 +28,7 @@
 
 (deftest vm-swank-main-test
   (is (re-matches
-       #"\(try \(clojure.core/require \(quote swank-clj.socket-server\)\) \(\(clojure.core/resolve \(quote swank-clj.socket-server/start\)\) \{:a 1\}\) \(catch java.lang.Exception e__\d+__auto__ \(clojure.core/println e__\d+__auto__\) \(.printStackTrace e__\d+__auto__\)\)\)"
+       #"\(try \(clojure.core/require \(quote ritz.socket-server\)\) \(\(clojure.core/resolve \(quote ritz.socket-server/start\)\) \{:a 1\}\) \(catch java.lang.Exception e__\d+__auto__ \(clojure.core/println e__\d+__auto__\) \(.printStackTrace e__\d+__auto__\)\)\)"
        (pr-str (#'debug/vm-swank-main {:a 1})))))
 
 (deftest inspect-test

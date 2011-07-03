@@ -1,9 +1,9 @@
-(ns swank-clj.commands.completion-test
+(ns ritz.commands.completion-test
   (:use clojure.test)
   (:require
-   [swank-clj.commands.completion :as completion]
-   [swank-clj.logging :as logging]
-   [swank-clj.test-utils :as test-utils]))
+   [ritz.commands.completion :as completion]
+   [ritz.logging :as logging]
+   [ritz.test-utils :as test-utils]))
 
 
 (deftest fuzzy-completions-test

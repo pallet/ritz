@@ -1,4 +1,4 @@
-(ns swank-clj.clj-contrib.macroexpand)
+(ns ritz.clj-contrib.macroexpand)
 
 (def
  ^{:private true}

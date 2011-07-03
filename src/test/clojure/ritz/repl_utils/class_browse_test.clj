@@ -1,6 +1,6 @@
-(ns swank-clj.repl-utils.class-browse-test
+(ns ritz.repl-utils.class-browse-test
   (:use
-   swank-clj.repl-utils.class-browse
+   ritz.repl-utils.class-browse
    clojure.test))
 
 (deftest available-classes-test

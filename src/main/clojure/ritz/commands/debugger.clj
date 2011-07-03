@@ -1,17 +1,17 @@
-(ns swank-clj.commands.debugger
+(ns ritz.commands.debugger
   "Debugger commands.  Everything that the proxy responds to."
   (:require
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as string]
-   [swank-clj.connection :as connection]
-   [swank-clj.jpda.debug :as debug]
-   [swank-clj.inspect :as inspect]
-   [swank-clj.logging :as logging]
-   [swank-clj.swank.messages :as messages]
-   [swank-clj.commands.contrib.swank-clj])
+   [ritz.connection :as connection]
+   [ritz.jpda.debug :as debug]
+   [ritz.inspect :as inspect]
+   [ritz.logging :as logging]
+   [ritz.swank.messages :as messages]
+   [ritz.commands.contrib.ritz])
   (:use
-   [swank-clj.swank.commands :only [defslimefn]]))
+   [ritz.swank.commands :only [defslimefn]]))
 
 (defn invoke-restart [restart]
   ((nth restart 2)))

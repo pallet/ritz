@@ -1,6 +1,6 @@
-(ns swank-clj.repl-utils.mangle-test
+(ns ritz.repl-utils.mangle-test
   (:use
-   swank-clj.repl-utils.mangle
+   ritz.repl-utils.mangle
    clojure.test))
 
 (deftest clojure->java-test

@@ -1,11 +1,11 @@
-(ns swank-clj.swank.core
+(ns ritz.swank.core
   "Base namespace for swank"
   (:require
-   [swank-clj.connection :as connection]
-   [swank-clj.hooks :as hooks]
-   [swank-clj.logging :as logging]
-   [swank-clj.repl-utils.helpers :as helpers]
-   [swank-clj.swank.utils :as utils]
+   [ritz.connection :as connection]
+   [ritz.hooks :as hooks]
+   [ritz.logging :as logging]
+   [ritz.repl-utils.helpers :as helpers]
+   [ritz.swank.utils :as utils]
    [clojure.string :as string]))
 
 ;; Protocol version
@@ -27,7 +27,7 @@
 
 (defn command-not-found [connection form buffer-package id _]
   (logging/trace "swank/eval-for-emacs: could not find fn %s" (first form))
-  :swank-clj.swank/abort)
+  :ritz.swank/abort)
 
 (defmacro with-namespace [connection & body]
   `(binding [*ns* (connection/request-ns ~connection)]
@@ -38,14 +38,14 @@
 ;;   (if (and (list? form) (= 'quote (first form)) (symbol? (second form)))
 ;;     (let [sym (second form)]
 ;;       (if (= "swank" (namespace sym))
-;;         `'~(symbol "swank-clj.swank.commands" (name sym))
+;;         `'~(symbol "ritz.swank.commands" (name sym))
 ;;         form))
 ;;     form))
 
 (defn execute-slime-fn*
   [connection f args-form buffer-package]
   (with-namespace connection
-    (if (:swank-clj.swank.commands/swank-fn (meta f))
+    (if (:ritz.swank.commands/swank-fn (meta f))
       (apply f connection (eval (vec args-form)))
       (apply f (eval (vec args-form))))))
 

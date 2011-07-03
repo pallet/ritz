@@ -1,13 +1,13 @@
-(ns swank-clj.commands.contrib.swank-arglists
+(ns ritz.commands.contrib.swank-arglists
   (:use
-   [swank-clj.swank.commands :only [defslimefn]])
+   [ritz.swank.commands :only [defslimefn]])
   (:require
-   [swank-clj.commands.basic :as basic]
-   [swank-clj.connection :as connection]
-   [swank-clj.logging :as logging]
-   [swank-clj.repl-utils.arglist :as arglist]
-   [swank-clj.swank.utils :as utils]
-   [swank-clj.swank.commands :as commands]))
+   [ritz.commands.basic :as basic]
+   [ritz.connection :as connection]
+   [ritz.logging :as logging]
+   [ritz.repl-utils.arglist :as arglist]
+   [ritz.swank.utils :as utils]
+   [ritz.swank.commands :as commands]))
 
 
 (defn position-in-arglist? [arglist pos]
@@ -64,7 +64,7 @@ TODO: The highlighted parameter is wrapped in ===> X <===."
   (logging/trace "swank-arglists/autodoc")
   (if (and raw-specs (seq? raw-specs))
     (if-let [[arglists index] (arglist/arglist-at-terminal
-                               raw-specs :swank-clj/cursor-marker
+                               raw-specs :ritz/cursor-marker
                                (connection/request-ns connection))]
       (message-format raw-specs arglists index)
       `:not-available)

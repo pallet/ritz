@@ -1,13 +1,13 @@
-(ns swank-clj.jpda.disassemble-test
+(ns ritz.jpda.disassemble-test
   "Disassemble tests"
   (:use
    clojure.test)
   (:require
    [clojure.pprint :as pprint]
-   [swank-clj.jpda.disassemble :as disassemble]
-   [swank-clj.jpda.jdi :as jdi]
-   [swank-clj.jpda.jdi-clj :as jdi-clj]
-   [swank-clj.jpda.jdi-vm :as jdi-vm]))
+   [ritz.jpda.disassemble :as disassemble]
+   [ritz.jpda.jdi :as jdi]
+   [ritz.jpda.jdi-clj :as jdi-clj]
+   [ritz.jpda.jdi-vm :as jdi-vm]))
 
 (deftest ubyte-value-test
   (is (= 255 (disassemble/ubyte-value (byte -1))))

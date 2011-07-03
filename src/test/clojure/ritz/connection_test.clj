@@ -1,10 +1,10 @@
-(ns swank-clj.connection-test
+(ns ritz.connection-test
   (:use
    clojure.test)
   (:require
-   [swank-clj.connection :as connection]
-   [swank-clj.rpc :as rpc]
-   [swank-clj.rpc-socket-connection :as rpc-s-c]))
+   [ritz.connection :as connection]
+   [ritz.rpc :as rpc]
+   [ritz.rpc-socket-connection :as rpc-s-c]))
 
 (deftest initialise-test
   (let [a (java.net.ServerSocket. 0)

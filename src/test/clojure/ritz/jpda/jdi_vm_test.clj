@@ -1,8 +1,8 @@
-(ns swank-clj.jpda.jdi-vm-test
+(ns ritz.jpda.jdi-vm-test
   (:require
-   [swank-clj.logging :as logging]
-   [swank-clj.jpda.jdi :as jdi]
-   [swank-clj.jpda.jdi-vm :as jdi-vm]
+   [ritz.logging :as logging]
+   [ritz.jpda.jdi :as jdi]
+   [ritz.jpda.jdi-vm :as jdi-vm]
    [clojure.string :as string])
   (:use clojure.test)
   (:import com.sun.jdi.event.VMDeathEvent))

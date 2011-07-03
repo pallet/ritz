@@ -1,29 +1,29 @@
-(ns swank-clj.commands.basic
+(ns ritz.commands.basic
   (:refer-clojure :exclude [load-file])
   (:use
-   [swank-clj.swank.commands :only [defslimefn]])
+   [ritz.swank.commands :only [defslimefn]])
   (:require
-   [swank-clj.clj-contrib.macroexpand :as macroexpand]
-   [swank-clj.connection :as connection]
-   [swank-clj.logging :as logging]
-   [swank-clj.repl-utils.arglist :as arglist]
-   [swank-clj.repl-utils.compile :as compile]
-   [swank-clj.repl-utils.doc :as doc]
-   [swank-clj.repl-utils.find :as find]
-   [swank-clj.repl-utils.format :as format]
-   [swank-clj.repl-utils.helpers :as helpers]
-   [swank-clj.repl-utils.sys :as sys]
-   [swank-clj.repl-utils.trace :as trace]
-   [swank-clj.swank.core :as core]
-   [swank-clj.swank.messages :as messages]
-   [swank-clj.swank.utils :as utils]
+   [ritz.clj-contrib.macroexpand :as macroexpand]
+   [ritz.connection :as connection]
+   [ritz.logging :as logging]
+   [ritz.repl-utils.arglist :as arglist]
+   [ritz.repl-utils.compile :as compile]
+   [ritz.repl-utils.doc :as doc]
+   [ritz.repl-utils.find :as find]
+   [ritz.repl-utils.format :as format]
+   [ritz.repl-utils.helpers :as helpers]
+   [ritz.repl-utils.sys :as sys]
+   [ritz.repl-utils.trace :as trace]
+   [ritz.swank.core :as core]
+   [ritz.swank.messages :as messages]
+   [ritz.swank.utils :as utils]
    [clojure.string :as string])
   (:import
    (java.io StringReader File)
    (java.util.zip ZipFile)
    (clojure.lang LineNumberingPushbackReader)))
 
-;; Note: For debugging purposes, keep bindings and with- macros out of commands,
+;; Note: For debugging purposes, keep bindings and with- macros out of commands
 ;; as they create catch sites.
 
 ;;;; Connection
@@ -82,7 +82,7 @@
     (if exception
       (do
         (.printStackTrace exception)
-        [:swank-clj.swank/abort exception])
+        [:ritz.swank/abort exception])
       (connection/send-to-emacs connection (messages/repl-result result)))))
 
 (defmacro with-out-str-and-value

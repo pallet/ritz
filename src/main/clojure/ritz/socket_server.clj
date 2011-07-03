@@ -1,9 +1,9 @@
-(ns swank-clj.socket-server
+(ns ritz.socket-server
   "Socket server."
   (:require
-   [swank-clj.executor :as executor]
-   [swank-clj.rpc-socket-connection :as rpc-socket-connection]
-   [swank-clj.logging :as logging])
+   [ritz.executor :as executor]
+   [ritz.rpc-socket-connection :as rpc-socket-connection]
+   [ritz.logging :as logging])
   (:import
    java.net.ServerSocket
    java.net.InetAddress
@@ -90,7 +90,7 @@
   "Start the given server wrapped in a repl. Use this to embed swank in your
    code."
   [{:keys [port encoding server-ns backlog host port-file]
-    :or {server-ns 'swank-clj.proxy}
+    :or {server-ns 'ritz.proxy}
     :as options}]
   (logging/trace "socket-server/start")
   (let [stop (atom false)

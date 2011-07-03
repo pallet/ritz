@@ -1,4 +1,4 @@
-(ns swank-clj.commands.contrib.swank-c-p-c
+(ns ritz.commands.contrib.swank-c-p-c
   (:use (swank util core commands)
         (swank.commands completion)
         (swank.util string clojure)

@@ -1,7 +1,7 @@
-(ns swank-clj.executor
+(ns ritz.executor
   "Executor for swank"
   (:require
-   [swank-clj.logging :as logging])
+   [ritz.logging :as logging])
   (:import
    java.io.IOException
    (java.util.concurrent

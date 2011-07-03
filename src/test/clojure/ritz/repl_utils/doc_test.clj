@@ -1,8 +1,8 @@
-(ns swank-clj.repl-utils.doc-test
+(ns ritz.repl-utils.doc-test
   (:use
    clojure.test)
   (:require
-   [swank-clj.repl-utils.doc :as doc]))
+   [ritz.repl-utils.doc :as doc]))
 
 (deftest describe-test
   (is (= {:symbol-name "clojure.core/shutdown-agents"
@@ -23,7 +23,7 @@
   (testing "nil package"
     (is (= [#'clojure.core/shutdown-agents]
              (doc/apropos-list
-              nil "shutdown-a" nil nil (the-ns 'swank-clj.repl-utils.doc)))))
+              nil "shutdown-a" nil nil (the-ns 'ritz.repl-utils.doc)))))
   (testing "case insensitive"
     (is (= [#'clojure.core/shutdown-agents]
              (doc/apropos-list

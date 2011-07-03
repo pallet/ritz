@@ -1,4 +1,4 @@
-(ns swank-clj.hooks
+(ns ritz.hooks
   "Define, and run hooks.")
 
 (defmacro defhook

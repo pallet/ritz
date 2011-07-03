@@ -1,6 +1,6 @@
-(ns swank-clj.repl-utils.completion-test
+(ns ritz.repl-utils.completion-test
   (:use
-   swank-clj.repl-utils.completion
+   ritz.repl-utils.completion
    clojure.test))
 
 (deftest simple-completion-test

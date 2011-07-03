@@ -1,22 +1,22 @@
-(ns swank-clj.proxy
+(ns ritz.proxy
   "Proxy server.  Sits between slime and the target swank process"
   (:require
    [clojure.pprint :as pprint]
-   [swank-clj.executor :as executor]
-   [swank-clj.hooks :as hooks]
-   [swank-clj.swank :as swank]
-   [swank-clj.swank.core :as core]
-   [swank-clj.rpc-server :as rpc-server]
-   [swank-clj.logging :as logging]
-   [swank-clj.jpda.debug :as debug]
-   [swank-clj.jpda.jdi :as jdi]
-   [swank-clj.jpda.jdi-clj :as jdi-clj]
-   [swank-clj.jpda.jdi-vm :as jdi-vm]
+   [ritz.executor :as executor]
+   [ritz.hooks :as hooks]
+   [ritz.swank :as swank]
+   [ritz.swank.core :as core]
+   [ritz.rpc-server :as rpc-server]
+   [ritz.logging :as logging]
+   [ritz.jpda.debug :as debug]
+   [ritz.jpda.jdi :as jdi]
+   [ritz.jpda.jdi-clj :as jdi-clj]
+   [ritz.jpda.jdi-vm :as jdi-vm]
    ;; order is important for these to overide functions defined on local
    ;; vm, vs functions defined for jpda/jdi connection
-   swank-clj.commands.inspector
-   swank-clj.commands.debugger
-   swank-clj.commands.contrib.swank-clj))
+   ritz.commands.inspector
+   ritz.commands.debugger
+   ritz.commands.contrib.ritz))
 
 (defn forward-commands
   "Alter eval-for-emacs to forward unrecognised commands to proxied connection."
@@ -49,7 +49,7 @@
     (let [options (->
                    options
                    (dissoc :announce)
-                   (merge {:port 0 :join true :server-ns 'swank-clj.repl}))
+                   (merge {:port 0 :join true :server-ns 'ritz.repl}))
           vm-context (debug/launch-vm-with-swank options)
           options (assoc options :vm-context (atom vm-context))]
       (logging/trace "proxy/connection-handler: runtime set")

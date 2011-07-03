@@ -1,4 +1,4 @@
-(ns swank-clj.repl-utils.doc
+(ns ritz.repl-utils.doc
   "Documentation utils"
   (:refer-clojure :exclude [print-doc])
   (:require
@@ -88,7 +88,7 @@ that symbols accessible in the current namespace go first."
                (compare nx ny))))))
 
 (defn apropos-list
-  "Find a list of matching symbols for name, restricted to ns if non-nil,
+  "Find a list of matching symbols for name, restricted to ns if non-nil
    prefering symbols accessible from prefer-ns."
   [ns name public-only? case-sensitive? prefer-ns]
   (sort
@@ -119,7 +119,7 @@ that symbols accessible in the current namespace go first."
 (defn javadoc-url
   "Searches for a URL for the given class name.  Tries
   *local-javadocs* first, then *remote-javadocs*.  Returns a string."
-  {:tag String,
+  {:tag String
    :added "1.2"}
   [^String classname]
   (let [classname (if (.endsWith classname ".")

@@ -1,11 +1,11 @@
-(ns swank-clj.swank-test
+(ns ritz.swank-test
   (:use clojure.test)
   (:require
-   [swank-clj.swank :as swank]
-   [swank-clj.swank.commands :as commands]
-   [swank-clj.logging :as logging]
-   [swank-clj.rpc-socket-connection :as rpc-s-c]
-   [swank-clj.test-utils :as test-utils]))
+   [ritz.swank :as swank]
+   [ritz.swank.commands :as commands]
+   [ritz.logging :as logging]
+   [ritz.rpc-socket-connection :as rpc-s-c]
+   [ritz.test-utils :as test-utils]))
 
 (commands/defslimefn echo [_ arg] arg)
 

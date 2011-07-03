@@ -1,4 +1,4 @@
-(ns swank-clj.repl-utils.format
+(ns ritz.repl-utils.format
   "Formatting utils"
   (:require
    [clojure.pprint :as pprint]))

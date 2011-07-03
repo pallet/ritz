@@ -1,9 +1,9 @@
-(ns swank-clj.commands.completion
+(ns ritz.commands.completion
   "Symbol completion commands"
   (:use
-   [swank-clj.swank.commands :only [defslimefn]])
+   [ritz.swank.commands :only [defslimefn]])
   (:require
-   [swank-clj.repl-utils.completion :as completion]))
+   [ritz.repl-utils.completion :as completion]))
 
 (defslimefn simple-completions [connection symbol-string package]
   (try

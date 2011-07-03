@@ -1,9 +1,9 @@
-(ns swank-clj.jpda.jdi-clj-test
+(ns ritz.jpda.jdi-clj-test
   (:require
-   [swank-clj.logging :as logging]
-   [swank-clj.jpda.jdi :as jdi]
-   [swank-clj.jpda.jdi-clj :as jdi-clj]
-   [swank-clj.jpda.jdi-vm :as jdi-vm]
+   [ritz.logging :as logging]
+   [ritz.jpda.jdi :as jdi]
+   [ritz.jpda.jdi-clj :as jdi-clj]
+   [ritz.jpda.jdi-vm :as jdi-vm]
    [clojure.string :as string])
   (:import
    com.sun.jdi.event.BreakpointEvent

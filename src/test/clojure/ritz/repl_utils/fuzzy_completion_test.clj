@@ -1,12 +1,12 @@
-(ns swank-clj.repl-utils.fuzzy-completion-test
+(ns ritz.repl-utils.fuzzy-completion-test
   (:use
-   [swank-clj.repl-utils.fuzzy-completion :as sf]
+   [ritz.repl-utils.fuzzy-completion :as sf]
    clojure.test))
 
 (try
-  (import swank_clj.repl_utils.fuzzy_completion.FuzzyMatching)
+  (import ritz.repl_utils.fuzzy_completion.FuzzyMatching)
   (catch ClassNotFoundException _
-    (import swank-clj.repl-utils.fuzzy-completion.FuzzyMatching)))
+    (import ritz.repl-utils.fuzzy-completion.FuzzyMatching)))
 
 (deftest compute-most-completions-test
   (is (= '(([0 "m"] [9 "v"] [15 "b"]))
@@ -68,7 +68,7 @@
 (def #^{:private true} testing-testing1 't)
 
 (deftest fuzzy-find-matching-vars-test
-  (let [ns (the-ns 'swank-clj.repl-utils.fuzzy-completion-test)]
+  (let [ns (the-ns 'ritz.repl-utils.fuzzy-completion-test)]
     (try
       (are
        [x
@@ -103,10 +103,10 @@
   (let [ns (the-ns 'user)]
     (try
       (is
-       (= ["swank-clj.repl-utils.fuzzy-completion-test/testing-testing0"]
+       (= ["ritz.repl-utils.fuzzy-completion-test/testing-testing0"]
           (->>
            (#'sf/fuzzy-generate-matchings
-            "swank-clj.repl-utils.fuzzy-completion-test/testing"
+            "ritz.repl-utils.fuzzy-completion-test/testing"
             ns
             (fn [] false))
            (map #(str (:ns-name %) "/" (name (:symbol %))))

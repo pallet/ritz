@@ -1,6 +1,6 @@
 ;;; swank_fuzzy.clj --- fuzzy symbol completion, Clojure implementation.
 
-;; Original CL implementation authors (from swank-fuzzy.lisp) below,
+;; Original CL implementation authors (from swank-fuzzy.lisp) below
 ;; Authors: Brian Downing <bdowning@lavos.net>
 ;;          Tobias C. Rittweiler <tcr@freebits.de>
 ;;          and others
@@ -8,16 +8,16 @@
 ;; This progam is based on the swank-fuzzy.lisp.
 ;; Thanks the CL implementation authors for that useful software.
 
-(ns swank-clj.commands.contrib.swank-fuzzy
+(ns ritz.commands.contrib.swank-fuzzy
   (:require
-   [swank-clj.repl-utils.fuzzy-completion :as fuzzy-completion]
-   [swank-clj.swank.utils :as utils]
-   [swank-clj.swank.commands :as commands]))
+   [ritz.repl-utils.fuzzy-completion :as fuzzy-completion]
+   [ritz.swank.utils :as utils]
+   [ritz.swank.commands :as commands]))
 
 (defn- call-with-timeout [time-limit-in-msec proc]
   "Create a thunk that returns true if given time-limit-in-msec has been
   elapsed and calls proc with the thunk as an argument. Returns a 3 elements
-  vec: A proc result, given time-limit-in-msec has been elapsed or not,
+  vec: A proc result, given time-limit-in-msec has been elapsed or not
   elapsed time in millisecond."
   (let [timed-out (atom false)
         start! (fn []

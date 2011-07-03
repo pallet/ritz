@@ -1,7 +1,7 @@
-(ns swank-clj.swank.core-test
+(ns ritz.swank.core-test
   (:use clojure.test)
   (:require
-   [swank-clj.swank.core :as core]))
+   [ritz.swank.core :as core]))
 
 ;; (deftest send-repl-results-to-emacs-test
 ;;   (is (= "000027(:write-string \"\\\"abc\\\"\n\" :repl-result)"

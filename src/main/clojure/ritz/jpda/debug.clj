@@ -1,22 +1,22 @@
-(ns swank-clj.jpda.debug
+(ns ritz.jpda.debug
   "Debug functions using jpda/jdi, used to implement debugger commands via jpda.
-   The aim is to move all return messaging back up into swank-clj.commands.*
+   The aim is to move all return messaging back up into ritz.commands.*
    and to accept only vm-context aguments, rather than a connection"
   (:require
-   [swank-clj.connection :as connection]
-   [swank-clj.executor :as executor]
-   [swank-clj.hooks :as hooks]
-   [swank-clj.inspect :as inspect]
-   [swank-clj.jpda.disassemble :as disassemble]
-   [swank-clj.jpda.jdi :as jdi]
-   [swank-clj.jpda.jdi-clj :as jdi-clj]
-   [swank-clj.jpda.jdi-vm :as jdi-vm]
-   [swank-clj.logging :as logging]
-   [swank-clj.repl-utils.find :as find]
-   [swank-clj.repl-utils.helpers :as helpers]
-   [swank-clj.rpc-socket-connection :as rpc-socket-connection]
-   [swank-clj.swank.core :as core]
-   [swank-clj.swank.messages :as messages] ;; TODO - remove this
+   [ritz.connection :as connection]
+   [ritz.executor :as executor]
+   [ritz.hooks :as hooks]
+   [ritz.inspect :as inspect]
+   [ritz.jpda.disassemble :as disassemble]
+   [ritz.jpda.jdi :as jdi]
+   [ritz.jpda.jdi-clj :as jdi-clj]
+   [ritz.jpda.jdi-vm :as jdi-vm]
+   [ritz.logging :as logging]
+   [ritz.repl-utils.find :as find]
+   [ritz.repl-utils.helpers :as helpers]
+   [ritz.rpc-socket-connection :as rpc-socket-connection]
+   [ritz.swank.core :as core]
+   [ritz.swank.messages :as messages] ;; TODO - remove this
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as string])
@@ -39,7 +39,7 @@
     BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
     LongValue ShortValue StringReference)))
 
-(def control-thread-name "swank-clj-debug-thread")
+(def control-thread-name "ritz-debug-thread")
 
 (def exception-suspend-policy :suspend-all)
 (def breakpoint-suspend-policy :suspend-all)
@@ -83,8 +83,8 @@
 (defn- vm-swank-main
   [options]
   `(try
-     (require '~'swank-clj.socket-server)
-     ((resolve '~'swank-clj.socket-server/start) ~options)
+     (require '~'ritz.socket-server)
+     ((resolve '~'ritz.socket-server/start) ~options)
      (catch Exception e#
        (println e#)
        (.printStackTrace e#))))
@@ -97,7 +97,7 @@
    (or classpath (jdi-vm/current-classpath))
    (vm-swank-main {:port port
                    :announce announce
-                   :server-ns `(quote swank-clj.repl)
+                   :server-ns `(quote ritz.repl)
                    :log-level (keyword log-level)})))
 
 (defn launch-vm
@@ -138,9 +138,9 @@
     (if-let [port (jdi-clj/control-eval
                    context
                    ;; NB very important that this doesn't throw
-                   `(when (find-ns '~'swank-clj.socket-server)
+                   `(when (find-ns '~'ritz.socket-server)
                       (when-let [v# (resolve
-                                     '~'swank-clj.socket-server/acceptor-port)]
+                                     '~'ritz.socket-server/acceptor-port)]
                         (when-let [a# (var-get v#)]
                           (deref a#)))))]
       port
@@ -189,7 +189,7 @@
   (fn [connection form buffer-package id f]
     (if (and f
              (not (re-find #"inspect" (name (first form))))
-             (:swank-clj.swank.commands/swank-fn (meta f)))
+             (:ritz.swank.commands/swank-fn (meta f)))
       (core/execute-slime-fn* connection f (rest form) buffer-package)
       (handler connection form buffer-package id f))))
 
@@ -212,7 +212,7 @@
        (partial
         connection/send-to-emacs
         proxied-connection (list :emacs-rex form buffer-package true id)))
-      :swank-clj.swank/pending)))
+      :ritz.swank/pending)))
 
 (defn forward-rpc
   [connection rpc]
@@ -806,7 +806,7 @@
    (jdi-clj/invoke-clojure-fn
     context (:current-thread context)
     jdi/invoke-multi-threaded
-    "swank-clj.inspect" "object-content-range"
+    "ritz.inspect" "object-content-range"
     nil object
     (jdi-clj/eval-to-value
      context (:current-thread context) jdi/invoke-single-threaded start)
@@ -817,7 +817,7 @@
   [context object n max-index]
   (jdi-clj/invoke-clojure-fn
    context (:current-thread context) jdi/invoke-single-threaded
-   "swank-clj.inspect" "object-nth-part"
+   "ritz.inspect" "object-nth-part"
    nil object
    (jdi-clj/eval-to-value
     context (:current-thread context) jdi/invoke-single-threaded n)
@@ -833,7 +833,7 @@
     context
     (:current-thread context)
     jdi/invoke-multi-threaded
-    "swank-clj.inspect" "object-call-nth-action"
+    "ritz.inspect" "object-call-nth-action"
     object
     (jdi-clj/eval-to-value
      context (:current-thread context) jdi/invoke-single-threaded n)
@@ -961,7 +961,7 @@
           (.printStackTrace e))))))
 
 (defn pprint-eval-string-in-frame
-  "Eval the string `expr` in the context of the specified `frame-number`,
+  "Eval the string `expr` in the context of the specified `frame-number`
    and pretty print the result"
   [connection context thread expr frame-number]
   (try
@@ -1003,7 +1003,7 @@
 
 ;;; VM events
 (defn caught?
-  "Predicate for testing if the given exception is caught outside of swank-clj"
+  "Predicate for testing if the given exception is caught outside of ritz"
   [exception-event]
   (when-let [catch-location (jdi/catch-location exception-event)]
     (let [catch-location-name (jdi/location-type-name catch-location)
@@ -1016,7 +1016,7 @@
            (.startsWith catch-location-name "clojure.lang.Compiler"))))))
 
 (defn ignore-location?
-  "Predicate for testing if the given thread is inside of swank-clj"
+  "Predicate for testing if the given thread is inside of ritz"
   [thread]
   (when-let [frame (first (.frames thread))]
     (when-let [location (.location frame)]
@@ -1167,9 +1167,9 @@
    `(~'swank:interactive-eval
      ~(str
        `(do
-          (require '~'swank-clj.repl-utils.compile)
+          (require '~'ritz.repl-utils.compile)
           (reset!
-           (var-get (resolve 'swank-clj.repl-utils.compile/compile-path))
+           (var-get (resolve 'ritz.repl-utils.compile/compile-path))
            ~*compile-path*)))) "user" 0 nil))
 
 (hooks/add core/new-connection-hook setup-debugee)

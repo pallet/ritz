@@ -1,10 +1,10 @@
-(ns swank-clj.jpda.jdi-vm
+(ns ritz.jpda.jdi-vm
   "Virtual machine launch and event handling.
 
    Provides a context for a VM with a :control-thread"
   (:require
-   [swank-clj.jpda.jdi :as jdi]
-   [swank-clj.logging :as logging]
+   [ritz.jpda.jdi :as jdi]
+   [ritz.logging :as logging]
    [clojure.pprint :as pprint]
    [clojure.string :as string])
   (:import

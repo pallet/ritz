@@ -1,4 +1,4 @@
-(ns swank-clj.logging
+(ns ritz.logging
   "Logging for swank. Rudimentary for now")
 
 (defonce logging-out (or *out* (java.io.FileWriter.

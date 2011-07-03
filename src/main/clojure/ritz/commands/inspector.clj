@@ -1,10 +1,10 @@
-(ns swank-clj.commands.inspector
+(ns ritz.commands.inspector
   (:require
-   [swank-clj.inspect :as inspect]
-   [swank-clj.swank.messages :as messages]
-   [swank-clj.connection :as connection])
+   [ritz.inspect :as inspect]
+   [ritz.swank.messages :as messages]
+   [ritz.connection :as connection])
   (:use
-   [swank-clj.swank.commands :only [defslimefn]]))
+   [ritz.swank.commands :only [defslimefn]]))
 
 
 (defslimefn init-inspector [connection string]

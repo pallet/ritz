@@ -19,7 +19,7 @@ echo -n "commiting project.clj, release notes and readme.  enter to continue:" \
 && lein test \
 && lein jar, pom \
 && git flow release finish $version \
-&& scp swank-clj-${version}.jar pom.xml clojars: \
+&& scp ritz-${version}.jar pom.xml clojars: \
 && bash build-elpa-package.sh \
 && echo "Now push and upload to github and marmalade"
 

@@ -1,8 +1,8 @@
-(ns swank-clj.inspect
+(ns ritz.inspect
   "The inspector is an atom, containing parts"
   (:require
-   [swank-clj.swank.utils :as utils]
-   [swank-clj.logging :as logging]
+   [ritz.swank.utils :as utils]
+   [ritz.logging :as logging]
    [clojure.string :as string]))
 
 (defn reset-inspector [inspector]

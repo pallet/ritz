@@ -1,4 +1,4 @@
-(ns swank-clj.swank.commands
+(ns ritz.swank.commands
   "Namespace for swank functions. Slime calls functions in the swank package,
    so we need to be able o lookup symbols with a swank/ prefix. This is solved
    by interning every slime function into this namespace, and providing a
@@ -6,10 +6,10 @@
    symbols via ns-resolve."
   (:refer-clojure :exclude [load-file])
   (:require
-   [swank-clj.logging :as logging]
+   [ritz.logging :as logging]
    ;; aliases for ns lookups in namespaces expected by slime
-   [swank-clj.swank.commands :as swank]
-   [swank-clj.swank.cl :as cl]))
+   [ritz.swank.commands :as swank]
+   [ritz.swank.cl :as cl]))
 
 ;;; Allow definition of swank functions from various namespaces
 (defmacro ^{:indent 'defun} defslimefn
@@ -19,9 +19,9 @@
   (let [fname (vary-meta fname assoc ::swank-fn true)]
     `(do
        (defn ~fname ~@body)
-       (intern '~'swank-clj.swank.commands '~fname ~fname))))
+       (intern '~'ritz.swank.commands '~fname ~fname))))
 
 (defn slime-fn
   "Resolve a slime function."
   [sym]
-  (ns-resolve (the-ns 'swank-clj.swank.commands) sym))
+  (ns-resolve (the-ns 'ritz.swank.commands) sym))

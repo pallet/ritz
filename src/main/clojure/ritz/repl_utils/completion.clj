@@ -1,9 +1,9 @@
-(ns swank-clj.repl-utils.completion
+(ns ritz.repl-utils.completion
   "Completion functions"
   (:require
-   [swank-clj.repl-utils.helpers :as helpers]
-   [swank-clj.repl-utils.java :as java]
-   [swank-clj.repl-utils.class-browse :as class-browse]))
+   [ritz.repl-utils.helpers :as helpers]
+   [ritz.repl-utils.java :as java]
+   [ritz.repl-utils.class-browse :as class-browse]))
 
 (defn ^String largest-common-prefix
   "Returns the largest common prefix of two strings."

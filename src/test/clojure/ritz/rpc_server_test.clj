@@ -1,6 +1,6 @@
-(ns swank-clj.rpc-server-test
+(ns ritz.rpc-server-test
   (:use
    clojure.test)
   (:require
-   [swank-clj.rpc-server :as server]))
+   [ritz.rpc-server :as server]))
 

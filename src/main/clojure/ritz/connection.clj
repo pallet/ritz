@@ -1,9 +1,9 @@
-(ns swank-clj.connection
+(ns ritz.connection
   "A connection is a map in an atom."
   (:require
-   [swank-clj.logging :as logging]
-   [swank-clj.repl-utils.helpers :as helpers]
-   [swank-clj.swank.utils :as utils]
+   [ritz.logging :as logging]
+   [ritz.repl-utils.helpers :as helpers]
+   [ritz.swank.utils :as utils]
    [clojure.java.io :as java-io])
   (:import
    java.io.BufferedReader

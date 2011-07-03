@@ -1,4 +1,4 @@
-(ns swank-clj.repl-utils.sys
+(ns ritz.repl-utils.sys
   "Utils for system introspection")
 
 (defn ^String get-pid

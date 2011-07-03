@@ -1,11 +1,11 @@
-(ns swank-clj.jpda.jdi
+(ns ritz.jpda.jdi
   "JDI wrapper.
    The aim here is to work towards a clojure interface for JDI
    but is currently mainly a set of light wrapper functions."
   (:refer-clojure :exclude [methods])
   (:require
-   [swank-clj.executor :as executor]
-   [swank-clj.logging :as logging]
+   [ritz.executor :as executor]
+   [ritz.logging :as logging]
    [clojure.string :as string]
    [clojure.java.io :as io])
   (:import

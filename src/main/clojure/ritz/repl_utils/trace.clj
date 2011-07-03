@@ -1,4 +1,4 @@
-(ns swank-clj.repl-utils.trace
+(ns ritz.repl-utils.trace
   "Provide function tracing")
 
 (defonce ^{:private true} traced-vars (atom {}))

@@ -1,9 +1,9 @@
-(ns swank-clj.commands.basic-test
+(ns ritz.commands.basic-test
   (:use clojure.test)
   (:require
-   [swank-clj.commands.basic :as basic]
-   [swank-clj.logging :as logging]
-   [swank-clj.test-utils :as test-utils]))
+   [ritz.commands.basic :as basic]
+   [ritz.logging :as logging]
+   [ritz.test-utils :as test-utils]))
 
 (deftest connection-info-test
   (test-utils/eval-for-emacs-test

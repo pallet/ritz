@@ -1,16 +1,16 @@
-(ns swank-clj.swank
+(ns ritz.swank
   "Swank protocol"
   (:require
-   [swank-clj.connection :as connection]
-   [swank-clj.jpda.debug :as debug]
-   [swank-clj.executor :as executor]
-   [swank-clj.hooks :as hooks]
-   [swank-clj.logging :as logging]
-   [swank-clj.repl-utils.helpers :as helpers]
-   [swank-clj.swank.core :as core]
-   [swank-clj.swank.commands :as commands]
-   [swank-clj.swank.indent :as indent]
-   [swank-clj.swank.messages :as messages])
+   [ritz.connection :as connection]
+   [ritz.jpda.debug :as debug]
+   [ritz.executor :as executor]
+   [ritz.hooks :as hooks]
+   [ritz.logging :as logging]
+   [ritz.repl-utils.helpers :as helpers]
+   [ritz.swank.core :as core]
+   [ritz.swank.commands :as commands]
+   [ritz.swank.indent :as indent]
+   [ritz.swank.messages :as messages])
   (:import
    java.io.InputStreamReader
    java.io.OutputStreamWriter

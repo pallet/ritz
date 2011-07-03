@@ -1,4 +1,4 @@
-(ns swank-clj.repl-utils.helpers
+(ns ritz.repl-utils.helpers
   "Some helpers")
 
 (defn exception-causes

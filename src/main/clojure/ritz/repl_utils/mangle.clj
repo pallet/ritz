@@ -1,4 +1,4 @@
-(ns swank-clj.repl-utils.mangle
+(ns ritz.repl-utils.mangle
   "Mangling, unmangling, etc"
   (:require
    [clojure.string :as string]))

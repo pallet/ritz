@@ -1,12 +1,12 @@
-(ns swank-clj.commands.debugger-test
+(ns ritz.commands.debugger-test
   (:use clojure.test)
   (:require
-   [swank-clj.commands.debugger :as debugger]
-   [swank-clj.jpda.jdi :as jdi]
-   [swank-clj.jpda.jdi-vm :as jdi-vm]
-   [swank-clj.logging :as logging]
-   [swank-clj.swank.utils :as utils]
-   [swank-clj.test-utils :as test-utils]))
+   [ritz.commands.debugger :as debugger]
+   [ritz.jpda.jdi :as jdi]
+   [ritz.jpda.jdi-vm :as jdi-vm]
+   [ritz.logging :as logging]
+   [ritz.swank.utils :as utils]
+   [ritz.test-utils :as test-utils]))
 
 (deftest threads-test
   (let [context (jdi-vm/launch-vm

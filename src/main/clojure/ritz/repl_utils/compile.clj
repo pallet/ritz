@@ -1,4 +1,4 @@
-(ns swank-clj.repl-utils.compile
+(ns ritz.repl-utils.compile
   "Util functions for compilation and evaluation."
   (:import
    java.io.StringReader

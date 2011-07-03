@@ -1,4 +1,4 @@
-(ns swank-clj.repl-utils.java
+(ns ritz.repl-utils.java
   "Java introspection")
 
 (defn member-name

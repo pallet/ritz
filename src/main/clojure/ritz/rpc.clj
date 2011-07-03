@@ -1,8 +1,8 @@
-(ns swank-clj.rpc
+(ns ritz.rpc
   "Pass remote calls and responses between lisp systems using the swank-rpc
 protocol. Code from Terje Norderhaug <terje@in-progress.com>."
   (:require
-   [swank-clj.logging :as logging])
+   [ritz.logging :as logging])
   (:import
    (java.io Writer Reader PushbackReader StringReader)))
 
@@ -70,7 +70,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
                :else
                (if-let [m (re-matches #"(.+):(.+)" str)]
                  (if (= "swank::%cursor-marker%" str)
-                   :swank-clj/cursor-marker
+                   :ritz/cursor-marker
                    (apply symbol (rest m)))
                  (symbol str)))))))))
 

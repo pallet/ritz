@@ -1,20 +1,26 @@
-# swank-clj
+# ritz
 
-Refactored swank-clojure, with jpda debugging support.
+Ritz is a swank server for running [clojure](http://clojure.org) in
+[slime](http://common-lisp.net/project/slime).
+
+Ritz was originally based on
+[swank-clojure](http://github.com/technomancy/swank-clojure).
 
 This is alpha quality.
 
-- Breaks on uncaught exceptions and breakpoints.
+## Features
+
+- Break on uncaught exceptions and breakpoints.
 - Allows stepping from breakpoints
 - Allows evaluation of expressions in the context of a stack frame
 - Inspection of locals in any stack frame
 - Disassembly of functions from symbol or stack frame
 
-Should work with clojure 1.3.0-alpha7.
+Should work with clojure 1.2.0, 1.2.1 and 1.3.0-alpha7.
 
 ## Install
 
-Add `[swank-clj "0.1.6"]` to your project.clj `:dev-dependencies`.
+Add `[ritz "0.1.6"]` to your project.clj `:dev-dependencies`.
 
 Install the slime-clj.el contrib from [marmalade](http://marmalade-repo.org/).
 
@@ -57,15 +63,15 @@ classpath. e.g. for lein:
 
 To run with jpda:
 
-    lein swank-clj
+    lein ritz
 
 To run without jpda:
 
-    lein swank-clj 4005 localhost :server-ns swank-clj.repl
+    lein ritz 4005 localhost :server-ns ritz.repl
 
 ### Breakpoints
 
-To set a breakpoint, eval `swank-clj.el` from src/main/elisp, put the cursor
+To set a breakpoint, eval `ritz.el` from src/main/elisp, put the cursor
 on the line where you want a breakpoint, and `M-x slime-line-breakpoint`.
 
 Note that breakpoints disappear on recompilation at the moment.
@@ -106,6 +112,8 @@ code they replace.  Recompilation therefore looses breakpoints, which are set on
 the old code. Setting breakpoints by line number finds all the old code too.
 
 ## Roadmap
+
+Allow customisations of which exceptions are trapped by ritz.
 
 A pure JDI backend, that doesn't require swank in the target VM is certainly a
 possibility.

@@ -1,10 +1,10 @@
-(ns swank-clj.rpc-server
+(ns ritz.rpc-server
   "RPC server"
   (:require
-   [swank-clj.executor :as executor]
-   [swank-clj.logging :as logging]
-   [swank-clj.connection :as connection]
-   [swank-clj.swank :as swank]))
+   [ritz.executor :as executor]
+   [ritz.logging :as logging]
+   [ritz.connection :as connection]
+   [ritz.swank :as swank]))
 
 (defn- dispatch-message
   "Dispatch a message on a connection."

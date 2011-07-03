@@ -1,11 +1,11 @@
-(ns swank-clj.swank.indent
+(ns ritz.swank.indent
   (:require
-   [swank-clj.connection :as connection]
-   [swank-clj.hooks :as hooks]
-   [swank-clj.repl-utils.helpers :as helpers]
-   [swank-clj.swank.core :as core]
-   [swank-clj.swank.messages :as messages]
-   [swank-clj.swank.utils :as utils]))
+   [ritz.connection :as connection]
+   [ritz.hooks :as hooks]
+   [ritz.repl-utils.helpers :as helpers]
+   [ritz.swank.core :as core]
+   [ritz.swank.messages :as messages]
+   [ritz.swank.utils :as utils]))
 
 (defn- need-full-indentation-update?
   "Return true if the indentation cache should be updated for all

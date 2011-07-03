@@ -1,8 +1,8 @@
-(ns swank-clj.rpc-socket-connection
+(ns ritz.rpc-socket-connection
   "A socket connection that speaks rpc"
   (:require
-   [swank-clj.logging :as logging]
-   [swank-clj.rpc :as rpc]
+   [ritz.logging :as logging]
+   [ritz.rpc :as rpc]
    [clojure.java.io :as java-io])
   (:import
    java.io.InputStreamReader

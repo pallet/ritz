@@ -1,8 +1,8 @@
-(ns swank-clj.swank.messages
+(ns ritz.swank.messages
   "Swank messages"
   (:require
-   [swank-clj.inspect :as inspect]
-   [swank-clj.logging :as logging]
+   [ritz.inspect :as inspect]
+   [ritz.logging :as logging]
    [clojure.string :as string]))
 
 (defn abort

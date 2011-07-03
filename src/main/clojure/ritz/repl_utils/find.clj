@@ -1,7 +1,7 @@
-(ns swank-clj.repl-utils.find
+(ns ritz.repl-utils.find
   "Find source for a given path."
   (:require
-   [swank-clj.repl-utils.mangle :as mangle])
+   [ritz.repl-utils.mangle :as mangle])
   (:import java.io.File))
 
 ;;; Provide source form tracking

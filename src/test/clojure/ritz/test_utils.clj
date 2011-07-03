@@ -1,8 +1,8 @@
-(ns swank-clj.test-utils
+(ns ritz.test-utils
   "Test functions and macros"
   (:require
-   [swank-clj.swank :as swank]
-   [swank-clj.rpc-socket-connection :as rpc-s-c])
+   [ritz.swank :as swank]
+   [ritz.rpc-socket-connection :as rpc-s-c])
   (:use
    clojure.test))
 

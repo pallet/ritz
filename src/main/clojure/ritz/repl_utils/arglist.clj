@@ -1,8 +1,8 @@
-(ns swank-clj.repl-utils.arglist
+(ns ritz.repl-utils.arglist
   "Arglists for symbols and sexps"
   (:require
-   [swank-clj.swank.utils :as utils]
-   [swank-clj.logging :as logging]
+   [ritz.swank.utils :as utils]
+   [ritz.logging :as logging]
    [clojure.string :as string]))
 
 (defn arglist
@@ -36,7 +36,7 @@
 ;;   (let [s
 ;;         (->>
 ;;          (reverse (tree-seq seq? seq raw))
-;;          (drop-while #(not= :swank-clj/cursor-marker %))
+;;          (drop-while #(not= :ritz/cursor-marker %))
 ;;          (drop-while #(not (seq? %))))]
 ;;     (take-while #(and (seq? %) (> (count %) 1)) s)))
 

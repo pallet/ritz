@@ -1,11 +1,11 @@
-(ns swank-clj.commands.inspector-test
+(ns ritz.commands.inspector-test
   (:use clojure.test)
   (:require
-   [swank-clj.commands.inspector :as inspector]
-   [swank-clj.inspect :as inspect]
-   [swank-clj.jpda.jdi-vm :as jdi-vm]
-   [swank-clj.logging :as logging]
-   [swank-clj.test-utils :as test-utils]))
+   [ritz.commands.inspector :as inspector]
+   [ritz.inspect :as inspect]
+   [ritz.jpda.jdi-vm :as jdi-vm]
+   [ritz.logging :as logging]
+   [ritz.test-utils :as test-utils]))
 
 ;; (logging/set-level :trace)
 

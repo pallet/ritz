@@ -1,7 +1,7 @@
-(ns swank-clj.rpc-test
+(ns ritz.rpc-test
   (:use clojure.test)
   (:require
-   [swank-clj.rpc :as rpc]))
+   [ritz.rpc :as rpc]))
 
 (deftest decode-message-test
   (is (= (list 'swank/a 123 (list (symbol "%b%") '(true nil) "c"))

@@ -1,4 +1,4 @@
-(ns swank-clj.repl-utils.clojure
+(ns ritz.repl-utils.clojure
   (:refer-clojure :exclude [with-redefs]))
 
 (defn unmunge

@@ -1,10 +1,10 @@
-(ns swank-clj.jpda.jdi-clj
+(ns ritz.jpda.jdi-clj
   "Clojure execution over jdi. Uses a context map to to represent the vm."
   (:refer-clojure :exclude [eval assoc var-get clojure-version])
   (:require
-   [swank-clj.executor :as executor]
-   [swank-clj.jpda.jdi :as jdi]
-   [swank-clj.logging :as logging]
+   [ritz.executor :as executor]
+   [ritz.jpda.jdi :as jdi]
+   [ritz.logging :as logging]
    [clojure.string :as string])
   (:import
    com.sun.jdi.event.BreakpointEvent

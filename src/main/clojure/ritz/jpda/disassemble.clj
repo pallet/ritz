@@ -1,6 +1,6 @@
-(ns swank-clj.jpda.disassemble
+(ns ritz.jpda.disassemble
   (:require
-   [swank-clj.logging :as logging]))
+   [ritz.logging :as logging]))
 
 ;; http://java.sun.com/docs/books/jvms/second_edition/html/VMSpecTOC.doc.html
 
