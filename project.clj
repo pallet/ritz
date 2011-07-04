@@ -1,4 +1,4 @@
-(defproject ritz "0.1.7-SNAPSHOT"
+(defproject ritz "0.1.7"
   :description "Another swank server for clojure in SLIME"
   :source-path "src/main/clojure"
   :resources-path "src/main/resources"
