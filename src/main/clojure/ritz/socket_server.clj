@@ -3,7 +3,8 @@
   (:require
    [ritz.executor :as executor]
    [ritz.rpc-socket-connection :as rpc-socket-connection]
-   [ritz.logging :as logging])
+   [ritz.logging :as logging]
+   clojure.main)
   (:import
    java.net.ServerSocket
    java.net.InetAddress
