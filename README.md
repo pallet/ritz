@@ -27,7 +27,7 @@ Install the slime-ritz.el contrib from [marmalade](http://marmalade-repo.org/).
 
 A compatible slime.el is in slime/slime.el. It is available as a `package.el`
 package file you can
-[download](https://github.com/downloads/hugoduncan/swank-clj/slime-20101113.1.tar)
+[download](https://github.com/downloads/pallet/ritz/slime-20101113.1.tar)
 and install with `M-x package-install-file`.  Note that you may need to remove
 this package to use
 [swank-clojure](https://github.com/technomancy/swank-clojure) again.
