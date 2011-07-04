@@ -14,8 +14,8 @@ dest="slime-$VERSION"
 rm -rf "marmalade/$dest" "marmalade/slime"
 find slime | cpio -pd marmalade
 
-# remove the slime-clj contrib
-rm -f marmalade/slime/contrib/slime-clj.el
+# remove the ritz contrib
+rm -f marmalade/slime/contrib/ritz.el
 
 # add an elpa style header
 sed -i .bak \

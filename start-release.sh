@@ -31,7 +31,7 @@ $EDITOR README.md
 
 echo "================================================="
 echo ""
-echo "run update-slime-clj-package-version.sh to update"
-echo "slime-clj.el if uploading to marmalade!"
+echo "run update-slime-ritz-package-version.sh to update"
+echo "slime-ritz.el if uploading to marmalade!"
 echo ""
 echo "================================================="
