@@ -21,7 +21,7 @@ Should work with clojure 1.2.0, 1.2.1 and 1.3.0-alpha7.
 
 ## Install
 
-Add `[ritz "0.1.7-SNAPSHOT"]` to your project.clj `:dev-dependencies`.
+### SLIME
 
 Install the slime-ritz.el contrib from [marmalade](http://marmalade-repo.org/).
 
@@ -32,14 +32,19 @@ and install with `M-x package-install-file`.  Note that you may need to remove
 this package to use
 [swank-clojure](https://github.com/technomancy/swank-clojure) again.
 
-If you would like to browse into the clojure java sources then add the following
-to your `:dev-dependencies`, with the appropriate clojure version.
+### Lein/Cake Project
 
-    [org.clojure/clojure "1.2.1" :classifier "sources"]
+Add `[ritz "0.1.7"]` to your project.clj `:dev-dependencies`.
 
-For clojure 1.2.0, you will need the following instead:
+### Lein Plugin
 
-    [clojure-source "1.2.0"]
+Run `lein plugin install ritz 0.1.7`.
+
+### Maven Plugin
+
+See [zi](https://github.com/pallet/zi).
+
+### Sun/Oracle JDK
 
 To use the Sun/Oracle JDK, you
 [need to add](http://download.oracle.com/javase/1.5.0/docs/tooldocs/findingclasses.html)
@@ -55,6 +60,17 @@ For lein, add the tools.jar to the dev-resources-path:
 
     :dev-resources-path "/usr/lib/jvm/java-6-sun/lib/tools.jar"
 
+### Source Browsing
+
+If you would like to browse into the clojure java sources then add the following
+to your `:dev-dependencies`, with the appropriate clojure version.
+
+    [org.clojure/clojure "1.2.1" :classifier "sources"]
+
+For clojure 1.2.0, you will need the following instead:
+
+    [clojure-source "1.2.0"]
+
 To be able to see Java sources when using openjdk, add the `src.zip` to you
 classpath. e.g. for lein:
 
@@ -69,6 +85,10 @@ To run with jpda:
 To run without jpda:
 
     lein ritz 4005 localhost :server-ns ritz.repl
+
+To run with a maven project:
+
+    mvn zi:ritz
 
 ### Breakpoints
 

@@ -1,6 +1,24 @@
 # Release Notes
 
-Current release is 0.1.6.
+Current release is 0.1.7.
+
+* 0.1.7
+
+- Add missing require for clojure.main
+
+- Rename swank-clj to ritz
+
+- Update cake task to use flatland/useful, since cake removed its cake.utils
+  namespace.
+
+- Improve the condition message to show keys for contrib.Condition
+  Extra information is often attached to a Condition, and it is useful to
+  be able to see this in the sldb trace.
+
+- Ensure autodoc doesn't error on invalid symbols
+
+- Implement slime autodoc
+
 
 * 0.1.6
 
