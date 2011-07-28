@@ -60,6 +60,9 @@ For lein, add the tools.jar to the dev-resources-path:
 
     :dev-resources-path "/usr/lib/jvm/java-6-sun/lib/tools.jar"
 
+For maven, see
+[this suggestion](http://maven.apache.org/general.html#tools-jar-dependency).
+
 ### Source Browsing
 
 If you would like to browse into the clojure java sources then add the following
