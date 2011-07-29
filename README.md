@@ -44,12 +44,13 @@ Run `lein plugin install ritz 0.1.7`.
 
 See [zi](https://github.com/pallet/zi).
 
-### Sun/Oracle JDK
+### Sun/Oracle JDK and OpenJDK
 
-To use the Sun/Oracle JDK, you
+To use the Sun/Oracle JDK, and possibly OpenJDK, you
 [need to add](http://download.oracle.com/javase/1.5.0/docs/tooldocs/findingclasses.html)
-`tools.jar` from your JDK install to your classpath. If you are using maven then
-there are
+`tools.jar` from your JDK install to your classpath.
+
+If you are using maven then there are
 [instructions in the FAQ](http://maven.apache.org/general.html#tools-jar-dependency).
 
 For cake, add the following (with the correct jdk path), to
@@ -60,8 +61,7 @@ For lein, add the tools.jar to the dev-resources-path:
 
     :dev-resources-path "/usr/lib/jvm/java-6-sun/lib/tools.jar"
 
-For maven, see
-[this suggestion](http://maven.apache.org/general.html#tools-jar-dependency).
+If you are missing tools.jar from the classpath, you will see an exception like `java.lang.ClassNotFoundException: com.sun.jdi.VirtualMachine`.
 
 ### Source Browsing
 
