@@ -95,13 +95,18 @@
          "swank/dispatch-event: :emacs-rex %s %s %s %s"
          form-string package thread id)
         (let [last-values (:result-history @connection)]
-          (binding [*1 (first last-values)
-                    *2 (fnext last-values)
-                    *3 (first (nnext last-values))
-                    *e (:last-exception @connection)
-                    *out* (:writer-redir @connection)
-                    *in* (:input-redir @connection)]
-            (eval-for-emacs connection form-string package id))))
+          (try
+            (clojure.main/with-bindings
+              (binding [*1 (first last-values)
+                        *2 (fnext last-values)
+                        *3 (first (nnext last-values))
+                        *e (:last-exception @connection)
+                        *out* (:writer-redir @connection)
+                        *in* (:input-redir @connection)]
+                (try
+                  (eval-for-emacs connection form-string package id)
+                  (finally (flush)))))
+            (finally (flush)))))
 
       :emacs-return-string
       (let [[thread tag value] args]
