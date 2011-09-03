@@ -12,6 +12,7 @@
    [ritz.repl-utils.find :as find]
    [ritz.repl-utils.format :as format]
    [ritz.repl-utils.helpers :as helpers]
+   [ritz.repl-utils.io :as io]
    [ritz.repl-utils.sys :as sys]
    [ritz.repl-utils.trace :as trace]
    [ritz.swank.core :as core]
@@ -176,38 +177,12 @@
 (defslimefn load-file [connection file-name]
   (pr-str (clojure.core/load-file file-name)))
 
-(defn- line-at-position [file position]
-  (try
-    (with-open [f (java.io.LineNumberReader. (java.io.FileReader. file))]
-      (.skip f position)
-      (.getLineNumber f))
-    (catch Exception e 1)))
-
-(defn read-position-line [file position]
-  (if (number? position)
-    (if (.isFile file)
-      (line-at-position file  position)
-      0)
-    (when (list? position)
-      (or
-       (second (first (filter #(= :line (first %)) position)))
-       (when-let [p (second (first (filter #(= :position (first %)) position)))]
-         (line-at-position file p))))))
-
-(defn guess-namespace [file]
-  (->>
-   (reverse (.split (.getParent file) "/"))
-   (reductions #(str %1 "." %2))
-   (map symbol)
-   (filter find-ns)
-   first))
-
 (defslimefn compile-string-for-emacs
   [connection string buffer position buffer-path debug]
   (let [start (System/nanoTime)
         file (java.io.File. buffer-path)
-        line (read-position-line file position)
-        ret (binding [*ns* (or (guess-namespace file) *ns*)]
+        line (io/read-position-line file position)
+        ret (binding [*ns* (or (io/guess-namespace file) *ns*)]
               (compile/compile-region string buffer-path line))
         delta (- (System/nanoTime) start)]
     (messages/compilation-result nil ret (/ delta 1000000000.0))))
