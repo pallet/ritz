@@ -1010,7 +1010,7 @@
           location (jdi/location exception-event)
           location-name (jdi/location-type-name location)]
       (logging/trace "caught? %s %s" catch-location-name location-name)
-      (or (not (.startsWith catch-location-name "swank_clj.swank"))
+      (or (not (.startsWith catch-location-name "ritz.swank"))
           (and
            (not (re-matches #"[^$]+\$eval.*." location-name))
            (.startsWith catch-location-name "clojure.lang.Compiler"))))))
@@ -1022,8 +1022,8 @@
     (when-let [location (.location frame)]
       (let [location-name (jdi/location-type-name location)]
         (logging/trace "ignore-location? %s" location-name)
-        (or (.startsWith location-name "swank_clj.swank")
-            (.startsWith location-name "swank_clj.commands.contrib")
+        (or (.startsWith location-name "ritz.swank")
+            (.startsWith location-name "ritz.commands.contrib")
             (.startsWith location-name "clojure.lang.Compiler"))))))
 
 (defn stacktrace-contains?
@@ -1033,42 +1033,81 @@
    #(= defining-type (jdi/location-type-name (.location %)))
    (.frames thread)))
 
+(def ^{:doc "Some exception types that should come from clojure core"}
+  application-exceptions
+  #{"java.lang.AssertionError"
+    "clojure.contrib.condition.Condition"
+    "slingshot.Stone"})
+
+(def ^{:doc "Some exception types that should never be caught"}
+  no-break-exceptions
+  #{"clojure.lang.LockingTransaction$RetryEx"
+    "com.google.inject.internal.ErrorsException"})
+
+(def ^{:doc "Some catch locations which should always trigger a break"}
+  ;; this is a bit of a band aid - it should be user selectable
+  always-break-catch-locations
+  #{"clojure.lang.LazySeq"})
+
+;; macros like `binding`, that use (try ... (finally ...)) cause exceptions
+;; within their bodies to be considered caught.  We therefore need some
+;; way for the user to be able to maintain a list of catch locations that
+;; should not be considered as "caught".
+
+(def ^{:doc
+       "User settable function to allow customisation of break-for-exception?
+        Return true to break, false to not break, or nil to allow normal
+        break-for-exception? processing"}
+  break-on? (atom (fn [& _] nil)))
+
 (defn break-for-exception?
-  "Predicate to check whether we should invoke the debugger fo the given
+  "Predicate to check whether we should invoke the debugger for the given
    exception event"
   [exception-event]
   (let [catch-location (jdi/catch-location exception-event)
         location (jdi/location exception-event)
-        location-name (jdi/location-type-name location)]
-    (or
-     (not catch-location)
-     (let [catch-location-name (jdi/location-type-name catch-location)]
-       (logging/trace
-        "break-for-exception? %s %s" catch-location-name location-name)
-       (or
-        (.startsWith catch-location-name "swank_clj.swank")
-        (and
-         (.startsWith catch-location-name "clojure.lang.Compiler")
-         (stacktrace-contains?
-          (jdi/event-thread exception-event)
-          "swank_clj.commands.basic$eval_region")))
-       ;; (or
-       ;; ;; (and
-       ;; ;;  (.startsWith location-name "clojure.lang.Compiler")
-       ;; ;;  (re-matches #"[^$]+\$eval.*." catch-location-name))
-       ;; ;; (and
-       ;; ;;  (.startsWith catch-location-name "clojure.lang.Compiler")
-       ;; ;;  (re-matches #"[^$]+\$eval.*." location-name))
-       ;; (.startsWith catch-location-name "swank_clj.swank"))
-       ;; (or
-       ;;  (and
-       ;;   (.startsWith location-name "clojure.lang.Compiler")
-       ;;   (re-matches #"[^$]+\$eval.*." catch-location-name))
-       ;;  (and
-       ;;   (.startsWith catch-location-name "clojure.lang.Compiler")
-       ;;   (re-matches #"[^$]+\$eval.*." location-name))
-       ;;  (not (.startsWith catch-location-name "swank_clj.swank")))
-       ))))
+        location-name (jdi/location-type-name location)
+        exception (.exception exception-event)
+        exception-type (.. exception referenceType name)
+        user-forced (@break-on? catch-location location-name exception-type)]
+    (if (nil? user-forced)
+      (or
+       (not catch-location)
+       (application-exceptions exception-type)
+       (let [catch-location-name (jdi/location-type-name catch-location)]
+         (logging/trace
+          "break-for-exception? %s %s" catch-location-name location-name)
+         (and
+          (not (no-break-exceptions exception-type))
+          (not (or (.startsWith catch-location-name "com.sun.")
+                   (.startsWith catch-location-name "sun.")))
+          (or
+           (always-break-catch-locations catch-location-name)
+           (.startsWith catch-location-name "ritz.swank")
+           (and
+            (.startsWith catch-location-name "clojure.lang.Compiler")
+            ;; (stacktrace-contains?
+            ;;  (jdi/event-thread exception-event)
+            ;;  "ritz.commands.basic$eval_region")
+            ))
+          ;; (or
+          ;; ;; (and
+          ;; ;;  (.startsWith location-name "clojure.lang.Compiler")
+          ;; ;;  (re-matches #"[^$]+\$eval.*." catch-location-name))
+          ;; ;; (and
+          ;; ;;  (.startsWith catch-location-name "clojure.lang.Compiler")
+          ;; ;;  (re-matches #"[^$]+\$eval.*." location-name))
+          ;; (.startsWith catch-location-name "ritz.swank"))
+          ;; (or
+          ;;  (and
+          ;;   (.startsWith location-name "clojure.lang.Compiler")
+          ;;   (re-matches #"[^$]+\$eval.*." catch-location-name))
+          ;;  (and
+          ;;   (.startsWith catch-location-name "clojure.lang.Compiler")
+          ;;   (re-matches #"[^$]+\$eval.*." location-name))
+          ;;  (not (.startsWith catch-location-name "ritz.swank")))
+          )))
+      user-forced)))
 
 
 (defn connection-and-id-from-thread
@@ -1079,7 +1118,7 @@
   (logging/trace "connection-and-id-from-thread %s" thread)
   (some (fn [frame]
           (when-let [location (.location frame)]
-            (when (and (= "swank_clj.swank$eval_for_emacs"
+            (when (and (= "ritz.swank$eval_for_emacs"
                           (jdi/location-type-name location))
                        (= "invoke" (jdi/location-method-name location)))
               ;; (logging/trace "connection-and-id-from-thread found frame")
