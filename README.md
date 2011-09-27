@@ -48,7 +48,8 @@ See [zi](https://github.com/pallet/zi).
 
 To use the Sun/Oracle JDK, and possibly OpenJDK, you
 [need to add](http://download.oracle.com/javase/1.5.0/docs/tooldocs/findingclasses.html)
-`tools.jar` from your JDK install to your classpath.
+`tools.jar` from your JDK install to your classpath. This is not required on OS
+X, where `tools.jar` does not exist.
 
 If you are using maven then there are
 [instructions in the FAQ](http://maven.apache.org/general.html#tools-jar-dependency).
