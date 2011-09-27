@@ -573,8 +573,51 @@
           (jdi-clj/eval
            context thread jdi/invoke-single-threaded
            `(do
+              (require 'clojure.pprint)
               (defn ~(symbol s) [c#]
-                (str (dissoc @(.state c#) :stack-trace :message)))))
+                (let [f# (fn ~'classify-exception-fn [e#]
+                           (case (.getName (class e#))
+                             "clojure.contrib.condition.Condition" :condition
+                             "slingshot.Stone" :stone
+                             "clojure.lang.PersistentHashMap" :stone-context
+                             "clojure.lang.PersistentArrayMap" :stone-context
+                             :throwable))
+                      gc# (fn ~'get-cause-fn [e#]
+                            (case (f# e#)
+                              :stone (:obj (.context e#))
+                              :stone-context (:next e#)
+                              (.getCause e#)))
+                      pc# (fn ~'print-cause-fn [e#]
+                            (case (f# e#)
+                              :condition [(:message e#)
+                                          (first (:stack-trace e#))]
+                              :throwable [(.getMessage e#)
+                                          (first (.getStackTrace e#))]
+                              :stone [(dissoc (.context e#) :stack :next)
+                                      (first (:stack (.context e#)))]
+                              :stone-context [(dissoc e# :stack :next)
+                                              (first (:stack e#))]))
+                      ca# (fn ~'cause-chain-fn [e#]
+                            (vec
+                             (map
+                              pc#
+                              (take-while identity (iterate gc# e#)))))]
+                  (case (f# c#)
+                    :condition
+                    (with-out-str
+                      (clojure.pprint/pprint
+                       [(dissoc @(.state c#) :message)
+                        (ca# c#)]))
+                    :stone
+                    (do
+                      (with-out-str
+                        (clojure.pprint/pprint
+                         (.context c#))))
+                    :throwable
+                    (with-out-str
+                      (clojure.pprint/pprint
+                       [(.getMessage c#)
+                        (ca# c#)])))))))
           (logging/trace "defined condition-printer-fn")
           (reset!
            remote-condition-printer-fn
@@ -602,7 +645,8 @@
           thread (jdi/event-thread event)]
       {:message (str
                  (or (jdi-clj/exception-message context event) "No message.")
-                 (if (= exception-type "clojure.contrib.condition.Condition")
+                 (if (#{"clojure.contrib.condition.Condition"
+                        "slingshot.Stone"} exception-type)
                    (let [[object method] (remote-condition-printer
                                           context thread)]
                      (str "\n" (jdi/invoke-method
