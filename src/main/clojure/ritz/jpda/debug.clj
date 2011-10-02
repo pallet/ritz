@@ -605,12 +605,16 @@
                   (case (f# c#)
                     :condition
                     (with-out-str
+                      (println (:message @(.state c#)))
                       (clojure.pprint/pprint
                        [(dissoc @(.state c#) :message)
                         (ca# c#)]))
                     :stone
                     (do
                       (with-out-str
+                        (println (.messagePrefix c#))
+                        (clojure.pprint/pprint
+                         (.object c#))
                         (clojure.pprint/pprint
                          (.context c#))))
                     :throwable
@@ -643,17 +647,15 @@
     (let [exception (.exception event)
           exception-type (.. exception referenceType name)
           thread (jdi/event-thread event)]
-      {:message (str
-                 (or (jdi-clj/exception-message context event) "No message.")
-                 (if (#{"clojure.contrib.condition.Condition"
-                        "slingshot.Stone"} exception-type)
-                   (let [[object method] (remote-condition-printer
-                                          context thread)]
-                     (str "\n" (jdi/invoke-method
-                                thread
-                                jdi/invoke-multi-threaded
-                                object method [exception])))
-                   ""))
+      {:message (if (#{"clojure.contrib.condition.Condition"
+                       "slingshot.Stone"} exception-type)
+                  (let [[object method] (remote-condition-printer
+                                         context thread)]
+                    (str "\n" (jdi/invoke-method
+                               thread
+                               jdi/invoke-multi-threaded
+                               object method [exception])))
+                  (or (jdi-clj/exception-message context event) "No message."))
        :type (str "  [Thrown " exception-type "]")}))
 
   (restarts
