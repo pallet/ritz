@@ -1,6 +1,47 @@
 # Release Notes
 
-Current release is 0.1.7.
+Current release is 0.1.8.
+
+* 0.1.8
+
+- Update readme with section on exception filtering
+
+- Remove java reflection in logging code
+
+- Add exception filters
+  The filters can be set by the IGNORE restart, and can be edited in the
+  slime selector using the 'f key.
+
+- Log issue with inability to send command to connection
+  This occurs on init script processing (not fixed yet)
+
+- Update to recent pallet versions
+
+- Add stone excepetion display
+
+- Put all clojure source dependencies into lein-multi config
+
+- Display pprint of Stone or Condition exceptions
+
+- Update readme to explicitly state the OS X doesn't have tools.jar
+
+- Use clojure.main/with-bindings and flush output
+
+- Factor out repl-utils/io
+
+- Update logback versions and use :local-repo-classpath
+
+- Changes to break-for-exception? and fix swank-clj references
+
+- Normailse function formatting
+
+- Update readme to mention openjdk in tools.jar setup, and list the exception
+  that is raised if tools.jar is missing
+
+- Add note to readme about tools.jar and maven
+
+- Add pallet script to set up a dev environment for ritz
+  Basic tmux, emacs, git install, with clone of ritz repo
 
 * 0.1.7
 

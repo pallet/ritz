@@ -34,11 +34,11 @@ this package to use
 
 ### Lein/Cake Project
 
-Add `[ritz "0.1.7"]` to your project.clj `:dev-dependencies`.
+Add `[ritz "0.2.0"]` to your project.clj `:dev-dependencies`.
 
 ### Lein Plugin
 
-Run `lein plugin install ritz 0.1.7`.
+Run `lein plugin install ritz 0.2.0`.
 
 ### Maven Plugin
 
