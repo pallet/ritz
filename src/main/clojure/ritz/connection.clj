@@ -34,7 +34,9 @@
 (defn send-to-emacs
   "Sends a message (msg) to emacs."
   [connection msg]
-  (send-to-emacs* @connection msg))
+  (if connection
+    (send-to-emacs* @connection msg)
+    (logging/trace "Unable to send message to nil connection %s" msg)))
 
 (defn read-from-connection
   "Read a form from the connection."
