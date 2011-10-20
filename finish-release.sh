@@ -13,7 +13,7 @@ echo "finish release of $version"
 
 echo -n "commiting project.clj, release notes and readme.  enter to continue:" \
 && read x \
-&& git add project.clj ReleaseNotes.md README.md \
+&& git add project.clj ReleaseNotes.md README.md src/main/elisp/slime-ritz.el \
 && git commit -m "Updated project.clj, release notes and readme for $version" \
 && echo -n "Peform release.  enter to continue:" && read x \
 && lein test \
