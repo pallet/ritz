@@ -69,6 +69,38 @@ corresponding attribute values per thread."
    (debug/breakpoint-location
     (connection/vm-context connection) breakpoint-id)))
 
+;;; Exception Filters
+(defslimefn quit-exception-filter-browser [connection])
+
+(defn ^{:private true} exception-filter-data-fn
+  [i {:keys [type location catch-location enabled]}]
+  (list i type location catch-location enabled))
+
+(defslimefn list-exception-filters [connection]
+  "Return a list
+  (LABELS (ID TYPE LOCATION CATCH-LOCATION ENABLED ATTRS ...) ...).
+LABELS is a list of attribute names and the remaining lists are the
+corresponding attribute values per thread."
+  [connection]
+  (let [filters (debug/exception-filter-list @connection)
+        labels '(:id :type :location :catch-location :enabled)]
+    (cons labels (map exception-filter-data-fn (range) filters))))
+
+(defslimefn exception-filter-kill
+  [connection exception-filter-id]
+  (debug/exception-filter-kill connection exception-filter-id)
+  nil)
+
+(defslimefn exception-filter-enable
+  [connection exception-filter-id]
+  (debug/exception-filter-enable connection exception-filter-id)
+  nil)
+
+(defslimefn exception-filter-disable
+  [connection exception-filter-id]
+  (debug/exception-filter-disable connection exception-filter-id)
+  nil)
+
 ;;; javadoc
 (defslimefn javadoc-local-paths
   [connection & paths]

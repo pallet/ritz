@@ -23,6 +23,7 @@
       (is (:writer-redir @c))
       (is (set? (:pending @c)))
       (is (map? @(:inspector @c)))
+      (is (vector? (:exception-filters @c)))
       (finally
        (when-not (.isClosed s) (.close s))
        (when-not (.isClosed a) (.close a))))))

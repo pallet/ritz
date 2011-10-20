@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.1.6
+;; Version: 0.2.0
 ;; License: EPL
 
 (define-slime-contrib slime-ritz
@@ -170,6 +170,130 @@
   "SLIME Breakpoints buffer"
   (slime-list-breakpoints)
   slime-breakpoints-buffer-name)
+
+;;;;; Exception Filters
+(defvar slime-exception-filters-buffer-name (slime-buffer-name :exception-filters))
+
+(defun slime-list-exception-filters ()
+  "Display a list of exception filterss."
+  (interactive)
+  (let ((name slime-exception-filters-buffer-name))
+    (slime-with-popup-buffer (name :connection t
+                                   :mode 'slime-exception-filter-control-mode)
+      (slime-update-exception-filters-buffer)
+      (goto-char (point-min))
+      (setq slime-popup-buffer-quit-function 'slime-quit-exception-filters-buffer))))
+
+(defvar slime-exception-filter-index-to-id nil)
+
+(defun slime-quit-exception-filters-buffer (&optional _)
+  (slime-popup-buffer-quit t)
+  (setq slime-exception-filter-index-to-id nil)
+  (slime-eval-async `(swank:quit-exception-filter-browser)))
+
+(defun slime-update-exception-filters-buffer ()
+  (interactive)
+  (with-current-buffer slime-exception-filters-buffer-name
+    (slime-eval-async '(swank:list-exception-filters)
+      'slime-display-exception-filters)))
+
+(defun slime-display-exception-filters (filters)
+  (with-current-buffer slime-exception-filters-buffer-name
+    (let* ((inhibit-read-only t)
+           (index (get-text-property (point) 'exception-filter-id))
+           (old-exception-filter-id (and (numberp index)
+                               (elt slime-exception-filter-index-to-id index)))
+           (old-line (line-number-at-pos))
+           (old-column (current-column)))
+      (setq slime-exception-filter-index-to-id (mapcar 'car (cdr filters)))
+      (erase-buffer)
+      (slime-insert-exception-filters filters)
+      (let ((new-position (position old-exception-filter-id filters :key 'car)))
+        (goto-char (point-min))
+        (forward-line (1- (or new-position old-line)))
+        (move-to-column old-column)
+        (slime-move-point (point))))))
+
+(defvar *slime-exception-filters-table-properties*
+  '(nil (face bold)))
+
+(defun slime-format-exception-filters-labels (exceptions)
+  (let ((labels (mapcar (lambda (x)
+                          (capitalize (substring (symbol-name x) 1)))
+                        (car exceptions))))
+    (cons labels (cdr exceptions))))
+
+(defun slime-insert-exception-filter (exception-filter longest-lines)
+  (unless (bolp) (insert "\n"))
+  (loop for i from 0
+        for align in longest-lines
+        for element in exception-filter
+        for string = (prin1-to-string element t)
+        for property = (nth i *slime-exception-filters-table-properties*)
+        do
+        (if property
+            (slime-insert-propertized property string)
+            (insert string))
+        (insert-char ?\  (- align (length string) -3))))
+
+(defun slime-insert-exception-filters (exception-filters)
+  (let* ((exception-filters (slime-format-exception-filters-labels exception-filters))
+         (longest-lines (slime-longest-lines exception-filters))
+         (labels (let (*slime-exception-filters-table-properties*)
+                   (with-temp-buffer
+                     (slime-insert-exception-filter (car exception-filters) longest-lines)
+                     (buffer-string)))))
+    (if (boundp 'header-line-format)
+        (setq header-line-format
+              (concat (propertize " " 'display '((space :align-to 0)))
+                      labels))
+        (insert labels))
+    (loop for index from 0
+          for exception-filter in (cdr exception-filters)
+          do
+          (slime-propertize-region `(exception-filter-id ,index)
+            (slime-insert-exception-filter exception-filter longest-lines)))))
+
+;;;;; Major mode
+
+(define-derived-mode slime-exception-filter-control-mode fundamental-mode
+  "ExceptionFilters"
+  "SLIME Exception Filter Control Panel Mode.
+
+\\{slime-exception-filter-control-mode-map}
+\\{slime-popup-buffer-mode-map}"
+  (when slime-truncate-lines
+    (set (make-local-variable 'truncate-lines) t))
+  (setq buffer-undo-list t))
+
+(slime-define-keys slime-exception-filter-control-mode-map
+  ("d" 'slime-exception-filter-disable)
+  ("e" 'slime-exception-filter-enable)
+  ("g" 'slime-update-exception-filters-buffer)
+  ("k" 'slime-exception-filter-kill))
+
+(defun slime-exception-filter-kill ()
+  (interactive)
+  (slime-eval `(swank:exception-filter-kill
+                ,@(slime-get-properties 'exception-filter-id)))
+  (call-interactively 'slime-update-exception-filters-buffer))
+
+(defun slime-exception-filter-disable ()
+  (interactive)
+  (let ((id (get-text-property (point) 'exception-filter-id)))
+    (slime-eval-async `(swank:exception-filter-disable ,id)))
+  (call-interactively 'slime-update-exception-filters-buffer))
+
+(defun slime-exception-filter-enable ()
+  (interactive)
+  (let ((id (get-text-property (point) 'exception-filter-id)))
+    (slime-eval-async `(swank:exception-filter-enable ,id)))
+  (call-interactively 'slime-update-exception-filters-buffer))
+
+(def-slime-selector-method ?f
+  "SLIME Filter exceptions buffer"
+  (slime-list-exception-filters)
+  slime-exception-filters-buffer-name)
 
 ;;; repl forms
 (defun slime-list-repl-forms ()

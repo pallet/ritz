@@ -11,7 +11,7 @@ This is alpha quality.
 
 ## Features
 
-- Break on uncaught exceptions and breakpoints.
+- Break on exceptions and breakpoints.
 - Allows stepping from breakpoints
 - Allows evaluation of expressions in the context of a stack frame
 - Inspection of locals in any stack frame
@@ -34,22 +34,24 @@ this package to use
 
 ### Lein/Cake Project
 
-Add `[ritz "0.1.7"]` to your project.clj `:dev-dependencies`.
+Add `[ritz "0.2.0"]` to your project.clj `:dev-dependencies`.
 
 ### Lein Plugin
 
-Run `lein plugin install ritz 0.1.7`.
+Run `lein plugin install ritz 0.2.0`.
 
 ### Maven Plugin
 
 See [zi](https://github.com/pallet/zi).
 
-### Sun/Oracle JDK
+### Sun/Oracle JDK and OpenJDK
 
-To use the Sun/Oracle JDK, you
+To use the Sun/Oracle JDK, and possibly OpenJDK, you
 [need to add](http://download.oracle.com/javase/1.5.0/docs/tooldocs/findingclasses.html)
-`tools.jar` from your JDK install to your classpath. If you are using maven then
-there are
+`tools.jar` from your JDK install to your classpath. This is not required on OS
+X, where `tools.jar` does not exist.
+
+If you are using maven then there are
 [instructions in the FAQ](http://maven.apache.org/general.html#tools-jar-dependency).
 
 For cake, add the following (with the correct jdk path), to
@@ -59,6 +61,8 @@ For cake, add the following (with the correct jdk path), to
 For lein, add the tools.jar to the dev-resources-path:
 
     :dev-resources-path "/usr/lib/jvm/java-6-sun/lib/tools.jar"
+
+If you are missing tools.jar from the classpath, you will see an exception like `java.lang.ClassNotFoundException: com.sun.jdi.VirtualMachine`.
 
 ### Source Browsing
 
@@ -105,6 +109,19 @@ To list breakpoints, use `M-x slime-list-breakpoints` or press `b` in the
  - g refresh list
  - k remove breakpoint
  - v view source location
+
+### Exception filtering
+
+To filter which exceptions break into the debugger, there is an `IGNORE`
+restart, that will ignore an exception type.
+
+To list breakpoints, use `M-x slime-list-exception-filters` or press `f` in the
+`slime-selector`.  In the listing you can use the following keys
+
+ - e enable
+ - d disable
+ - g refresh list
+ - k remove exception filter
 
 ### Javadoc
 

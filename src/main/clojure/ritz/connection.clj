@@ -34,7 +34,9 @@
 (defn send-to-emacs
   "Sends a message (msg) to emacs."
   [connection msg]
-  (send-to-emacs* @connection msg))
+  (if connection
+    (send-to-emacs* @connection msg)
+    (logging/trace "Unable to send message to nil connection %s" msg)))
 
 (defn read-from-connection
   "Read a form from the connection."
@@ -129,15 +131,24 @@
                           :result-history nil
                           :last-exception nil
                           :indent-cache-hash (atom nil)
-                          :indent-cache (ref {})})))]
+                          :indent-cache (ref {})
+                          :exception-filters
+                          [{:type "clojure.lang.LockingTransaction$RetryEx"
+                            :enabled true}
+                           {:type "com.google.inject.internal.ErrorsException"
+                            :enabled true}
+                           {:catch-location #"com.sun.*" :enabled true}
+                           {:catch-location #"sun.*" :enabled true}
+                           {:catch-location #"ritz.commands.*"
+                            :enabled true}]})))]
     ;;(when-not (:proxy-to options))
 
-      (swap! connection
-             (fn [connection]
-               (merge connection
-                      (zipmap
-                       [:input-redir :input-source :input-tag]
-                       (make-repl-input-stream connection)))))
+    (swap! connection
+           (fn [connection]
+             (merge connection
+                    (zipmap
+                     [:input-redir :input-source :input-tag]
+                     (make-repl-input-stream connection)))))
     ;; (logging/trace "connection %s" (pr-str @connection))
     connection))
 

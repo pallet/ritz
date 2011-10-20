@@ -527,7 +527,7 @@ Thread
 
 (defn threads
   [vm]
-  (.allThreads vm))
+  (when vm (.allThreads vm)))
 
 (def thread-states
   {ThreadReference/THREAD_STATUS_MONITOR :monitor
