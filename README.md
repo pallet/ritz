@@ -11,7 +11,7 @@ This is alpha quality.
 
 ## Features
 
-- Break on uncaught exceptions and breakpoints.
+- Break on exceptions and breakpoints.
 - Allows stepping from breakpoints
 - Allows evaluation of expressions in the context of a stack frame
 - Inspection of locals in any stack frame
@@ -109,6 +109,19 @@ To list breakpoints, use `M-x slime-list-breakpoints` or press `b` in the
  - g refresh list
  - k remove breakpoint
  - v view source location
+
+### Exception filtering
+
+To filter which exceptions break into the debugger, there is an `IGNORE`
+restart, that will ignore an exception type.
+
+To list breakpoints, use `M-x slime-list-exception-filters` or press `f` in the
+`slime-selector`.  In the listing you can use the following keys
+
+ - e enable
+ - d disable
+ - g refresh list
+ - k remove exception filter
 
 ### Javadoc
 
