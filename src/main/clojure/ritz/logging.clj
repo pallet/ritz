@@ -1,8 +1,9 @@
 (ns ritz.logging
   "Logging for swank. Rudimentary for now")
 
-(defonce logging-out (or *out* (java.io.FileWriter.
-                                (java.io.File. "/tmp/swank.log"))))
+(defonce ^java.io.Writer logging-out
+  (or *out* (java.io.FileWriter. (java.io.File. "/tmp/swank.log"))))
+
 (def monitor (Object.))
 
 (def log-level (atom nil))
