@@ -502,7 +502,7 @@
         (assoc-in [:resume-sldb-levels] [(last (:sldb-levels current))])
         (update-in
          [:sldb-levels]
-         (fn [levels] (subvec levels 0 (dec (count levels))))))))))
+         (fn [levels] (subvec levels 0 (max 0 (dec (count levels)))))))))))
   nil)
 
 (defn- quit-level
