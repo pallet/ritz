@@ -156,7 +156,7 @@ From slime-goto-source-location docstring:
   [notes result duration-s]
   `(:compilation-result
     ~(list* (map compiler-message notes))
-    ~result
+    ~(when result (pr-str result))
     ~duration-s))
 
 (defn describe
