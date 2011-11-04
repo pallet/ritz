@@ -96,8 +96,8 @@ To run with a maven project:
 
 ### Breakpoints
 
-To set a breakpoint, eval `ritz.el` from src/main/elisp, put the cursor
-on the line where you want a breakpoint, and `M-x slime-line-breakpoint`.
+To set a breakpoint, put the cursor on the line where you want a breakpoint, and
+`M-x slime-line-breakpoint`.
 
 Note that breakpoints disappear on recompilation at the moment.
 
