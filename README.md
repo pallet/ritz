@@ -82,11 +82,12 @@ classpath. e.g. for lein:
 
 ## Usage
 
-To run with jpda:
+To run ritz with debugging capabilities (notice that it will need to spawn an
+extra JVM process):
 
     lein ritz
 
-To run without jpda:
+To run ritz with no debugging capabilities:
 
     lein ritz 4005 localhost :server-ns ritz.repl
 
