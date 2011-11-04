@@ -147,7 +147,7 @@
   [file-name]
   (let [start (System/nanoTime)]
     (try
-      (let [ret (clojure.core/load-file file-name)
+      (let [ret (or (clojure.core/load-file file-name) file-name)
             delta (- (System/nanoTime) start)]
         (messages/compilation-result nil ret (secs-for-ns delta)))
       (catch Throwable t
