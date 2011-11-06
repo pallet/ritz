@@ -12,7 +12,7 @@
 @set EDITION 3.0-alpha
 @set SLIMEVER 3.0-alpha
 @c @set UPDATED @today{}
-@set UPDATED @code{$Date: 2010/04/05 18:56:13 $}
+@set UPDATED @code{$Date: 2011/08/30 15:34:10 $}
 @set TITLE SLIME User Manual
 @settitle @value{TITLE}, version @value{EDITION}
 
@@ -2214,6 +2214,11 @@ Select the output buffer, preferably in a different window.
 @kbditem{C-c C-y, slime-call-defun}
 Insert a call to the function defined around point into the REPL.
 
+@kbditem{C-c C-j, slime-eval-last-expression-in-repl}
+Inserts the last expression to the REPL and evaluates it there.
+Switches to the current packae of the source buffer for the duration.
+If used with a prefix argument, doesn't switch back afterwards.
+
 @end table
 
 @menu
@@ -2958,7 +2963,7 @@ Start profiling.
 
 @cmditem{slime-sprof-stop}
 Stop profiling.
-@cmditem{slime-sprof-browser}
+@cmditem{slime-sprof-report}
 Report results of the profiling.
 @end table
 

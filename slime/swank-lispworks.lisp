@@ -62,6 +62,14 @@
                                 :check-redefinition-p nil)
        ,(funcall *original-defimplementation* whole env))))
 
+;;; UTF8
+
+(defimplementation string-to-utf8 (string)
+  (ef:encode-lisp-string string :utf-8))
+
+(defimplementation utf8-to-string (octets)
+  (ef:decode-external-string octets :utf-8))
+
 ;;; TCP server
 
 (defimplementation preferred-communication-style ()
@@ -96,25 +104,34 @@
   (declare (ignore buffering))
   (let* ((fd (comm::get-fd-from-socket socket)))
     (assert (/= fd -1))
-    (assert (valid-external-format-p external-format))
-    (cond ((member (first external-format) '(:latin-1 :ascii))
+    (cond ((not external-format)
            (make-instance 'comm:socket-stream
                           :socket fd
                           :direction :io
                           :read-timeout timeout
-                          :element-type 'base-char))
+                          :element-type '(unsigned-byte 8)))
           (t
-           (make-flexi-stream 
-            (make-instance 'comm:socket-stream
-                           :socket fd
-                           :direction :io
-                           :read-timeout timeout
-                           :element-type '(unsigned-byte 8))
-            external-format)))))
+           (assert (valid-external-format-p external-format))
+           (ecase (first external-format)
+             ((:latin-1 :ascii)
+              (make-instance 'comm:socket-stream
+                             :socket fd
+                             :direction :io
+                             :read-timeout timeout
+                             :element-type 'base-char))
+             (:utf-8
+              (make-flexi-stream 
+               (make-instance 'comm:socket-stream
+                              :socket fd
+                              :direction :io
+                              :read-timeout timeout
+                              :element-type '(unsigned-byte 8))
+               external-format)))))))
 
 (defun make-flexi-stream (stream external-format)
   (unless (member :flexi-streams *features*)
-    (error "Cannot use external format ~A without having installed flexi-streams in the inferior-lisp."
+    (error "Cannot use external format ~A~
+            without having installed flexi-streams in the inferior-lisp."
            external-format))
   (funcall (read-from-string "FLEXI-STREAMS:MAKE-FLEXI-STREAM")
            stream
@@ -131,13 +148,12 @@
 (defvar *external-format-to-coding-system*
   '(((:latin-1 :eol-style :lf) 
      "latin-1-unix" "iso-latin-1-unix" "iso-8859-1-unix")
-    ((:latin-1) 
-     "latin-1" "iso-latin-1" "iso-8859-1")
-    ((:utf-8) "utf-8")
+    ;;((:latin-1) "latin-1" "iso-latin-1" "iso-8859-1")
+    ;;((:utf-8) "utf-8")
     ((:utf-8 :eol-style :lf) "utf-8-unix")
-    ((:euc-jp) "euc-jp")
+    ;;((:euc-jp) "euc-jp")
     ((:euc-jp :eol-style :lf) "euc-jp-unix")
-    ((:ascii) "us-ascii")
+    ;;((:ascii) "us-ascii")
     ((:ascii :eol-style :lf) "us-ascii-unix")))
 
 (defimplementation find-external-format (coding-system)
@@ -365,20 +381,39 @@ Return NIL if the symbol is unbound."
 	(push frame backtrace)))))
 
 (defun frame-actual-args (frame)
-  (let ((*break-on-signals* nil))
-    (mapcar (lambda (arg)
-              (case arg
-                ((&rest &optional &key) arg)
-                (t
-                 (handler-case (dbg::dbg-eval arg frame)
-                   (error (e) (format nil "<~A>" arg))))))
-            (dbg::call-frame-arglist frame))))
+  (let ((*break-on-signals* nil)
+        (kind nil))
+    (loop for arg in (dbg::call-frame-arglist frame)
+          if (eq kind '&rest)
+          nconc (handler-case
+                    (dbg::dbg-eval arg frame)
+                  (error (e) (list (format nil "<~A>" arg))))
+          and do (loop-finish)
+          else
+          if (member arg '(&rest &optional &key))
+          do (setq kind arg)
+          else
+          nconc
+          (handler-case
+              (nconc (and (eq kind '&key)
+                          (list (cond ((symbolp arg)
+                                       (intern (symbol-name arg) :keyword))
+                                      ((and (consp arg) (symbolp (car arg)))
+                                       (intern (symbol-name (car arg)) :keyword))
+                                      (t (caar arg)))))
+                     (list (dbg::dbg-eval
+                            (cond ((symbolp arg) arg)
+                                  ((and (consp arg) (symbolp (car arg)))
+                                   (car arg))
+                                  (t (cadar arg)))
+                            frame)))
+            (error (e) (list (format nil "<~A>" arg)))))))
 
 (defimplementation print-frame (frame stream)
   (cond ((dbg::call-frame-p frame)
-         (format stream "~S ~S"
-                 (dbg::call-frame-function-name frame)
-                 (frame-actual-args frame)))
+         (prin1 (cons (dbg::call-frame-function-name frame)
+                      (frame-actual-args frame))
+                stream))
         (t (princ frame stream))))
 
 (defun frame-vars (frame)

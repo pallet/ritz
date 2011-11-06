@@ -23,9 +23,13 @@
 (defvar slime-export-symbol-representation-function
   #'(lambda (n) (format "#:%s" n)))
 
+(defvar slime-export-symbol-representation-auto t
+  "Determine automatically which style is used for symbols, #: or :
+If it's mixed or no symbols are exported so far,
+use `slime-export-symbol-representation-function'.")
+
 (defvar slime-defpackage-regexp
   "^(\\(cl:\\|common-lisp:\\)?defpackage\\>[ \t']*")
-
 
 (defun slime-find-package-definition-rpc (package)
   (slime-eval `(swank:find-definition-for-thing (swank::guess-package ,package))))
@@ -180,22 +184,54 @@ already exported/unexported."
       number-of-actions)))
 
 (defun slime-add-export ()
-    (let (point)
-      (save-excursion
-        (while (ignore-errors (slime-goto-next-export-clause) t)
-          (setq point (point))))
-      (cond (point
-             (goto-char point)
-             (down-list)
-             (slime-end-of-list))
+  (let (point)
+    (save-excursion
+      (while (ignore-errors (slime-goto-next-export-clause) t)
+        (setq point (point))))
+    (cond (point
+           (goto-char point)
+           (down-list)
+           (slime-end-of-list))
+          (t
+           (slime-end-of-list)
+           (unless (looking-back "^\\s-*")
+             (newline-and-indent))
+           (insert "(:export ")
+           (save-excursion (insert ")"))))))
+
+(defun slime-export-symbols ()
+  "Return a list of symbols inside :export clause of a defpackage."
+  ;; Assumes we're at the beginning of :export
+  (save-excursion
+    (loop while (ignore-errors (forward-sexp) t)
+          collect (slime-symbol-at-point))))
+
+(defun slime-determine-symbol-style ()
+  ;; Assumes we're inside :export
+  (save-excursion
+    (slime-beginning-of-list)
+    (slime-forward-sexp)
+    (let ((symbols (slime-export-symbols)))
+      (cond ((every (lambda (x)
+                      (string-match "^:" x))
+                    symbols)
+             (lambda (n) (format ":%s" n)))
+            ((every (lambda (x)
+                      (string-match "^#:" x))
+                    symbols)
+             (lambda (n) (format "#:%s" n)))
             (t
-             (insert "(:export ")
-             (save-excursion (insert ")"))))))
+             slime-export-symbol-representation-function)))))
+
+(defun slime-format-symbol-for-defpackage (symbol-name)
+  (funcall (if slime-export-symbol-representation-auto
+               (slime-determine-symbol-style)
+               slime-export-symbol-representation-function)
+           symbol-name))
 
 (defun slime-insert-export (symbol-name)
   ;; Assumes we're at the inside :export after the last symbol
-  (let ((symbol-name (funcall slime-export-symbol-representation-function
-                              symbol-name)))
+  (let ((symbol-name (slime-format-symbol-for-defpackage symbol-name)))
     (unless (looking-back "^\\s-*")
       (newline-and-indent))
     (insert symbol-name)))
