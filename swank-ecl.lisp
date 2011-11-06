@@ -84,7 +84,10 @@
   (sb-bsd-sockets:socket-make-stream (accept socket)
                                      :output t
                                      :input t
-                                     :buffering buffering
+                                     :buffering (ecase buffering
+                                                  ((t) :full)
+                                                  ((nil) :none)
+                                                  (:line line))
                                      :external-format external-format))
 (defun accept (socket)
   "Like socket-accept, but retry on EAGAIN."
@@ -205,6 +208,7 @@
 (defun signal-compiler-condition (&rest args)
   (signal (apply #'make-condition 'compiler-condition args)))
 
+#-ecl-bytecmp
 (defun handle-compiler-message (condition)
   ;; ECL emits lots of noise in compiler-notes, like "Invoking
   ;; external command".
@@ -220,6 +224,7 @@
                  (warning                :warning))
      :location (condition-location condition))))
 
+#-ecl-bytecmp
 (defun condition-location (condition)
   (let ((file     (c:compiler-message-file condition))
         (position (c:compiler-message-file-position condition)))
@@ -232,6 +237,9 @@
         (make-error-location "No location found."))))
 
 (defimplementation call-with-compilation-hooks (function)
+  #-ecl-bytecmp
+  (funcall function)
+  #-ecl-bytecmp
   (handler-bind ((c:compiler-message #'handle-compiler-message))
     (funcall function)))
 
@@ -498,7 +506,8 @@
 
 ;;;; Definitions
 
-(defvar +TAGS+ (namestring (translate-logical-pathname #P"SYS:TAGS")))
+(defvar +TAGS+ (namestring
+                (merge-pathnames "TAGS" (translate-logical-pathname "SYS:"))))
 
 (defun make-file-location (file file-position)
   ;; File positions in CL start at 0, but Emacs' buffer positions

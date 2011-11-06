@@ -8,12 +8,12 @@
 ;;;; Installation:
 #|
 
-1. You need MIT Scheme (version 7.7.0 and 7.7.90 seem to work).
+1. You need MIT Scheme 9.0.1
 
-2. You also need the `netcat' program to create sockets.  MIT Scheme
-   has some socket functions built-in, but I couldn't figure out how
-   to access the locat port number of a server socket.  We shell out
-   to netcat to get us started.
+2. You also need the `netcat' program to create sockets 
+   (netcat-openbsd on Debian).  MIT Scheme has some socket functions
+   built-in, but I couldn't figure out how to access the locat port
+   number of a server socket.  We shell out to netcat to get us started.
 
 3. The Emacs side needs some fiddling.  I have the following in
    my .emacs:
@@ -48,6 +48,7 @@
 	   (match-string-no-properties 1)))))
 
 (setq slime-find-buffer-package-function 'find-mit-scheme-package)
+(add-hook 'scheme-mode-hook (lambda () (slime-mode 1)))
 
    The `mit-scheme-init' function first loads the SOS and FORMAT
    libraries, then creates a package "(swank)", and loads this file
@@ -65,13 +66,34 @@
 
 ;;; package: (swank)
 
+(if (< (car (get-subsystem-version "Release"))
+       '9)
+    (error "This file requires MIT Scheme Release 9"))
+
 (define (swank port)
   (accept-connections (or port 4005) #f))
 
+;; ### hardcoded port number for now.  netcat-openbsd doesn't print
+;; the listener port anymore.
 (define (start-swank port-file)
-  (accept-connections #f port-file))
+  (accept-connections 4055 port-file) 
+  )
 
 ;;;; Networking
+
+#|
+;; ### doesn't work because 1) open-tcp-server-socket doesn't set the
+;; SO_REUSEADDR option and 2) we can't read the port number of the
+;; created socket.
+(define (accept-connections port port-file)
+  (let ((sock (open-tcp-server-socket  port (host-address-loopback))))
+    (format #t "Listening on port: ~s~%" port)
+    (if port-file (write-port-file port port-file))
+    (dynamic-wind 
+	(lambda () #f)
+	(lambda () (serve (tcp-server-connection-accept sock #t #f)))
+	(lambda () (close-tcp-server-socket sock)))))
+|#
 
 (define (accept-connections port port-file)
   (let ((nc (netcat port)))
@@ -84,22 +106,14 @@
 
 (define (netcat port)
   (let* ((sh (os/shell-file-name))
-	 (cmd (format #f "exec netcat -s localhost -q 0 -l -v ~a 2>&1"
-		      (if port (format #f "-p ~a" port) "")))
+	 (cmd (format #f "exec netcat -v -q 0 -l ~a 2>&1" port))
 	 (netcat (start-pipe-subprocess sh 
 					(vector sh "-c" cmd)
-					scheme-subprocess-environment))
-	 (line (read-line (subprocess-input-port netcat)))
-	 (match (re-string-match "^listening on \\[[^]]+\\] \\([0-9]+\\) ...$"
-				 line)))
-    (cond ((not match)
-	   (close-port (subprocess-input-port netcat))
-	   (error "netcat:" line))
-	  (else (list netcat 
-		      (string->number (re-match-extract line match 1)))))))
+					scheme-subprocess-environment)))
+    (list netcat port)))
 
 (define (netcat-accept nc)
-  (let* ((rx "^connect to \\[[^]]+\\] from [^ ]+ \\[[^]]+\\] \\([0-9]+\\)$")
+  (let* ((rx "^Connection from .+ port .+ accepted$")
 	 (line (read-line (subprocess-input-port nc)))
 	 (match (re-string-match rx line)))
     (cond ((not match) (error "netcat:" line))
@@ -217,13 +231,13 @@
 	(else (nearest-repl/environment))))
 
 (define (emacs-rex socket level sexp package thread id)
-  (let ((ok? #f) (result #f))
+  (let ((ok? #f) (result #f) (condition #f))
     (dynamic-wind
 	(lambda () #f)
 	(lambda ()
 	  (bind-condition-handler 
 	   (list condition-type:serious-condition)
-	   (lambda (c) (invoke-sldb socket (1+ level) c))
+	   (lambda (c) (set! condition c) (invoke-sldb socket (1+ level) c))
 	   (lambda ()
 	     (fluid-let ((*buffer-package* package))
 	       (set! result 
@@ -231,8 +245,14 @@
 			   swank-env))
 	       (set! ok? #t)))))
 	(lambda ()
-	  (write-packet `(:return ,(if ok? `(:ok ,result) '(:abort))
-				   ,id)
+	  (write-packet `(:return 
+			  ,(if ok? `(:ok ,result)
+			       `(:abort 
+				 ,(if condition 
+				      (format #f "~a"
+					      (condition/type condition))
+				      "<unknown reason>")))
+			  ,id)
 			 socket)))))
 
 (define (swank:connection-info _)
@@ -325,13 +345,16 @@
 ;;;; Compilation
 
 (define (swank:compile-string-for-emacs _ string . x)
-  (call-compiler
-   (lambda ()
-     (let* ((sexps (snarf-string string))
-	    (env (user-env *buffer-package*))
-	    (scode (syntax `(begin ,@sexps) env))
-	    (compiled-expression (compile-scode scode #t)))
-       (scode-eval compiled-expression env)))))
+  (apply 
+   (lambda (errors seconds)
+     `(:compilation-result ,errors t ,seconds nil nil))
+   (call-compiler
+    (lambda ()
+      (let* ((sexps (snarf-string string))
+	     (env (user-env *buffer-package*))
+	     (scode (syntax `(begin ,@sexps) env))
+	     (compiled-expression (compile-scode scode #t)))
+	(scode-eval compiled-expression env))))))
 
 (define (snarf-string string)
   (with-input-from-string string
@@ -345,22 +368,33 @@
     (with-timings fun
       (lambda (run-time gc-time real-time)
 	(set! time real-time)))
-    (list 'nil (format #f "~a" (internal-time/ticks->seconds time)))))
+    (list 'nil (internal-time/ticks->seconds time))))
 
 (define (swank:compiler-notes-for-emacs _) nil)
 
 (define (swank:compile-file-for-emacs socket file load?)
-  (call-compiler
-   (lambda ()
-     (with-output-to-repl socket
-       (lambda () (compile-file file)))
-     (cond ((elisp-true? load?)
-	    (load (pathname-new-type file "com")
-		  (user-env *buffer-package*)))))))
+  (apply
+   (lambda (errors seconds)
+     (list ':compilation-result errors 't seconds load? 
+	   (->namestring (pathname-new-type file "com"))))
+   (call-compiler
+    (lambda () (with-output-to-repl socket (lambda () (compile-file file)))))))
 
 (define (swank:load-file socket file)
   (with-output-to-repl socket
-    (lambda () (load file (user-env *buffer-package*)))))
+    (lambda () 
+      (pprint-to-string 
+       (load file (user-env *buffer-package*))))))
+
+(define (swank:disassemble-form _ string)
+  (let ((sexp (let ((sexp (read-from-string string)))
+		(cond ((and (pair? sexp) (eq? (car sexp) 'quote))
+		       (cadr sexp))
+		      (#t sexp)))))
+    (with-output-to-string
+      (lambda () 
+	(compiler:disassemble
+	 (eval sexp (user-env *buffer-package*)))))))
 
 (define (swank:disassemble-symbol _ string)
   (with-output-to-string
@@ -403,6 +437,7 @@
 ;;; Some unimplemented stuff.
 (define (swank:buffer-first-change . _) nil)
 (define (swank:filename-to-modulename . _) nil)
+(define (swank:swank-require . _) nil)
 
 ;; M-. is beyond my capabilities.
 (define (swank:find-definitions-for-emacs . _) nil)
