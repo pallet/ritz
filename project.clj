@@ -22,6 +22,7 @@
                "1.3" [[org.clojure/clojure "1.3.0"]
                       [org.clojure/clojure "1.3.0" :classifier "sources"]]}
   :local-repo-classpath true
+  :checksum-deps true
   :repositories
   {"sonatype-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"
    "sonatype" "https://oss.sonatype.org/content/repositories/releases/"}
