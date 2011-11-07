@@ -4,7 +4,8 @@
   (:require
    [ritz.connection :as connection]
    [ritz.rpc :as rpc]
-   [ritz.rpc-socket-connection :as rpc-s-c]))
+   [ritz.rpc-socket-connection :as rpc-s-c]
+   [ritz.test-utils :as test-utils]))
 
 (deftest initialise-test
   (let [a (java.net.ServerSocket. 0)
@@ -50,20 +51,23 @@
     (is (= msg
            (connection/read-from-connection
             (atom
-             {:reader (java.io.StringReader.
-                       (with-out-str (rpc/encode-message *out* msg)))
+             {:input-stream
+              (let [[bs ds] (test-utils/dos)]
+                (rpc/encode-message ds msg)
+                (test-utils/dis (.toByteArray bs)))
               :read-message rpc-s-c/read-message
               :read-monitor (Object.)}))))))
 
 (deftest send-to-emacs-test
   (let [msg '(a 123 (swank:b (true false) "c"))]
-    (is (= "00001d(a 123 (swank:b (t nil) \"c\"))"
-           (with-out-str
-             (connection/send-to-emacs
-              (atom {:writer *out*
-                     :write-message rpc-s-c/write-message
-                     :write-monitor (Object.)})
-              msg))))))
+    (is (= (into [] (test-utils/msg "(a 123 (swank:b (t nil) \"c\"))"))
+           (into [] (let [[bs ds] (test-utils/dos)]
+                      (connection/send-to-emacs
+                       (atom {:output-stream ds
+                              :write-message rpc-s-c/write-message
+                              :write-monitor (Object.)})
+                       msg)
+                      (.toByteArray bs)))))))
 
 (deftest request!-test
   (is (every?

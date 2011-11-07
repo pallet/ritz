@@ -12,10 +12,10 @@
 (deftest eval-for-emacs-test
   (test-utils/eval-for-emacs-test
    `(~'swank/echo :a)
-   "000014(:return (:ok :a) 1)"))
+   "(:return (:ok :a) 1)"))
 
 (deftest dispatch-event-test
   (test-utils/dispatch-event-test
    '(swank/echo :a)
-   "000014(:return (:ok :a) 2)"
+   "(:return (:ok :a) 2)"
    {:request-id 2}))

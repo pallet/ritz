@@ -10,4 +10,4 @@
   ;; (logging/set-level :trace)
   (test-utils/eval-for-emacs-test
    `(~'swank/simple-completions "shutdown-a" "clojure.core")
-   "000039(:return (:ok ((\"shutdown-agents\") \"shutdown-agents\")) 1)"))
+   "(:return (:ok ((\"shutdown-agents\") \"shutdown-agents\")) 1)"))

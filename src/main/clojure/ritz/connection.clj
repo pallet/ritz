@@ -191,7 +191,9 @@
   [connection]
   (logging/trace "close-connection")
   ((:close-connection @connection) @connection)
-  (swap! connection dissoc :read-message :reader :write-message :writer))
+  (swap! connection dissoc
+         :read-message :reader :write-message :writer
+         :input-stream :output-stream))
 
 (def ^{:private true}
   slime-secret-path

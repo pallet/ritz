@@ -50,7 +50,10 @@
   [var]
   (when-let [body-position (find-var-body-position var)]
     (when (or (= body-position 'defun) (not (neg? body-position)))
-      (messages/symbol-indentation (name (:name (meta var))) body-position))))
+      (messages/symbol-indentation
+       (name (:name (meta var)))
+       body-position
+       (list (name (ns-name (:ns (meta var)))))))))
 
 (defn- get-cache-update-for-var
   "Checks whether a given var needs to be updated in a cache. If it

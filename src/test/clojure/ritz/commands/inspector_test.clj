@@ -20,7 +20,7 @@
     (inspect/inspect-object inspector {:a 1 :b 2})
     (test-utils/eval-for-emacs-test
      `(~'swank/inspect-nth-part 0)
-     #"(?s)00[0-9a-f]{4,4}\(:return \(:ok \(:title \"clojure.lang.PersistentArrayMap\".*"
+     #"(?s)\(:return \(:ok \(:title \"clojure.lang.PersistentArrayMap\".*"
      {:inspector inspector})))
 
 (deftest inspector-range-test)

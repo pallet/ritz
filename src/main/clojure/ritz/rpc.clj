@@ -5,10 +5,14 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
    [ritz.logging :as logging]
    [clojure.string :as string])
   (:import
-   (java.io Writer Reader PushbackReader StringReader)))
+   (java.io
+    Writer Reader PushbackReader StringReader InputStream OutputStream
+    DataInputStream DataOutputStream)))
 
 ;; ERROR HANDLING
 (def swank-protocol-error (Exception. "Swank protocol error."))
+
+(def utf-8 (java.nio.charset.Charset/forName "UTF-8"))
 
 ;; INPUT
 (defn read-chars
@@ -76,17 +80,18 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
                (symbol str))))))))
 
 (defn- read-packet
-  [^Reader reader]
-  (let [len (read-chars reader 6 swank-protocol-error)
+  [^java.io.DataInputStream input-stream]
+  (let [len (.readInt input-stream)
         _ (logging/trace "rpc/read-packet length %s" len)
-        len (Integer/parseInt len 16)]
+        bytes (make-array Byte/TYPE len)]
     (logging/trace "rpc/read-packet length %s" len)
-    (read-chars reader len swank-protocol-error)))
+    (.readFully input-stream bytes)
+    (String. bytes utf-8)))
 
 (defn decode-message
   "Read an rpc message encoded using the swank rpc protocol."
-  [^Reader rdr]
-  (let [packet (read-packet rdr)]
+  [^InputStream input-stream]
+  (let [packet (read-packet input-stream)]
     (logging/trace "READ: %s\n" packet)
     (try
       (with-open [rdr (PushbackReader. (StringReader. packet))]
@@ -125,21 +130,22 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
   (.write w ")"))
 
 (defn- write-form
-  [^Writer writer message]
-  (print-object message writer))
+  [^Writer output-stream message]
+  (print-object message output-stream))
 
 (defn- write-packet
-  [^Writer writer str]
-  (let [len (.length str)]
-    (doto writer
-      (.write (format "%06x" len))
-      (.write str)
+  [^DataOutputStream output-stream str]
+  (let [b (.getBytes str "UTF-8")
+        len (count b)]
+    (logging/trace "writing: %s bytes\n" len)
+    (doto output-stream
+      (.writeInt len)
+      (.write b 0 len)
       (.flush))))
 
 (defn encode-message
   "Write an rpc message encoded using the swank rpc protocol."
-  [^Writer writer message]
-  (let [str (with-out-str
-              (write-form *out* message)) ]
+  [^DataOutputStream output-stream message]
+  (let [str (with-out-str (write-form *out* message)) ]
     (logging/trace "WRITE: %s\n" str)
-    (write-packet writer str)))
+    (write-packet output-stream str)))

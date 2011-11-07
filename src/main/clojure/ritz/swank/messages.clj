@@ -132,8 +132,10 @@ From slime-goto-source-location docstring:
      (debug-return thread-id level nil)))
 
 (defn symbol-indentation
-  [name body-position]
-  (list name '. body-position))
+  ([name body-position]
+     (list name '. body-position))
+  ([name body-position packages]
+     (list name body-position packages)))
 
 (defn indentation-update
   [delta]

@@ -5,8 +5,8 @@
    [ritz.rpc :as rpc]
    [clojure.java.io :as java-io])
   (:import
-   java.io.InputStreamReader
-   java.io.OutputStreamWriter
+   java.io.DataInputStream
+   java.io.DataOutputStream
    java.net.SocketException))
 
 (def ^{:private true :doc "Translate encoding strings from slime to java"}
@@ -45,11 +45,11 @@
   "Sends a message."
   [connection msg]
   (try
-    (let [writer (:writer connection)]
+    (let [stream (:output-stream connection)]
       (locking (:write-monitor connection)
-        (rpc/encode-message writer msg)
-        (.flush writer))
-      (logging/trace "rpc-socket-connection/write-message completed"))
+        (rpc/encode-message stream msg)
+        (.flush stream)))
+    (logging/trace "rpc-socket-connection/write-message completed")
     (catch SocketException e
       (logging/trace "Caught exception while writing %s" (str e))
       (when (.isOutputShutdown (:socket connection))
@@ -61,9 +61,9 @@
   [connection]
   (try
     (logging/trace "rpc-socket-connection/read-mesage")
-    (let [reader (:reader connection)]
+    (let [stream (:input-stream connection)]
       (locking (:read-monitor connection)
-        (rpc/decode-message reader)))
+        (rpc/decode-message stream)))
     (catch SocketException e
       (logging/trace "Caught exception while reading %s" (str e))
       (when (.isInputShutdown (:socket connection))
@@ -75,12 +75,14 @@
   (.getLocalPort (:socket connection)))
 
 (defn create [socket {:as options}]
-  (let [encoding (encoding-map (:encoding options) (:encoding options))]
+  (let [encoding (encoding-map (:encoding options) (:encoding options))
+        input-stream (.getInputStream socket)
+        output-stream (.getOutputStream socket)]
     (merge
      options
      {:socket socket
-      :reader (InputStreamReader. (.getInputStream socket) encoding)
-      :writer (OutputStreamWriter. (.getOutputStream socket) encoding)
+      :input-stream (DataInputStream. input-stream)
+      :output-stream (DataOutputStream. output-stream)
       :read-message read-message
       :write-message write-message
       :close-connection close

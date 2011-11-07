@@ -21,7 +21,7 @@
     (Thread/sleep 1000)
     (let [connection (test-utils/eval-for-emacs-test
                       `(~'swank/list-threads)
-                      #"000[0-9a-f]{3,3}\(:return \(:ok \(\(:id :name :state :at-breakpoint\? :suspended\? :suspends\).+\)\) 1\)"
+                      #"\(:return \(:ok \(\(:id :name :state :at-breakpoint\? :suspended\? :suspends\).+\)\) 1\)"
                       {:vm-context (atom context)})
           threads (-> connection :vm-context deref :threads)
           thread (first
@@ -33,7 +33,7 @@
       (let [connection (test-utils/eval-for-emacs-test
                         `(~'swank/kill-nth-thread
                           ~(utils/position #{thread} threads))
-                        #"000[0-9a-f]{3,3}\(:return \(:ok .+"
+                        #"\(:return \(:ok .+"
                         (dissoc connection :writer))
             threads (-> connection :vm-context deref :threads)]
         (is (seq threads))

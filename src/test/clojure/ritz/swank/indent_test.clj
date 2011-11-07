@@ -11,10 +11,11 @@
   (is (every?
        identity
        ((juxt seq #(every? (fn [x]
-                             (string? (first x))
-                             (= '. (second x))
-                             (or (integer? (nth x 2))
-                                 (= 'defun (nth x 2)))) %))
+                             (and
+                              (string? (first x))
+                              (or (integer? (second x))
+                                  (= 'defun (second x)))
+                              (sequential? (last x)))) %))
         (#'indent/update-indentation-delta
          (the-ns 'ritz.swank.indent-test)
          (ref {})

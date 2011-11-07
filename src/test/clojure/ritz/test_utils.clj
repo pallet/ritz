@@ -6,10 +6,46 @@
   (:use
    clojure.test))
 
+(def test-out-atom (atom []))
+
+(defn add-to-test-out
+  [output-stream message]
+  (swap!
+   test-out-atom conj (with-out-str (#'ritz.rpc/write-form *out* message))))
+
+(defn test-out []
+  (first (remove #(.startsWith % "(:indentation-update") @test-out-atom)))
+
+(defmacro with-test-out-fn
+  [& body]
+  `(do
+     (reset! test-out-atom [])
+     (binding [ritz.rpc/encode-message add-to-test-out]
+       ~@body)))
+
+(defn dis [bytes]
+  (java.io.DataInputStream.
+   (java.io.ByteArrayInputStream.
+    bytes)))
+
+(defn dos []
+  (let [bs (java.io.ByteArrayOutputStream.)
+        ds (java.io.DataOutputStream. bs)]
+    [bs ds]))
+
+(defn msg [msg]
+  (let [[bs ds] (dos)
+        bytes (.getBytes msg "UTF-8")]
+    (doto ds
+      (.writeInt (count bytes))
+      (.write bytes 0 (count bytes))
+      (.flush))
+    (.toByteArray bs)))
+
 (defn test-connection
   [m]
-  (atom (merge {:reader *in*
-                :writer *out*
+  (atom (merge {:output-stream (java.io.DataOutputStream.
+                                (java.io.ByteArrayOutputStream.))
                 :result-history []
                 :last-exception nil
                 :writer-redir *out*
@@ -47,7 +83,7 @@
          (str ~sb))))))
 
 (defmacro eval-for-emacs-test
-  "Create a test for eval-for-emacs. output is a string or regex literal"
+  "Create a test for eval-for-emacs. Output is a string or regex literal test."
   ([msg-form output options]
      (let [opts (gensym "opts")
            conn (gensym "conn")
@@ -58,29 +94,30 @@
                                           (dissoc ~opts :ns :writer)))]
           (is
            ~(if (or (string? output) (list? output))
-              `(= ~output
-                  (eval-for-emacs-test-body ~msg-form ~opts ~conn ~sb))
-              `(re-find ~output
-                        (eval-for-emacs-test-body ~msg-form ~opts ~conn ~sb))))
+              `(with-test-out-fn
+                 (eval-for-emacs-test-body ~msg-form ~opts ~conn ~sb)
+                 (= ~output (test-out)))
+              `(with-test-out-fn
+                 (eval-for-emacs-test-body ~msg-form ~opts ~conn ~sb)
+                 (re-find ~output (test-out)))))
           (deref ~conn))))
   ([msg-form output]
      `(eval-for-emacs-test ~msg-form ~output {})))
 
 (defmacro dispatch-event-test
   ([msg-form output {:as options}]
-  `(let [options# ~options]
-     (is (= ~output
-            (first
-             (split-indentation-response
-              (with-out-str
-                (let [connection# (test-connection (dissoc options# :ns))]
-                  (swank/dispatch-event
-                   (list
-                    :emacs-rex
-                    ~msg-form
-                    (name (:ns options# 'user))
-                    (:thread-id options# 1234)
-                    (:request-id @connection# 1))
-                   connection#)))))))))
+     `(let [options# ~options]
+        (is (= ~output
+               (with-test-out-fn
+                 (let [connection# (test-connection (dissoc options# :ns))]
+                   (swank/dispatch-event
+                    (list
+                     :emacs-rex
+                     ~msg-form
+                     (name (:ns options# 'user))
+                     (:thread-id options# 1234)
+                     (:request-id @connection# 1))
+                    connection#))
+                 (test-out))))))
   ([msg-form output]
      `(dispatch-event-test ~msg-form ~output {})))
