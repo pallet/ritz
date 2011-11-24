@@ -78,13 +78,16 @@
 
 (defslimefn listener-eval [connection form]
   (logging/trace "listener-eval %s" form)
-  (let [[result exception] (eval-form connection form)]
+  (let [[result exception] (eval-form
+                            connection
+                            (string/replace
+                             form "#.(swank:" "(ritz.swank.commands/"))]
     (logging/trace "listener-eval: %s %s" result exception)
     (if exception
       (do
         (.printStackTrace exception)
         [:ritz.swank/abort exception])
-      (connection/send-to-emacs connection (messages/repl-result result)))))
+      ((:send-repl-results-function @connection) connection [result]))))
 
 (defmacro with-out-str-and-value
   [& body]

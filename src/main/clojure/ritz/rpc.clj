@@ -69,7 +69,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
              (= "t" str) true
              (.startsWith str ":") (keyword (.substring str 1))
              :else
-             (if-let [m (re-matches #"(.+):(.+)" str)]
+             (if-let [m (re-matches #"(.+)::?(.+)" str)]
                (if (= "swank::%cursor-marker%" str)
                  :ritz/cursor-marker
                  (apply symbol (map #(string/replace % "\\." ".") (rest m))))

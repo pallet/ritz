@@ -3,8 +3,9 @@
   :source-path "src/main/clojure"
   :resources-path "src/main/resources"
   :test-path "src/test/clojure"
-  :dependencies [[org.clojure/clojure "1.2.1"]
-                 [useful "0.4.0"]]
+  :dependencies [[org.clojure/clojure "1.3.0"]
+                 [useful "0.4.0"]
+                 [org.clojure/data.codec "0.1.0"]]
   :dev-dependencies [[lein-multi "1.0.0"]
                      [org.cloudhoist/pallet "0.7.0-SNAPSHOT"]
                      [org.cloudhoist/stevedore "0.7.0"]

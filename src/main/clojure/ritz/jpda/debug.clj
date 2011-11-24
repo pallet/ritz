@@ -182,17 +182,22 @@
 (defn execute-peek
   [handler]
   (fn [connection form buffer-package id f]
+    (logging/trace "execute-peek %s" f)
     (swank-peek connection form buffer-package id f)
     (handler connection form buffer-package id f)))
 
 (defn execute-unless-inspect
+  "If the function has resolved (in the debug proxy) then execute it,
+otherwise pass it on."
   [handler]
   (fn [connection form buffer-package id f]
+    (logging/trace "execute-unless-inspect %s %s" f form)
     (if (and f
-             (not (re-find #"inspect" (name (first form))))
-             (:ritz.swank.commands/swank-fn (meta f)))
-      (core/execute-slime-fn* connection f (rest form) buffer-package)
-      (handler connection form buffer-package id f))))
+         (not (re-find #"inspect" (name (first form))))
+         (not (re-find #"nth-value" (name (first form)))) ;; hack
+         (:ritz.swank.commands/swank-fn (meta f)))
+  (core/execute-slime-fn* connection f (rest form) buffer-package)
+  (handler connection form buffer-package id f))))
 
 (declare clear-abort-for-current-level format-thread threads)
 

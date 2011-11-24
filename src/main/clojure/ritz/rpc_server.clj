@@ -23,7 +23,7 @@
   "Serve a set of RPC functions"
   [socket options]
   (logging/trace "rpc-server/serve-connection")
-  (let [connection (connection/create socket options)
+  (let [connection (swank/setup-connection (connection/create socket options))
         future (executor/execute-loop
                 (partial dispatch-message connection)
                 :name (format

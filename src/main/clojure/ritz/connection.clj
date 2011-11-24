@@ -132,6 +132,7 @@
                           :last-exception nil
                           :indent-cache-hash (atom nil)
                           :indent-cache (ref {})
+                          :send-repl-results-function nil
                           :exception-filters
                           [{:type "clojure.lang.LockingTransaction$RetryEx"
                             :enabled true}

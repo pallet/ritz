@@ -24,4 +24,5 @@
 (defn slime-fn
   "Resolve a slime function."
   [sym]
+  (logging/trace "slime-fn trying to resolve %s" (pr-str sym))
   (ns-resolve (the-ns 'ritz.swank.commands) sym))

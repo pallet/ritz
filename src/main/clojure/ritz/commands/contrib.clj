@@ -8,7 +8,10 @@
   (binding [*ns* (the-ns 'ritz.commands.contrib)]
     (doseq [k (if (seq? keys) keys (list keys))]
       (try
-        (require (symbol (str "ritz.commands.contrib." (name k))))
+        (let [ns-sym (symbol (str "ritz.commands.contrib." (name k)))]
+          (require ns-sym)
+          (when-let [contrib-init (ns-resolve ns-sym 'initialize)]
+            (contrib-init connection)))
         (catch java.io.FileNotFoundException e
           (logging/trace
            "Exception: %s\n%s" e (helpers/stack-trace-string e)))

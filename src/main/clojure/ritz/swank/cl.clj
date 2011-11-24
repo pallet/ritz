@@ -13,3 +13,9 @@
           (repeat connection)
           args))
   (first args))
+
+(defn ^{:ritz.swank.commands/swank-fn true} nth-value
+  "Nth value"
+  [connection i s]
+  (logging/trace "cl/nth-value %s %s" i s)
+  (nth s i))

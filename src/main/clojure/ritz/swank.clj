@@ -170,6 +170,20 @@
       (connection/send-to-emacs connection "server-failure"))))
 
 
+(defn send-repl-results-to-emacs
+  [connection values]
+  (flush)
+  (if values
+    (doseq [v values]
+      (core/write-result-to-emacs connection v))
+    (core/write-result-to-emacs connection "; No value")))
+
+(defn setup-connection
+  [connection]
+  (swap! connection
+         assoc :send-repl-results-function send-repl-results-to-emacs)
+  connection)
+
 (defn handle-message
   "Handle a message on a connection."
   [connection message]
