@@ -23,10 +23,10 @@ WHAT can be:
        (let [target
              (cond
               (nil? what)  nil
-              (file? what) `(:filename ~(io/file what))
+              (file? what) `(:filename ~(.getPath (io/file what)))
               (let [[w] what]
                 (file? w))
-              `(:filename ~[(io/file (first what)) (second what)])
+              `(:filename ~[(.getPath (io/file (first what))) (second what)])
               (or (symbol? what) (sequential? what))
               `(:function-name ,(prn-str what)))]
          (cond

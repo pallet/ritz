@@ -2,6 +2,7 @@
   "Adapted from slime's swank-presentations.lisp"
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as string]
    [ritz.connection :as connection]
    [ritz.logging :as logging]
    [ritz.swank.core :as core]
@@ -53,43 +54,47 @@ If OBJECT was saved previously return the old id."
         (alter object-to-presentation-id #(do (.put % object id) %))
         id)))))
 
+(defn clean-id [id]
+  (cond
+   (number? id) (int id)
+   (symbol? id) (Long/parseLong (name id))
+   :else id))
+
 (commands/defslimefn lookup-presented-object
   "Retrieve the object corresponding to ID.
 The secondary value indicates the absence of an entry."
   [_ id]
   (logging/trace "lookup-presented-object %s" (pr-str id))
-  (cond
-   (and id (number? id)) (let [object (.get @presentation-id-to-object id)]
-                           (cond
-                            (= object nil-surrogate) [nil true] ;; A stored nil object
-                            (nil? object) [nil nil]
-                            :else [object true]))
-   true [nil nil]
-   ;; (let [[ref-type & args] id]
-   ;;   (case ref-type
-   ;;     :frame-var
-   ;;     (let [[thread-id frame index] args]
-   ;;       (handler-case
-   ;;           (frame-var-value frame index)
-   ;;         (t (condition)
-   ;;            (declare (ignore condition))
-   ;;            (values nil nil))
-   ;;         (:no-error (value)
-   ;;                    (values value t))))
-   ;;     :inspected-part
-   ;;     (let [[part-index] args]
-   ;;       (if (< part-index (length *inspectee-parts*))
-   ;;         (values (inspector-nth-part part-index) t)
-   ;;         (values nil nil)))))
-   ))
+  (let [id (clean-id id)]
+    (cond
+     (and id (number? id)) (let [object (.get @presentation-id-to-object id)]
+                             (cond
+                              (= object nil-surrogate) [nil true] ;; A stored nil object
+                              (nil? object) [nil nil]
+                              :else [object true]))
+     true [nil nil]
+     ;; (let [[ref-type & args] id]
+     ;;   (case ref-type
+     ;;     :frame-var
+     ;;     (let [[thread-id frame index] args]
+     ;;       (handler-case
+     ;;           (frame-var-value frame index)
+     ;;         (t (condition)
+     ;;            (declare (ignore condition))
+     ;;            (values nil nil))
+     ;;         (:no-error (value)
+     ;;                    (values value t))))
+     ;;     :inspected-part
+     ;;     (let [[part-index] args]
+     ;;       (if (< part-index (length *inspectee-parts*))
+     ;;         (values (inspector-nth-part part-index) t)
+     ;;         (values nil nil)))))
+     )))
 
 (commands/defslimefn lookup-presented-object-or-lose
   "Get the result of the previous REPL evaluation with ID."
   ([_ id]
-     (let [id (cond
-               (number? id) (int id)
-               (symbol? id) (Long/parseLong (name id)))
-           [object foundp] (lookup-presented-object _ id)]
+     (let [[object foundp] (lookup-presented-object _ id)]
        (if foundp
          object
          (logging/trace "Attempt to access unrecorded object (id %s)." id))))
@@ -140,16 +145,18 @@ The secondary value indicates the absence of an entry."
 ;; pick up the Menu actions of superclasses.
 ;;
 
-(defmulti menu-choices-for-presentation)
+(defmulti menu-choices-for-presentation (fn [obj connection] (type obj)))
 
-(defn menu-choices-for-presentation-id
+(commands/defslimefn menu-choices-for-presentation-id
   [connection id]
-  (let [[ob presentp] (lookup-presented-object connection id)]
+  (logging/trace "menu-choices-for-presentation-id %s" id)
+  (let [id (clean-id id)
+        [ob presentp] (lookup-presented-object connection id)]
     (if presentp
-      (let [menu-and-actions (menu-choices-for-presentation connection ob)]
-        (alter connection
+      (let [menu-and-actions (menu-choices-for-presentation ob connection)]
+        (swap! connection
                assoc :presentation-active-menu {:id id :menu menu-and-actions})
-        (map first menu-and-actions))
+        (when menu-and-actions (map first menu-and-actions)))
       'not-present)))
 
 (defn swank-ioify
@@ -164,9 +171,10 @@ The secondary value indicates the absence of an entry."
    (sequential? thing) (map swank-ioify thing)
    :else thing))
 
-(defn execute-menu-choice-for-presentation-id
+(commands/defslimefn execute-menu-choice-for-presentation-id
   [connection id count item]
-  (let [ob (lookup-presented-object id)
+  (let [id (clean-id id)
+        ob (lookup-presented-object connection id)
         menu (:presentation-active-menu @connection)]
     (assert (= id (:id menu)))
     (let [action (second (nth (:menu menu) (dec count)))]
@@ -174,13 +182,14 @@ The secondary value indicates the absence of an entry."
 
 
 (defmethod menu-choices-for-presentation :default
-  [object]
+  [object connection]
+  (logging/trace "No menu choices for object")
   nil)
 
 ;; files
 (defmethod menu-choices-for-presentation
   java.io.File
-  [ob]
+  [ob connection]
   (let [file-exists (.exists ob)
         pathname (.getPath ob)
         source-file (when (re-matches #".*\.clj" pathname) pathname)]
@@ -189,22 +198,22 @@ The secondary value indicates the absence of an entry."
      [(and file-exists
            ["Edit this file"
             (fn [choice object id]
-              (emacs/ed-in-emacs pathname)
+              (emacs/ed-in-emacs connection pathname)
               nil)])
       (and file-exists
            ["Dired containing directory"
             (fn [choice object id]
-              (emacs/ed-in-emacs pathname)
+              (emacs/ed-in-emacs connection pathname)
               nil)])
       (and source-file
            ["Edit lisp source file"
             (fn [choice object id]
-              (emacs/ed-in-emacs pathname)
+              (emacs/ed-in-emacs connection pathname)
               nil)])
       (and source-file
            ["Load lisp source file"
             (fn [choice object id]
-              (load source-file)
+              (load (string/replace source-file #".clj$" ""))
               nil)])])))
 
 ;; (defmethod menu-choices-for-presentation
