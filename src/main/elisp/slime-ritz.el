@@ -255,7 +255,6 @@
             (slime-insert-exception-filter exception-filter longest-lines)))))
 
 ;;;;; Major mode
-
 (define-derived-mode slime-exception-filter-control-mode fundamental-mode
   "ExceptionFilters"
   "SLIME Exception Filter Control Panel Mode.
@@ -270,7 +269,8 @@
   ("d" 'slime-exception-filter-disable)
   ("e" 'slime-exception-filter-enable)
   ("g" 'slime-update-exception-filters-buffer)
-  ("k" 'slime-exception-filter-kill))
+  ("k" 'slime-exception-filter-kill)
+  ("s" 'slime-save-exception-filters))
 
 (defun slime-exception-filter-kill ()
   (interactive)
@@ -289,6 +289,14 @@
   (let ((id (get-text-property (point) 'exception-filter-id)))
     (slime-eval-async `(swank:exception-filter-enable ,id)))
   (call-interactively 'slime-update-exception-filters-buffer))
+
+(defun slime-save-exception-filters ()
+  "Save current exception filters"
+  (interactive)
+  (slime-eval-async `(swank:save-exception-filters)
+    (lambda (_)
+      (message "Exception filters saved")))
+  nil)
 
 (def-slime-selector-method ?f
   "SLIME Filter exceptions buffer"

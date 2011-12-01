@@ -101,6 +101,9 @@ corresponding attribute values per thread."
   (debug/exception-filter-disable connection exception-filter-id)
   nil)
 
+(defslimefn save-exception-filters [connection]
+  (connection/spit-exception-filters connection))
+
 ;;; javadoc
 (defslimefn javadoc-local-paths
   [connection & paths]
