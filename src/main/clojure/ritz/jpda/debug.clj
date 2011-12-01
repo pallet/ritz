@@ -415,7 +415,8 @@ otherwise pass it on."
      (->
       filter
       (update-in [:location] str)
-      (update-in [:catch-location] str)))
+      (update-in [:catch-location] str)
+      (update-in [:message] str)))
    (:exception-filters connection)))
 
 (defn exception-filter-kill
@@ -578,6 +579,13 @@ otherwise pass it on."
   (swap! connection update-in [:exception-filters] conj
          {:type exception-type :enabled true}))
 
+(defn ignore-exception-message
+  "Add the specified exception to the connection's never-break-exceptions set."
+  [connection exception-message]
+  (logging/trace "Adding %s to never-break-exceptions" exception-message)
+  (swap! connection update-in [:exception-filters] conj
+         {:message exception-message :enabled true}))
+
 (defn make-restart
   "Make a restart map.
    Contains
@@ -733,11 +741,20 @@ otherwise pass it on."
                (logging/trace "restart Quiting to previous level")
                (quit-level connection))))
           (make-restart
-           :abort "IGNORE" "Do not enter debugger for this exception type"
+           :ignore-type "IGNORE" "Do not enter debugger for this exception type"
            (fn [connection]
              (logging/trace "restart Ignoring exceptions")
              (ignore-exception-type
               connection (.. exception exception referenceType name))
+             (continue-level connection)))
+          (make-restart
+           :ignore-message "IGNORE-MSG"
+           "Do not enter debugger for this exception message"
+           (fn [connection]
+             (logging/trace "restart Ignoring exceptions")
+             (ignore-exception-message
+              connection
+              (jdi-clj/exception-message @(:vm-context @connection) exception))
              (continue-level connection)))])
         ;; Never break on this exception at this catch location
         ;; Never break on this exception at this throw location
@@ -1115,20 +1132,24 @@ otherwise pass it on."
 ;; should not be considered as "caught".
 
 (defn break-for?
-  [connection exception-type location-name catch-location-name]
+  [connection exception-type location-name catch-location-name
+   exception-message]
   (letfn [(equal-or-matches? [expr value]
             (logging/trace "checking equal-or-matches? %s %s" expr value)
             (cond
              (string? expr) (= expr value)
              :else (re-matches expr value)))
-          (matches? [{:keys [type location catch-location enabled] :as filter}]
+          (matches? [{:keys [type location catch-location enabled message]
+                      :as filter}]
             (and
              enabled
              (or (not type) (= type exception-type))
              (or (not location)
                  (equal-or-matches? location location-name))
              (or (not catch-location)
-                 (equal-or-matches? catch-location catch-location-name))))]
+                 (equal-or-matches? catch-location catch-location-name))
+             (or (not message)
+                 (equal-or-matches? message exception-message))))]
     (not (some matches? (:exception-filters @connection)))))
 
 (defn break-for-exception?
@@ -1145,7 +1166,10 @@ otherwise pass it on."
         "break-for-exception? %s %s" catch-location-name location-name)
      (or (not catch-location)
          (break-for?
-          connection exception-type location-name catch-location-name))))
+          connection
+          exception-type location-name catch-location-name
+          (jdi-clj/exception-message
+           @(:vm-context @connection) exception-event)))))
 
 (defn connection-and-id-from-thread
   "Walk the stack frames to find the eval-for-emacs call and extract
