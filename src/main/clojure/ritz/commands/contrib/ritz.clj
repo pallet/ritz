@@ -73,8 +73,8 @@ corresponding attribute values per thread."
 (defslimefn quit-exception-filter-browser [connection])
 
 (defn ^{:private true} exception-filter-data-fn
-  [i {:keys [type location catch-location enabled]}]
-  (list i type location catch-location enabled))
+  [i {:keys [type location catch-location message enabled]}]
+  (list i type location catch-location message enabled))
 
 (defslimefn list-exception-filters [connection]
   "Return a list
@@ -83,7 +83,7 @@ LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
   [connection]
   (let [filters (debug/exception-filter-list @connection)
-        labels '(:id :type :location :catch-location :enabled)]
+        labels '(:id :type :location :catch-location :message :enabled)]
     (cons labels (map exception-filter-data-fn (range) filters))))
 
 (defslimefn exception-filter-kill
@@ -100,6 +100,9 @@ corresponding attribute values per thread."
   [connection exception-filter-id]
   (debug/exception-filter-disable connection exception-filter-id)
   nil)
+
+(defslimefn save-exception-filters [connection]
+  (connection/spit-exception-filters connection))
 
 ;;; javadoc
 (defslimefn javadoc-local-paths

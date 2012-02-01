@@ -16,6 +16,7 @@
    [ritz.repl-utils.sys :as sys]
    [ritz.repl-utils.trace :as trace]
    [ritz.swank.core :as core]
+   [ritz.swank.indent :as indent]
    [ritz.swank.messages :as messages]
    [ritz.swank.utils :as utils]
    [clojure.string :as string])
@@ -78,13 +79,16 @@
 
 (defslimefn listener-eval [connection form]
   (logging/trace "listener-eval %s" form)
-  (let [[result exception] (eval-form connection form)]
+  (let [[result exception] (eval-form
+                            connection
+                            (string/replace
+                             form "#.(swank:" "(ritz.swank.commands/"))]
     (logging/trace "listener-eval: %s %s" result exception)
     (if exception
       (do
         (.printStackTrace exception)
         [:ritz.swank/abort exception])
-      (connection/send-to-emacs connection (messages/repl-result result)))))
+      ((:send-repl-results-function @connection) connection [result]))))
 
 (defmacro with-out-str-and-value
   [& body]
@@ -147,7 +151,7 @@
   [file-name]
   (let [start (System/nanoTime)]
     (try
-      (let [ret (clojure.core/load-file file-name)
+      (let [ret (or (clojure.core/load-file file-name) file-name)
             delta (- (System/nanoTime) start)]
         (messages/compilation-result nil ret (secs-for-ns delta)))
       (catch Throwable t
@@ -419,3 +423,8 @@ corresponding attribute values per thread."
 
 (defslimefn quit-thread-browser [connection]
   (reset! thread-list []))
+
+(defslimefn update-indentation-information
+  [connection]
+  (indent/perform-indentation-update connection true)
+  nil)

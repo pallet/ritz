@@ -103,7 +103,13 @@ Thread
   [event]
   (let [event-str (.toString event)]
     (or (.startsWith event-str "ExceptionEvent@java.net.URLClassLoader")
-        (.startsWith event-str "ExceptionEvent@clojure.lang.RT"))))
+        (.startsWith event-str "ExceptionEvent@java.lang.Class")
+        (.startsWith event-str "ExceptionEvent@clojure.lang.RT")
+        (.startsWith event-str "ExceptionEvent@com.sun.xml.internal")
+        (.startsWith event-str "ExceptionEvent@sun.reflect.generics.parser")
+        (.startsWith event-str "ExceptionEvent@sun.net.www")
+        (.startsWith
+         event-str "ExceptionEvent@com.sun.org.apache.xerces.internal"))))
 
 (defn handle-event-set
   "NB, this resumes the event-set, so you will need to suspend within
@@ -176,7 +182,8 @@ Thread
 
 (defn string-value
   [^StringReference value]
-  (.value value))
+  ;; create a copy of the string to prevent pinning of string in client vm
+  (str (.value value)))
 
 (defn object-reference-type-name
   [^ObjectReference obj-ref]

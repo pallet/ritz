@@ -17,8 +17,15 @@
   [result id]
   `(:return (:ok ~result) ~id))
 
-(defn repl-result [val]
-  `(:write-string ~(str (pr-str val) "\n") :repl-result))
+
+(defn default-repl-result [val {:keys [terminator] :or {terminator "\n"}}]
+  `(:write-string ~(str (pr-str val) terminator) :repl-result))
+
+(defn repl-result [val & {:keys [terminator] :as options}]
+  (default-repl-result val options))
+
+(defn write-string [val & {:keys [terminator] :or {terminator "\n"}}]
+  `(:write-string ~(str val terminator) :repl-result))
 
 (defn connection-info
   [pid clojure-version ns-name protocol-version
@@ -156,7 +163,7 @@ From slime-goto-source-location docstring:
   [notes result duration-s]
   `(:compilation-result
     ~(list* (map compiler-message notes))
-    ~(pr-str result)
+    ~(when result (pr-str result))
     ~duration-s))
 
 (defn describe
@@ -164,3 +171,17 @@ From slime-goto-source-location docstring:
   (logging/trace "messages/describe %s" (pr-str options))
   (list :designator symbol-name
         type (str arglists " " doc)))
+
+(defn presentation-start
+  [id]
+  (logging/trace "messages/presentation-start %s" id)
+  (list :presentation-start id :repl-result))
+
+(defn presentation-end
+  [id]
+  (logging/trace "messages/presentation-end %s" id)
+  (list :presentation-end id :repl-result))
+
+(defn eval-no-wait
+  [form]
+  `(:eval-no-wait ~(str form)))

@@ -113,6 +113,23 @@
     [(java.io.PushbackReader. (java.io.InputStreamReader. in))
      out-to-in request-pending]))
 
+(defn read-exception-filters
+  []
+  (let [filter-file (java-io/file ".ritz-exception-filters")]
+    (when (.exists filter-file)
+      (read-string (slurp filter-file)))))
+
+(defn spit-exception-filters
+  [connection]
+  (let [filter-file (java-io/file ".ritz-exception-filters")]
+    (spit filter-file (pr-str (:exception-filters @connection)))))
+
+(def default-exception-filters
+  [{:type "clojure.lang.LockingTransaction$RetryEx" :enabled true}
+   {:type "com.google.inject.internal.ErrorsException" :enabled true}
+   {:catch-location #"com.sun.*" :enabled true}
+   {:catch-location #"sun.*" :enabled true}
+   {:catch-location #"ritz.commands.*" :enabled true}])
 
 (defn- initialise
   "Set up the initial state of an accepted connection."
@@ -132,15 +149,9 @@
                           :last-exception nil
                           :indent-cache-hash (atom nil)
                           :indent-cache (ref {})
-                          :exception-filters
-                          [{:type "clojure.lang.LockingTransaction$RetryEx"
-                            :enabled true}
-                           {:type "com.google.inject.internal.ErrorsException"
-                            :enabled true}
-                           {:catch-location #"com.sun.*" :enabled true}
-                           {:catch-location #"sun.*" :enabled true}
-                           {:catch-location #"ritz.commands.*"
-                            :enabled true}]})))]
+                          :send-repl-results-function nil
+                          :exception-filters (or (read-exception-filters)
+                                                 default-exception-filters)})))]
     ;;(when-not (:proxy-to options))
 
     (swap! connection

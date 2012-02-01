@@ -12,6 +12,11 @@
                                       (java.io.File.
                                        (or (:compile-path project)
                                            "./classes")))]
+             (when-let [is# ~(:repl-init-script project)]
+               (when (.exists (java.io.File. (str is#)))
+                 (load-file is#)))
+             (when-let [repl-init# '~(:repl-init project)]
+               (doto repl-init# require in-ns))
              (@(ns-resolve '~'ritz.socket-server '~'start)
               '~(merge
                  (zipmap

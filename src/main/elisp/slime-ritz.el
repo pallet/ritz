@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.2.0
+;; Version: 0.2.1
 ;; License: EPL
 
 (define-slime-contrib slime-ritz
@@ -255,7 +255,6 @@
             (slime-insert-exception-filter exception-filter longest-lines)))))
 
 ;;;;; Major mode
-
 (define-derived-mode slime-exception-filter-control-mode fundamental-mode
   "ExceptionFilters"
   "SLIME Exception Filter Control Panel Mode.
@@ -270,7 +269,8 @@
   ("d" 'slime-exception-filter-disable)
   ("e" 'slime-exception-filter-enable)
   ("g" 'slime-update-exception-filters-buffer)
-  ("k" 'slime-exception-filter-kill))
+  ("k" 'slime-exception-filter-kill)
+  ("s" 'slime-save-exception-filters))
 
 (defun slime-exception-filter-kill ()
   (interactive)
@@ -290,10 +290,28 @@
     (slime-eval-async `(swank:exception-filter-enable ,id)))
   (call-interactively 'slime-update-exception-filters-buffer))
 
+(defun slime-save-exception-filters ()
+  "Save current exception filters"
+  (interactive)
+  (slime-eval-async `(swank:save-exception-filters)
+    (lambda (_)
+      (message "Exception filters saved")))
+  nil)
+
 (def-slime-selector-method ?f
   "SLIME Filter exceptions buffer"
   (slime-list-exception-filters)
   slime-exception-filters-buffer-name)
+
+;;; Threads
+(slime-define-keys slime-thread-control-mode-map
+  ("r" 'slime-resume-vm-threads))
+
+(defun slime-resume-vm-threads ()
+  "Resume a suspended vm"
+  (interactive)
+  (call-interactively 'slime-resume-vm)
+  (call-interactively 'slime-update-threads-buffer))
 
 ;;; repl forms
 (defun slime-list-repl-forms ()

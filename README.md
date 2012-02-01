@@ -34,11 +34,11 @@ this package to use
 
 ### Lein/Cake Project
 
-Add `[ritz "0.2.0"]` to your project.clj `:dev-dependencies`.
+Add `[ritz "0.2.1"]` to your project.clj `:dev-dependencies`.
 
 ### Lein Plugin
 
-Run `lein plugin install ritz 0.2.0`.
+Run `lein plugin install ritz 0.2.1`.
 
 ### Maven Plugin
 
@@ -82,11 +82,12 @@ classpath. e.g. for lein:
 
 ## Usage
 
-To run with jpda:
+To run ritz with debugging capabilities (notice that it will need to spawn an
+extra JVM process):
 
     lein ritz
 
-To run without jpda:
+To run ritz with no debugging capabilities:
 
     lein ritz 4005 localhost :server-ns ritz.repl
 
@@ -96,8 +97,8 @@ To run with a maven project:
 
 ### Breakpoints
 
-To set a breakpoint, eval `ritz.el` from src/main/elisp, put the cursor
-on the line where you want a breakpoint, and `M-x slime-line-breakpoint`.
+To set a breakpoint, put the cursor on the line where you want a breakpoint, and
+`M-x slime-line-breakpoint`.
 
 Note that breakpoints disappear on recompilation at the moment.
 
@@ -180,6 +181,6 @@ debugger to run in process.
 
 ## License
 
-Copyright (C) 2010, 2011 Hugo Duncan
+Copyright (C) 2010, 2011, 2012 Hugo Duncan
 
 Distributed under the Eclipse Public License.
