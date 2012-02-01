@@ -84,7 +84,7 @@
         (dosync (alter cache-ref into updates))
         (map second updates)))))
 
-(defn- perform-indentation-update
+(defn perform-indentation-update
   "Update the indentation cache in connection and update emacs.
    If force is true, then start again without considering the old cache."
   [connection force]
@@ -97,7 +97,7 @@
          connection
          (messages/indentation-update delta))))))
 
-(defn- sync-indentation-to-emacs
+(defn sync-indentation-to-emacs
   "Send any indentation updates to Emacs via emacs-connection"
   [connection]
   (perform-indentation-update

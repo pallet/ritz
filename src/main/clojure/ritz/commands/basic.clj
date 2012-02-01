@@ -16,6 +16,7 @@
    [ritz.repl-utils.sys :as sys]
    [ritz.repl-utils.trace :as trace]
    [ritz.swank.core :as core]
+   [ritz.swank.indent :as indent]
    [ritz.swank.messages :as messages]
    [ritz.swank.utils :as utils]
    [clojure.string :as string])
@@ -422,3 +423,8 @@ corresponding attribute values per thread."
 
 (defslimefn quit-thread-browser [connection]
   (reset! thread-list []))
+
+(defslimefn update-indentation-information
+  [connection]
+  (indent/perform-indentation-update connection true)
+  nil)
