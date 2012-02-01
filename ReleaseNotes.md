@@ -2,7 +2,7 @@
 
 Current release is 0.2.1.
 
-* 0.2.1
+## 0.2.1
 
 - Tweak remote-swank-port to try and reduce hangs on startup
 
@@ -30,7 +30,7 @@ Current release is 0.2.1.
 - Add processing of :repl-init and :repl-init-script to lein task
 
 
-* 0.2.0
+## 0.2.0
 
 - Update readme with section on exception filtering
 
@@ -71,7 +71,7 @@ Current release is 0.2.1.
 - Add pallet script to set up a dev environment for ritz
   Basic tmux, emacs, git install, with clone of ritz repo
 
-* 0.1.7
+## 0.1.7
 
 - Add missing require for clojure.main
 
@@ -89,7 +89,7 @@ Current release is 0.2.1.
 - Implement slime autodoc
 
 
-* 0.1.6
+## 0.1.6
 
 - Add debug/pprint-eval-string-in-frame
   This moves the pretty printing into the debugee
@@ -117,7 +117,7 @@ Current release is 0.2.1.
 
 - Fix return value of fuzzy-completions when no completions found
 
-* 0.1.5
+## 0.1.5
 
 - Add slime-javadoc-local-paths and slime-javadoc
   slime-javadoc-local-paths can be used to set paths to local javadoc.
@@ -136,17 +136,17 @@ Current release is 0.2.1.
 - Implement disassemble-form for slime-disassemble-symbol
   Enables disassembly of a function given its symbol
 
-* 0.1.4
+## 0.1.4
 
 - Fix broken lein swank plugin
 
-* 0.1.3
+## 0.1.3
 
-## Known Issues
+### Known Issues
 
 - Broken lein swank plugin
 
-## Changes
+### Changes
 
 - Add slime-disassemble to show bytecode for a frame
   When debugging it is sometimes useful to see the bytecode generated for a
@@ -176,7 +176,7 @@ Current release is 0.2.1.
 
 - Add autoload and keybinding for slime-line-breakpoint
 
-* 0.1.2
+## 0.1.2
 
 - Fix nth-part and last for inspector
 
@@ -186,10 +186,10 @@ Current release is 0.2.1.
 
 - Update 1.2.0 source jar requirements
 
-* 0.1.1
+## 0.1.1
 
 - Add support for clojure 1.2.1, and 1.3.0-master-SNAPSHOT.
 
-* 0.1.0
+## 0.1.0
 
 Initial release.
