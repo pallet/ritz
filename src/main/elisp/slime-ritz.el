@@ -303,6 +303,16 @@
   (slime-list-exception-filters)
   slime-exception-filters-buffer-name)
 
+;;; Threads
+(slime-define-keys slime-thread-control-mode-map
+  ("r" 'slime-resume-vm-threads))
+
+(defun slime-resume-vm-threads ()
+  "Resume a suspended vm"
+  (interactive)
+  (call-interactively 'slime-resume-vm)
+  (call-interactively 'slime-update-threads-buffer))
+
 ;;; repl forms
 (defun slime-list-repl-forms ()
   "List the source forms"
