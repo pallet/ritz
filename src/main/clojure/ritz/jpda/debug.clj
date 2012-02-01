@@ -140,10 +140,12 @@
                    ;; NB very important that this doesn't throw
                    ;; as that can cause hangs in the startup
                    `(when (find-ns '~'ritz.socket-server)
-                      (when-let [v# (resolve
-                                     '~'ritz.socket-server/acceptor-port)]
+                      (when-let [v# (ns-resolve
+                                     '~'ritz.socket-server
+                                     '~'acceptor-port)]
                         (when-let [a# (var-get v#)]
-                          (deref a#)))))]
+                          (when (instance? clojure.lang.Atom a#)
+                            (deref a#))))))]
       port
       (do
         (logging/trace "debug/remote-swank-port: no port yet ...")
