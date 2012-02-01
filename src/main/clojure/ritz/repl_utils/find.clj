@@ -72,11 +72,12 @@
 (defn find-source-path
   "Find source file or source string for specified source-path"
   [^String source-path]
-  (if (source-form-path? source-path)
-    (source-form-from-path source-path)
-    (if (.isAbsolute (File. source-path))
-      {:file source-path}
-      (find-resource source-path))))
+  (when source-path
+    (if (source-form-path? source-path)
+      (source-form-from-path source-path)
+      (if (.isAbsolute (File. source-path))
+        {:file source-path}
+        (find-resource source-path)))))
 
 (def ^{:private true
        :doc "Regex for extacting file and line from a compiler exception"}
