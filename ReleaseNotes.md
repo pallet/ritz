@@ -1,8 +1,36 @@
 # Release Notes
 
-Current release is 0.1.8.
+Current release is 0.2.1.
 
-* 0.1.8
+* 0.2.1
+
+- Tweak remote-swank-port to try and reduce hangs on startup
+
+- Add display of data in data carrying exceptions
+
+- Prevent exception when find-source-path is called with nil source-path
+
+- Add a shortcut for resuming suspended threads
+
+- Add update-indentation-information slime function
+
+- Enable filtering of exceptions on exception message
+
+- Enable saving and project specific initialisation of exception filters
+
+- Enable slime-presentations and slime-media
+
+- Correct instructions about breakpoint setting
+
+- Fix compilation result message
+  The slime compilation buffer should now work correctly
+
+- Add guard for incorrect level count
+
+- Add processing of :repl-init and :repl-init-script to lein task
+
+
+* 0.2.0
 
 - Update readme with section on exception filtering
 

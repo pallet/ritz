@@ -34,11 +34,11 @@ this package to use
 
 ### Lein/Cake Project
 
-Add `[ritz "0.2.0"]` to your project.clj `:dev-dependencies`.
+Add `[ritz "0.2.1"]` to your project.clj `:dev-dependencies`.
 
 ### Lein Plugin
 
-Run `lein plugin install ritz 0.2.0`.
+Run `lein plugin install ritz 0.2.1`.
 
 ### Maven Plugin
 
@@ -181,6 +181,6 @@ debugger to run in process.
 
 ## License
 
-Copyright (C) 2010, 2011 Hugo Duncan
+Copyright (C) 2010, 2011, 2012 Hugo Duncan
 
 Distributed under the Eclipse Public License.
