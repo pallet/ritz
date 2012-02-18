@@ -58,8 +58,9 @@
        "swank/eval-for-emacs: exception %s %s"
        (pr-str t)
        (helpers/stack-trace-string t))
-      (.printStackTrace t)
+      (.printStackTrace t) (flush)
       ;;(Thread/interrupted)
+      (connection/set-last-exception connection t)
       (connection/send-to-emacs connection (messages/abort id t))
       ;; (finally
       ;;  (connection/remove-pending-id connection id))

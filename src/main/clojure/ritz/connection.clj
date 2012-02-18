@@ -311,6 +311,12 @@
             (take 3 (conj history result))))
    :result-history))
 
+(defn set-last-exception
+  "Add an exception"
+  [connection e]
+  (swap! connection assoc :last-exception e)
+  nil)
+
 (defn connection-type
   [connection]
   (if (:proxy-to @connection)

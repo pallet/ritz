@@ -74,3 +74,9 @@
        (let [connection (atom {:pending #{}})]
          [(connection/request! connection "fred" 2)
           @connection]))))
+
+(deftest set-last-exception-test
+  (is (= {:last-exception :e}
+         (let [connection (atom {})]
+           (connection/set-last-exception connection :e)
+           @connection))))

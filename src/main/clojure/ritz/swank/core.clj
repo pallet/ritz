@@ -102,6 +102,7 @@
       (set! *2 (first history))
       (set! *1 value)))
   (when exception
+    (connection/set-last-exception connection exception)
     (set! *e exception)))
 
 (defn lines
