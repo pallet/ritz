@@ -14,11 +14,13 @@
     Writer OutputStreamWriter BufferedWriter PrintWriter StringWriter
     IOException)))
 
+(def default-announce-msg "Swank server listening on local port")
+
 (defn announce-port-to-out
   ([port msg]
-     (println msg port))
+     (println (or msg default-announce-msg) port))
   ([port]
-     (announce-port-to-out port "Swank server listening on local port")))
+     (announce-port-to-out port default-announce-msg)))
 
 (defn announce-port-to-file
   "Writes the given port number into a file."
