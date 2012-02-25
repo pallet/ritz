@@ -594,6 +594,22 @@ otherwise pass it on."
   (swap! connection update-in [:exception-filters] conj
          {:message exception-message :enabled true}))
 
+(defn ignore-exception-catch-location
+  "Add the specified exception catch location to the connection's
+   never-break-exceptions set."
+  [connection catch-location]
+  (logging/trace "Adding %s to never-break-exceptions" catch-location)
+  (swap! connection update-in [:exception-filters] conj
+         {:catch-location catch-location :enabled true}))
+
+(defn ignore-exception-location
+  "Add the specified exception throw location to the connection's
+   never-break-exceptions set."
+  [connection catch-location]
+  (logging/trace "Adding %s to never-break-exceptions" catch-location)
+  (swap! connection update-in [:exception-filters] conj
+         {:location catch-location :enabled true}))
+
 (defn make-restart
   "Make a restart map.
    Contains
@@ -788,16 +804,41 @@ otherwise pass it on."
              (ignore-exception-type
               connection (.. exception exception referenceType name))
              (continue-level connection)))
-          (make-restart
-           :ignore-message "IGNORE-MSG"
-           "Do not enter debugger for this exception message"
-           (fn [connection]
-             (logging/trace "restart Ignoring exceptions")
-             (ignore-exception-message
-              connection (:exception-message condition))
-             (continue-level connection)))])
-        ;; Never break on this exception at this catch location
-        ;; Never break on this exception at this throw location
+          (when-not (string/blank? (:exception-message condition))
+            (make-restart
+             :ignore-message "IGNORE-MSG"
+             "Do not enter debugger for this exception message"
+             (fn [connection]
+               (logging/trace "restart Ignoring exceptions")
+               (ignore-exception-message
+                connection (:exception-message condition))
+               (continue-level connection))))
+          (when-let [location (jdi/location-type-name
+                               (jdi/catch-location exception))]
+            (let [location (re-find #"[^\$]+" location)]
+              (make-restart
+               :ignore-message "IGNORE-CATCH"
+               (str
+                "Do not enter debugger for exceptions with catch location "
+                location ".*")
+               (fn [connection]
+                 (logging/trace "restart Ignoring exceptions")
+                 (ignore-exception-catch-location
+                  connection (re-pattern (str location ".*")))
+                 (continue-level connection)))))
+          (when-let [location (jdi/location-type-name
+                               (jdi/location exception))]
+            (let [location (re-find #"[^\$]+" location)]
+              (make-restart
+               :ignore-message "IGNORE-LOC"
+               (str
+                "Do not enter debugger for exceptions with throw location "
+                location ".*")
+               (fn [connection]
+                 (logging/trace "restart Ignoring exceptions")
+                 (ignore-exception-location
+                  connection (re-pattern (str location ".*")))
+                 (continue-level connection)))))])
         (filter
          identity
          [(when (pos? (connection/sldb-level connection))
