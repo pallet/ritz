@@ -54,7 +54,7 @@
   [connection-f port-file {:keys [announce join log-level]
                            :or {join true announce :default}
                            :as options}]
-  (logging/set-level (keyword (:log-level options)))
+  (logging/set-level (keyword (:log-level options :trace)))
   (logging/trace "socket-server/start-server")
   (logging/trace "*compile-path* %s" *compile-path*)
   (when *compile-path*

@@ -68,8 +68,6 @@
       (logging/trace
        (with-out-str (pprint/pprint (jdi/thread-groups (:vm vm-context)))))
 
-
-      (Thread/sleep 4000) ;; let swank start up
       (let [port (debug/remote-swank-port vm-context)]
         (logging/trace "proxy/connection-handler proxied server on %s" port)
         (if (= port (:port options))
@@ -94,11 +92,6 @@
             (logging/trace "proxy/connection-handler new-connection-hook ran")
             (debug/add-connection connection proxied-connection)
             (logging/trace "proxy/connection-handler connection added")
-
-            (debug/remote-condition-printer
-             vm-context (:control-thread vm-context))
-            (logging/trace
-             "proxy/connection-handler remote-condition-printer compiled")
             (debug/add-exception-event-request vm-context)
             (logging/trace
              "proxy/connection-handler exeception events requested")))))))

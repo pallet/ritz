@@ -15,7 +15,7 @@
     ObjectReference StringReference
     ThreadReference ThreadGroupReference
     ReferenceType Locatable Location StackFrame
-    Field LocalVariable)
+    Field LocalVariable Method ClassType)
    (com.sun.jdi.event
     VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent VMDeathEvent
     BreakpointEvent Event EventSet EventQueue)
@@ -109,7 +109,9 @@ Thread
         (.startsWith event-str "ExceptionEvent@sun.reflect.generics.parser")
         (.startsWith event-str "ExceptionEvent@sun.net.www")
         (.startsWith
-         event-str "ExceptionEvent@com.sun.org.apache.xerces.internal"))))
+         event-str "ExceptionEvent@com.sun.org.apache.xerces.internal")
+        (.startsWith
+         event-str "ExceptionEvent@com.google.inject.spi.InjectionPoint"))))
 
 (defn handle-event-set
   "NB, this resumes the event-set, so you will need to suspend within
@@ -199,12 +201,19 @@ Thread
 (defn invoke-method
   "Methods can only be invoked on threads suspended for exceptions.
    `args` is a sequence of remote object references."
-  [thread options class-or-object method args]
+  [^ThreadReference thread options class-or-object ^Method method args]
   ;; (logging/trace
   ;;  "jdi/invoke-method %s %s\nargs %s\noptions %s"
   ;;  class-or-object method (pr-str args) options)
   (logging/trace "jdi/invoke-method %s" method)
-  (.invokeMethod class-or-object thread method (or args []) options))
+  (let [args (java.util.ArrayList. (or args []))]
+    (cond
+      (instance? com.sun.jdi.ClassType class-or-object)
+      (.invokeMethod
+       ^ClassType class-or-object thread method args (int options))
+      (instance? com.sun.jdi.ObjectReference class-or-object)
+      (.invokeMethod
+       ^ObjectReference class-or-object thread method args (int options)))))
 
 ;;; classpath
 (defn classpath
@@ -593,15 +602,49 @@ Thread
        :source source-name
        :line line})))
 
+(defn save-exception-request-states
+  [vm]
+  (reduce
+   (fn [m r] (assoc m r (.isEnabled r)))
+   {}
+   (.. vm eventRequestManager exceptionRequests)))
+
+(defn disable-exception-request-states
+  [vm]
+  (doseq [r (.. vm eventRequestManager exceptionRequests)]
+    (.disable r)))
+
+(defn enable-exception-request-states
+  [vm]
+  (doseq [r (.. vm eventRequestManager exceptionRequests)]
+    (.enable r)))
+
+(defn restore-exception-request-states
+  [vm m]
+  (doseq [r (.. vm eventRequestManager exceptionRequests)]
+    (.setEnabled r (m r))))
+
+(defmacro with-disabled-exception-requests [[context] & body]
+  `(let [vm# (:vm ~context)
+         m# (save-exception-request-states vm#)]
+     (try
+       (disable-exception-request-states vm#)
+       ~@body
+       (finally
+        (enable-exception-request-states vm#)
+        ;; (restore-exception-request-states vm# m#)
+        ))))
+
 (defn exception-message
   "Provide a string with the details of the exception"
   [context ^ExceptionEvent event]
-  (when-let [msg (invoke-method
-                  (event-thread event)
-                  invoke-single-threaded
-                  (.exception event)
-                  (:exception-message context) [])]
-    (string-value msg)))
+  (with-disabled-exception-requests [context]
+    (when-let [msg (invoke-method
+                    (event-thread event)
+                    invoke-single-threaded
+                    (.exception event)
+                    (:exception-message context) [])]
+      (string-value msg))))
 
 (defn exception-event-string
   "Provide a string with the details of the exception"
