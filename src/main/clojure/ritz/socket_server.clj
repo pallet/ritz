@@ -14,8 +14,11 @@
     Writer OutputStreamWriter BufferedWriter PrintWriter StringWriter
     IOException)))
 
-(defn announce-port-to-out [port]
-  (println "Swank server listening on local port " port))
+(defn announce-port-to-out
+  ([port msg]
+     (println msg port))
+  ([port]
+     (announce-port-to-out port "Swank server listening on local port")))
 
 (defn announce-port-to-file
   "Writes the given port number into a file."
@@ -54,7 +57,8 @@
   [connection-f port-file {:keys [announce join log-level]
                            :or {join true announce :default}
                            :as options}]
-  (logging/set-level (keyword (:log-level options :trace)))
+  (logging/set-level (when-let [level (:log-level options)]
+                       (keyword level)))
   (logging/trace "socket-server/start-server")
   (logging/trace "*compile-path* %s" *compile-path*)
   (when *compile-path*
@@ -78,7 +82,7 @@
             (and (= announce :default)
                  (do
                    (announce-port-to-file port port-file)
-                   (announce-port-to-out port))))
+                   (announce-port-to-out port (:message options)))))
         [socket acceptor]
         (when join
           (.get acceptor)))
