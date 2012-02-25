@@ -21,6 +21,7 @@
            (doto repl-init# require in-ns))
          (@(ns-resolve '~'ritz.socket-server '~'start)
           '~(merge
+             (select-keys project [:jvm-opts])
              (zipmap
               (map read-string (keys opts))
               (map read-string (vals opts)))

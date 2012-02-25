@@ -93,12 +93,14 @@
 (defn launch-vm-with-swank
   "Launch and configure the vm for the debugee."
   [{:keys [port announce log-level classpath] :as options}]
-  (jdi-vm/launch-vm
+  (apply
+   jdi-vm/launch-vm
    (or classpath (jdi-vm/current-classpath))
    (vm-swank-main {:port port
                    :announce announce
                    :server-ns `(quote ritz.repl)
-                   :log-level (keyword log-level)})))
+                   :log-level (keyword log-level)})
+   (mapcat identity options)))
 
 (defn launch-vm
   "Launch and configure the vm for the debugee."

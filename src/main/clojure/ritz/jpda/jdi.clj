@@ -47,13 +47,19 @@
    sexp that will be passed to clojure.main.
 
    Returns an instance of VirtualMachine."
-  [classpath expr]
-  (let [launch-connector (connector :command-line)
-        arguments (.defaultArguments launch-connector)
-        main-args (.get arguments "main")]
-    (logging/trace "jdi/launch %s" expr)
-    (.setValue main-args (str "-cp " classpath " clojure.main -e \"" expr "\""))
-    (.launch launch-connector arguments)))
+  ([classpath expr options]
+     (let [launch-connector (connector :command-line)
+           arguments (.defaultArguments launch-connector)
+           main-args (.get arguments "main")
+           option-args (.get arguments "options")]
+       (logging/trace "jdi/launch %s" expr)
+       (.setValue
+        main-args
+        (str " -cp " classpath " clojure.main -e \"" expr "\""))
+       (.setValue option-args (string/join " " options))
+       (.launch launch-connector arguments)))
+  ([classpath expr]
+     (launch classpath expr "")))
 
 (defn interrupt-if-alive
   [^Thread thread]
