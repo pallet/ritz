@@ -25,5 +25,4 @@
   :local-repo-classpath true
   :repositories
   {"sonatype-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"
-   "sonatype" "https://oss.sonatype.org/content/repositories/releases/"}
-  :tasks [cake.tasks.ritz])
+   "sonatype" "https://oss.sonatype.org/content/repositories/releases/"})
