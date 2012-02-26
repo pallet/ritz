@@ -173,10 +173,30 @@
          (.getAbsolutePath file) (inc (count (.getAbsolutePath base))))
         file-path))))
 
+(defn compile-options
+  "Process compile options. These look like (:policy ((cl/debug . 3)))"
+  [options]
+  (when (and (seq options) (even? (count options)))
+    (let [{:keys [policy]} (apply hash-map options)]
+      {:debug (some #(= 'cl/debug (first %)) policy)})))
+
+(defmacro with-compile-options
+  {:indent 1}
+  [options & body]
+  (if-let [co (ns-resolve 'clojure.core '*compiler-options*)]
+    `(let [c-o# (compile-options ~options)]
+       (if (:debug c-o#)
+         (binding [*compiler-options*
+                   (assoc *compiler-options* :locals-clearing false)]
+           ~@body)
+         (do ~@body)))
+    `(do ~@body)))
+
 (defslimefn compile-file-for-emacs
   [connection file-name load? & compile-options]
   (when load?
-    (compile-file-for-emacs* file-name)))
+    (with-compile-options compile-options
+      (compile-file-for-emacs* file-name))))
 
 (defslimefn load-file [connection file-name]
   (pr-str (clojure.core/load-file file-name)))
@@ -187,7 +207,8 @@
         file (java.io.File. buffer-path)
         line (io/read-position-line file position)
         ret (binding [*ns* (or (io/guess-namespace file) *ns*)]
-              (compile/compile-region string buffer-path line))
+              (with-compile-options debug
+                (compile/compile-region string buffer-path line)))
         delta (- (System/nanoTime) start)]
     (messages/compilation-result nil ret (/ delta 1000000000.0))))
 
