@@ -14,7 +14,8 @@
    (symbol? kw-or-symbol) (when-let [var (try
                                            (ns-resolve
                                             (or namespace *ns*) kw-or-symbol)
-                                           (catch ClassNotFoundException _))]
+                                           (catch ClassNotFoundException _)
+                                           (catch RuntimeException _))]
                             (and var (:arglists (meta var))))
    :else nil))
 
