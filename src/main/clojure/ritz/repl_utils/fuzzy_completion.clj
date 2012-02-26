@@ -10,6 +10,7 @@
 
 (ns ritz.repl-utils.fuzzy-completion
   (:require
+   [clojure.string :as string]
    [ritz.repl-utils.clojure :as clj]
    [ritz.repl-utils.helpers :as helpers]))
 
@@ -120,7 +121,7 @@
     (cond
       (:var matching)
       [(str (:symbol matching))
-       (cond (nil? user-ns-name) nil
+       (cond (clojure.string/blank? user-ns-name) nil
              :else (:ns-name matching))]
       :else
       [""
@@ -161,6 +162,18 @@
             (FuzzyMatching.
              nil ns ns-sym (str ns-sym) score match-result nil))))))
 
+(defn- fuzzy-find-matching-imports
+  [string ns]
+  (let [compute (partial compute-highest-scoring-completion string)]
+    (->>
+     (ns-imports ns)
+     (map (fn [[ns-sym full-sym]]
+            (conj (compute (str ns-sym)) full-sym ns-sym)))
+     (filter (fn [[match-result & _]] (not-empty match-result)))
+     (map (fn [[match-result score ns ns-sym]]
+            (FuzzyMatching.
+             ns nil ns-sym nil score match-result nil))))))
+
 (defn fuzzy-generate-matchings
   [string default-ns timed-out?]
   (let [take* (partial take-while (fn [_] (not (timed-out?))))
@@ -176,6 +189,8 @@
              (take* (fuzzy-find-matching-vars
                      designator ns var-filter external-only?))))
         find-nss (comp take* fuzzy-find-matching-nss)
+        find-imports (fn [designator ns]
+                       (take* (fuzzy-find-matching-imports designator ns)))
         make-duplicate-var-filter
         (fn [fuzzy-ns-matchings]
           (let [nss (set (map :ns-name fuzzy-ns-matchings))]
@@ -197,37 +212,41 @@
                             (+ (:score parent-package-matching)
                                (:score m)))))
                matchings))]
-    (sort matching-greater
-          (cond
-            (nil? parsed-ns-name)
-            (concat
-             (find-vars parsed-symbol-name (the-ns default-ns))
-             (find-nss parsed-symbol-name))
-            ;; (apply concat
-            ;;        (let [ns *ns*]
-            ;;          (pcalls #(binding [*ns* ns]
-            ;;                     (find-vars parsed-symbol-name
-            ;;                                (maybe-ns default-ns)))
-            ;;                  #(binding [*ns* ns]
-            ;;                     (find-nss parsed-symbol-name)))))
+    (->>
+     (cond
+       (nil? parsed-ns-name)
+       (concat
+        (find-vars parsed-symbol-name (the-ns default-ns))
+        (find-nss parsed-symbol-name)
+        (find-imports parsed-symbol-name (the-ns default-ns)))
+       ;; (apply concat
+       ;;        (let [ns *ns*]
+       ;;          (pcalls #(binding [*ns* ns]
+       ;;                     (find-vars parsed-symbol-name
+       ;;                                (maybe-ns default-ns)))
+       ;;                  #(binding [*ns* ns]
+       ;;                     (find-nss parsed-symbol-name)))))
 
-            (= "" parsed-ns-name)
-            (find-vars parsed-symbol-name (the-ns default-ns))
+       (= "" parsed-ns-name)
+       (concat
+        (find-vars parsed-symbol-name (the-ns default-ns))
+        (find-imports parsed-symbol-name (the-ns default-ns)))
 
-            :else
-            (let [found-nss (find-nss parsed-ns-name)
-                  find-vars1 (fn [ns-matching]
-                               (fix-up
-                                (find-vars
-                                 parsed-symbol-name
-                                 (:ns ns-matching)
-                                 (make-duplicate-var-filter
-                                  (filter
-                                   #(= ns-matching (:ns-name %))
-                                   found-nss))
-                                 true)
-                                ns-matching))]
-              (concat
-               (apply concat
-                      (map find-vars1 (sort matching-greater found-nss)))
-               found-nss))))))
+       :else
+       (let [found-nss (find-nss parsed-ns-name)
+             find-vars1 (fn [ns-matching]
+                          (fix-up
+                           (find-vars
+                            parsed-symbol-name
+                            (:ns ns-matching)
+                            (make-duplicate-var-filter
+                             (filter
+                              #(= ns-matching (:ns-name %))
+                              found-nss))
+                            true)
+                           ns-matching))]
+         (concat
+          (apply concat
+                 (map find-vars1 (sort matching-greater found-nss)))
+          found-nss)))
+     (sort matching-greater))))
