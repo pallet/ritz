@@ -57,8 +57,8 @@
   [symbol-string]
   (when (.contains symbol-string ".")
     (if (.contains symbol-string "$")
-      @class-browse/nested-classes
-      @class-browse/top-level-classes)))
+      class-browse/nested-classes
+      class-browse/top-level-classes)))
 
 (defn resolve-class
   "Attempts to resolve a symbol into a java Class. Returns nil on failure."
