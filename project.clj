@@ -18,5 +18,7 @@
                                  [ch.qos.logback/logback-classic "1.0.0"]
                                  [vmfest "0.2.3"]
                                  [org.clojure/clojure-contrib "1.2.0"]]}}
+  :jvm-opts ["-Dclojure.compile.clear-locals=false"
+             "-Djava.awt.headless=true"]
   :repositories
   {"sonatype" "https://oss.sonatype.org/content/repositories/releases/"})

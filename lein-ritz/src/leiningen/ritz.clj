@@ -8,9 +8,7 @@
                        (apply hash-map (map read-string opts)))))
 
 (defn ritz-form [project port host opts]
-  `(do (require '~'ritz.socket-server)
-       (import '~'java.io.File)
-       (binding [*compile-path* ~(.getAbsolutePath
+  `(do (binding [*compile-path* ~(.getAbsolutePath
                                   (java.io.File.
                                    (or (:compile-path project)
                                        "./classes")))]
@@ -19,6 +17,7 @@
              (load-file is#)))
          (when-let [repl-init# '~(:repl-init project)]
            (doto repl-init# require in-ns))
+         (require '~'ritz.socket-server)
          (@(ns-resolve '~'ritz.socket-server '~'start)
           '~(merge
              (select-keys project [:jvm-opts])
