@@ -25,25 +25,36 @@
 
 (def ns-tracker (atom {}))
 
+;; this is a giant hack to track the resulting namespace
 (defn eval-region
   "Evaluate string, and return the results of the last form and the last form."
   [string file line]
-  (let [last-form
+  (let [[has-ns last-form]
         (with-open [rdr (reader string line)]
-          (loop [form (read rdr false rdr) last-form nil]
+          (loop [form (read rdr false rdr)
+                 last-form nil
+                 has-ns nil]
             (if (= form rdr)
-              last-form
-              (recur (read rdr false rdr) form))))]
+              [has-ns last-form]
+              (recur
+               (read rdr false rdr)
+               form
+               (or has-ns
+                   (and
+                    (coll? form)
+                    (#{`ns 'ns} (first form))))))))]
     (let [s (gensym "evalns")
           result [(binding [*compile-path* @compile-path]
                     (compile-region
-                     (str
-                      "(try " string \newline
-                      "(finally "
-                      `(swap!
-                        ritz.repl-utils.compile/ns-tracker
-                        assoc '~s (ns-name *ns*))
-                      "))")
+                     (if has-ns
+                       string
+                       (str
+                        "(try " string \newline
+                        "(finally "
+                        `(swap!
+                          ritz.repl-utils.compile/ns-tracker
+                          assoc '~s (ns-name *ns*))
+                        "))"))
                      file line))
                   last-form]]
       (when-let [ns (get @ns-tracker s)]
@@ -51,7 +62,8 @@
         (in-ns ns))
       result)))
 
-;; For some reason, this does not source and line info on the generated code.
+;; For some reason, this does not source and line info on the generated code,
+;; but would be much nicer code for tracking namespaces.
 ;;
 ;; (defn eval-region
 ;;   "Evaluate string, and return the results of the last form and the last form."
