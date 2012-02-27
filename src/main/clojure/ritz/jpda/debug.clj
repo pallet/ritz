@@ -338,8 +338,6 @@ otherwise pass it on."
   [thread frame-number]
   (when-let [frame (nth (.frames thread) frame-number nil)]
     (let [location (.location frame)]
-      (println "f-s-l s" (jdi/location-source-path location))
-      (println "f-s-l l" (jdi/location-line-number location))
       [(find/find-source-path (jdi/location-source-path location))
        {:line (jdi/location-line-number location)}])))
 

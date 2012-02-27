@@ -72,7 +72,6 @@
 (defn find-source-path
   "Find source file or source string for specified source-path"
   [^String source-path]
-  (println "f-s-p" source-path)
   (when source-path
     (if (source-form-path? source-path)
       (source-form-from-path source-path)
