@@ -151,7 +151,8 @@
                           :indent-cache (ref {})
                           :send-repl-results-function nil
                           :exception-filters (or (read-exception-filters)
-                                                 default-exception-filters)})))]
+                                                 default-exception-filters)
+                          :namespace 'user})))]
     ;;(when-not (:proxy-to options))
 
     (swap! connection
@@ -327,3 +328,11 @@
   [connection]
   (when-let [vm-context (:vm-context @connection)]
     @vm-context))
+
+(defn set-namespace
+  [connection ns]
+  (swap! connection assoc :namespace ns))
+
+(defn current-namespace
+  [connection]
+  (:namespace @connection))

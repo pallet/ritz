@@ -103,7 +103,8 @@
                         *3 (first (nnext last-values))
                         *e (:last-exception @connection)
                         *out* (:writer-redir @connection)
-                        *in* (:input-redir @connection)]
+                        *in* (:input-redir @connection)
+                        *ns* (:namespace @connection)]
                 (try
                   (eval-for-emacs connection form-string package id)
                   (finally (flush)))))

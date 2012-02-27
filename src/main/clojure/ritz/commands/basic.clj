@@ -79,6 +79,7 @@
 
 (defslimefn listener-eval [connection form]
   (logging/trace "listener-eval %s" form)
+  (in-ns (connection/current-namespace connection))
   (let [[result exception] (eval-form
                             connection
                             (string/replace
@@ -88,7 +89,13 @@
       (do
         (.printStackTrace exception)
         [:ritz.swank/abort exception])
-      ((:send-repl-results-function @connection) connection [result]))))
+      (do
+        (when-not (= (connection/current-namespace connection) (ns-name *ns*))
+          (connection/send-to-emacs
+           connection
+           (messages/new-package (str (ns-name *ns*)) (str (ns-name *ns*))))
+          (connection/set-namespace connection (ns-name *ns*)))
+        ((:send-repl-results-function @connection) connection [result])))))
 
 (defmacro with-out-str-and-value
   [& body]
@@ -287,6 +294,7 @@
 (defslimefn set-package [connection name]
   (let [ns (utils/maybe-ns name)]
     (in-ns (ns-name ns))
+    (connection/set-namespace connection (ns-name ns))
     (list (str (ns-name ns)) (str (ns-name ns)))))
 
 ;;;; Tracing

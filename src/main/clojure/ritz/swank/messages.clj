@@ -185,3 +185,7 @@ From slime-goto-source-location docstring:
 (defn eval-no-wait
   [form]
   `(:eval-no-wait ~(str form)))
+
+(defn new-package
+  [ns prompt]
+  `(:new-package ~ns ~prompt))
