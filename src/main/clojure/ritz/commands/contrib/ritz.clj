@@ -20,6 +20,8 @@
   [connection namespace filename line]
   (let [context (:vm-context @connection)
         n (count (:breakpoints @context))
+        filename (when filename
+                   (string/replace filename #" \(.*jar\)" ""))
         new-context (swap!
                      context debug/line-breakpoint namespace filename line)]
     (format

@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.2.1
+;; Version: 0.3.0-SNAPSHOT
 ;; License: EPL
 
 (define-slime-contrib slime-ritz
@@ -13,7 +13,8 @@
   (:authors "Hugo Duncan <hugo_duncan@yahoo.com>")
   (:license "EPL")
   (:on-load
-   (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)))
+   (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)
+   (define-key java-mode-map "\C-c\C-x\C-b" 'slime-java-line-breakpoint)))
 
 (defun slime-line-breakpoint ()
   "Set a breakpoint at the current line"
@@ -21,6 +22,12 @@
   (slime-eval-with-transcript
    `(swank:line-breakpoint
      ,(slime-current-package) ,(buffer-name) ,(line-number-at-pos))))
+
+(defun slime-java-line-breakpoint ()
+  "Set a breakpoint at the current line in java"
+  (interactive)
+  (slime-eval-with-transcript
+   `(swank:line-breakpoint nil ,(buffer-name) ,(line-number-at-pos))))
 
 ;;;; Breakpoints
 (defvar slime-breakpoints-buffer-name (slime-buffer-name :breakpoints))

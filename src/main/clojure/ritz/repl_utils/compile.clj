@@ -4,7 +4,8 @@
    java.io.StringReader
    java.io.File
    java.util.zip.ZipFile
-   clojure.lang.LineNumberingPushbackReader))
+   clojure.lang.LineNumberingPushbackReader
+   java.io.LineNumberReader))
 
 (def compile-path (atom nil))
 
@@ -12,7 +13,7 @@
   "This is a hack to get a line numbering pushback reader that
    doesn't start at line 1"
   [string line]
-  (let [rdr1 (proxy [LineNumberingPushbackReader] ((StringReader. string)))]
+  (let [rdr1 (LineNumberReader. (StringReader. string))]
     (proxy [LineNumberingPushbackReader] (rdr1)
       (getLineNumber [] (+ line (.getLineNumber rdr1) -1)))))
 
