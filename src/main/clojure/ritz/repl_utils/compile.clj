@@ -23,59 +23,33 @@
   (with-open [rdr (reader string line)]
     (clojure.lang.Compiler/load rdr file (.getName (File. file)))))
 
-(def ns-tracker (atom {}))
-
-;; this is a giant hack to track the resulting namespace
 (defn eval-region
   "Evaluate string, and return the results of the last form and the last form."
   [string file line]
-  (let [[has-ns last-form]
-        (with-open [rdr (reader string line)]
-          (loop [form (read rdr false rdr)
+  ;; We can't use load, since that binds current namespace, so we would lose
+  ;; namespace tracking. This is essentially clojure.lang.Compiler/load without
+  ;; that namespace binding.
+  (with-open [rdr (reader string line)]
+    (letfn [(set-before []
+              (.. clojure.lang.Compiler/LINE_BEFORE
+                  (set (Integer. (.getLineNumber rdr)))))
+            (set-after []
+              (.. clojure.lang.Compiler/LINE_AFTER
+                  (set (Integer. (.getLineNumber rdr)))))]
+      ;; since these vars aren't named, we can not use `binding`
+      (push-thread-bindings
+       {clojure.lang.Compiler/LINE_BEFORE (Integer. line)
+        clojure.lang.Compiler/LINE_AFTER (Integer. line)})
+      (try
+        (binding [*file* file *source-path* (.getName (File. file))]
+          (loop [form (read rdr false ::eof)
                  last-form nil
-                 has-ns nil]
-            (if (= form rdr)
-              [has-ns last-form]
-              (recur
-               (read rdr false rdr)
-               form
-               (or has-ns
-                   (and
-                    (coll? form)
-                    (#{`ns 'ns} (first form))))))))]
-    (let [s (gensym "evalns")
-          result [(binding [*compile-path* @compile-path]
-                    (compile-region
-                     (if has-ns
-                       string
-                       (str
-                        "(try " string \newline
-                        "(finally "
-                        `(swap!
-                          ritz.repl-utils.compile/ns-tracker
-                          assoc '~s (ns-name *ns*))
-                        "))"))
-                     file line))
-                  last-form]]
-      (when-let [ns (get @ns-tracker s)]
-        (swap! ns-tracker dissoc s)
-        (in-ns ns))
-      result)))
-
-;; For some reason, this does not source and line info on the generated code,
-;; but would be much nicer code for tracking namespaces.
-;;
-;; (defn eval-region
-;;   "Evaluate string, and return the results of the last form and the last form."
-;;   [string file line]
-;;   (println file line)
-;;   (with-open [rdr (reader string line)]
-;;     (binding [*file* file *source-path* (.getName (File. file))]
-;;       (loop [form (read rdr false ::eof)
-;;              last-form nil
-;;              res nil]
-;;         (if (= form ::eof)
-;;           [res last-form]
-;;           (let [res (eval form)
-;;                 next-form (read rdr false ::eof)]
-;;             (recur next-form form res)))))))
+                 res nil]
+            (if (= form ::eof)
+              [res last-form]
+              (let [_ (set-after)
+                    res (eval form)
+                    _ (set-before)
+                    next-form (read rdr false ::eof)]
+                (recur next-form form res)))))
+        (finally (pop-thread-bindings))))))

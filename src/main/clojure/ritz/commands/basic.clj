@@ -52,7 +52,7 @@
   (compile/eval-region
    string
    (find/source-form-path (connection/request-id connection))
-   0))
+   1))
 
 (defn interactive-eval* [connection string]
   (logging/trace "basic/interactive-eval* %s" string)
