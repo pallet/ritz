@@ -1420,7 +1420,10 @@ otherwise pass it on."
           [(conj output s) location]
           [(->
             output
-            (conj (format "%s:%s" (:function op) (:line op)))
+            (conj (format
+                   "%s:%s"
+                   (or (:source-path op) (:source op) (:function op))
+                   (:line op)))
             (conj s))
            (select-keys op [:function :line])])))
     [[] {}]

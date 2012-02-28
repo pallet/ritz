@@ -654,15 +654,18 @@ Thread
   (let [declaring-type (location-type-name location)
         method (location-method-name location)
         line (location-line-number location)
-        source-name (or (location-source-name location)
-                        (location-source-path location)
-                        "UNKNOWN")]
-    (if (and (= method "invoke") source-name (.endsWith source-name ".clj"))
+        source-name (or (location-source-name location) "UNKNOWN")
+        source-path (or (location-source-path location) "UNKNOWN")]
+    (if (and (= method "invoke") source-name
+             (or (.endsWith source-name ".clj")
+                 (.startsWith source-name "SOURCE_FORM_")))
       {:function (and declaring-type (unmunge-clojure declaring-type))
        :source source-name
+       :source-path source-path
        :line line}
       {:function (format "%s.%s" declaring-type method)
        :source source-name
+       :source-path source-path
        :line line})))
 
 (defn exception-message
