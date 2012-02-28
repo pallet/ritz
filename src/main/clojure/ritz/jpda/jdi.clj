@@ -106,8 +106,8 @@ Thread
   (logging/trace "Unhandled event: %s" event))
 
 (defn silent-event?
-  [event]
-  (let [event-str (.toString event)]
+  [^Event event]
+  (let [event-str (try (.toString event) (catch java.lang.InternalError _))]
     (or (.startsWith event-str "ExceptionEvent@java.net.URLClassLoader")
         (.startsWith event-str "ExceptionEvent@java.lang.Class")
         (.startsWith event-str "ExceptionEvent@clojure.lang.RT")
@@ -125,7 +125,7 @@ Thread
   [^EventQueue queue connected context f]
   (let [^EventSet event-set (.remove queue)]
     (try
-      (doseq [event event-set]
+      (doseq [^Event event event-set]
         (try
           (if (silent-event? event)
             (logging/trace-str "!")
@@ -227,7 +227,8 @@ Thread
        (disable-exception-request-states vm#)
        ~@body
        (finally
-        (restore-exception-request-states vm# m#)))))
+        ;; (restore-exception-request-states vm# m#)
+        (enable-exception-request-states vm#)))))
 
 (def invoke-multi-threaded 0)
 (def invoke-single-threaded ObjectReference/INVOKE_SINGLE_THREADED)
@@ -351,6 +352,74 @@ Thread
        (vec file-ns))
     (namespace-classes vm (first file-ns))))
 
+
+;;; Threads
+(def thread-states
+  {ThreadReference/THREAD_STATUS_MONITOR :monitor
+   ThreadReference/THREAD_STATUS_NOT_STARTED :not-started
+   ThreadReference/THREAD_STATUS_RUNNING :running
+   ThreadReference/THREAD_STATUS_SLEEPING :sleeping
+   ThreadReference/THREAD_STATUS_UNKNOWN :unknown
+   ThreadReference/THREAD_STATUS_WAIT :wait
+   ThreadReference/THREAD_STATUS_ZOMBIE :zombie})
+
+(defn thread-data
+  "Returns thread data"
+  [^ThreadReference thread]
+  {:id (.uniqueID thread)
+   :name (.name thread)
+   :status (thread-states (.status thread))
+   :suspend-count (.suspendCount thread)
+   :suspended? (.isSuspended thread)
+   :at-breakpoint? (.isAtBreakpoint thread)})
+
+(defn threads
+  [^VirtualMachine vm]
+  (when vm (.allThreads vm)))
+
+(defn thread-groups
+  "Build a thread group tree"
+  [^VirtualMachine vm]
+  (letfn [(thread-group-f [^ThreadGroupReference group]
+            [{:name (.name group) :id (.uniqueID group)}
+             (map thread-group-f (.threadGroups group))
+             (map thread-data (.threads group))])]
+    (map thread-group-f (.topLevelThreadGroups vm))))
+
+(defn threads-in-group
+  "Returns all threads under a named group"
+  [^VirtualMachine vm ^String group-name]
+  (letfn [(thread-group-f [^ThreadGroupReference group]
+            (concat
+             (mapcat thread-group-f (.threadGroups group))
+             (.threads group)))
+          (thread-filter-f [^ThreadGroupReference group]
+            (if (= (.name group) group-name)
+              (thread-group-f group)
+              (mapcat thread-filter-f (.threadGroups group))))]
+    (mapcat thread-filter-f (.topLevelThreadGroups vm))))
+
+(defn suspend-thread
+  "Suspend a thread reference"
+  [^ThreadReference thread]
+  (.suspend thread))
+
+(defn suspend-threads
+  "Suspend a thread reference"
+  [threads]
+  (doseq [^ThreadReference thread threads]
+    (.suspend thread)))
+
+(defn resume-thread
+  "Resume a thread reference"
+  [^ThreadReference thread]
+  (.resume thread))
+
+(defn resume-threads
+  "Suspend a thread reference"
+  [threads]
+  (doseq [^ThreadReference thread threads]
+    (.resume thread)))
 
 ;;; Event Requests
 (def
@@ -483,9 +552,10 @@ Thread
   (logging/trace
    "Looking for line %s in %s" line (.name class))
   (try
-    (concat
-     (.locationsOfLine class line)
-     (mapcat #(method-line-locations % line) (.methods class)))
+    (distinct
+     (concat
+      (.locationsOfLine class line)
+      (mapcat #(method-line-locations % line) (.methods class))))
     (catch com.sun.jdi.ClassNotPreparedException _)
     (catch com.sun.jdi.AbsentInformationException _
       (logging/trace "not found")
@@ -601,39 +671,6 @@ Thread
        (field-maps (frame-field-values frame (visible-clojure-fields fields)))
        (local-maps locals true))
       (local-maps locals false))))
-
-(defn threads
-  [vm]
-  (when vm (.allThreads vm)))
-
-(def thread-states
-  {ThreadReference/THREAD_STATUS_MONITOR :monitor
-   ThreadReference/THREAD_STATUS_NOT_STARTED :not-started
-   ThreadReference/THREAD_STATUS_RUNNING :running
-   ThreadReference/THREAD_STATUS_SLEEPING :sleeping
-   ThreadReference/THREAD_STATUS_UNKNOWN :unknown
-   ThreadReference/THREAD_STATUS_WAIT :wait
-   ThreadReference/THREAD_STATUS_ZOMBIE :zombie})
-
-(defn thread-data
-  "Returns thread data"
-  [thread]
-  {:id (.uniqueID thread)
-   :name (.name thread)
-   :status (thread-states (.status thread))
-   :suspend-count (.suspendCount thread)
-   :suspended? (.isSuspended thread)
-   :at-breakpoint? (.isAtBreakpoint thread)})
-
-
-(defn thread-groups
-  "Build a thread group tree"
-  [vm]
-  (let [f (fn thread-group-f [group]
-            [{:name (.name group) :id (.uniqueID group)}
-             (map thread-group-f (.threadGroups group))
-             (map thread-data (.threads group))])]
-    (map f (.topLevelThreadGroups vm))))
 
 (defn breakpoint-data
   "Returns breakpoint data"

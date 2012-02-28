@@ -9,15 +9,24 @@
     ThreadFactory
     CancellationException ExecutionException TimeoutException)))
 
+(def ritz-executor-group-name "ritz-executor")
+(def ritz-executor-group (delay (ThreadGroup. ritz-executor-group-name)))
+(def ritz-control-group (delay (ThreadGroup. "ritz-control")))
+
+(defn thread-factory
+  [thread-group prefix]
+  (proxy [ThreadFactory] []
+     (newThread [^Runnable r]
+       (let [thread (Thread. thread-group r)]
+         (.setName thread (str prefix "-" (.getId thread)))
+         (.setDaemon thread true)
+         thread))))
+
 (defonce ^{:private true
            :doc "Use own pool to prevent any interaction with user pools"}
   ^ExecutorService executor
   (Executors/newCachedThreadPool
-   (proxy [ThreadFactory] []
-     (newThread
-      [^Runnable r]
-      (doto (Thread. r)
-        (.setDaemon true))))))
+   (thread-factory @ritz-control-group "ritz-ctrl")))
 
 (defn execute
   [^Callable f]
@@ -27,7 +36,8 @@
 (defonce ^{:private true
            :doc "request handler pool"}
   ^ExecutorService request-executor
-  (Executors/newCachedThreadPool))
+  (Executors/newCachedThreadPool
+   (thread-factory @ritz-executor-group "ritz")))
 
 (defn execute-request
   [^Callable f]

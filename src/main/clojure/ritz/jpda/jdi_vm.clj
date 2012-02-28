@@ -102,11 +102,6 @@
 
 (defn wrap-launch-cmd
   [cmd]
-  ;; `(doto (Thread. (fn []
-  ;;                   ~(start-control-thread-body)
-  ;;                   ~cmd))
-  ;;    (.setDaemon false)
-  ;;    (.start))
   `(do
      ~(start-control-thread-body)
      ~cmd))

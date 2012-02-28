@@ -190,7 +190,7 @@
   "Handle a message on a connection."
   [connection message]
   (logging/trace "swank/handle-message %s" message)
-  (let [future (executor/execute #(dispatch-event message connection))]
+  (let [future (executor/execute-request #(dispatch-event message connection))]
     (swap! repl-futures (fn [futures]
                           (conj (remove #(.isDone %) futures) future)))
-    (executor/execute #(response future message connection))))
+    (executor/execute-request #(response future message connection))))

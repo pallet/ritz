@@ -39,16 +39,15 @@
     BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
     LongValue ShortValue StringReference)))
 
-(def control-thread-name "ritz-debug-thread")
-
 (def exception-suspend-policy :suspend-all)
 (def breakpoint-suspend-policy :suspend-all)
+
 (def exception-policy
   (atom {:uncaught-only true
          :class-exclusion ["java.net.URLClassLoader*"
                            "java.lang.ClassLoader*"
                            "*ClassLoader.java"]
-         :system-thread-names [control-thread-name
+         :system-thread-names [jdi-vm/control-thread-name
                                "REPL" "Accept loop"
                                "Connection dispatch loop :repl"]}))
 
@@ -485,8 +484,10 @@ otherwise pass it on."
   (doseq [level-info (:resume-sldb-levels connection)
           :let [event (:event level-info)]
           :when (not (instance? InvocationExceptionEvent event))]
-    (logging/trace "resuming threads for sldb-level")
-    (jdi/resume-event-threads event))
+    (logging/trace
+     "resuming threads for sldb-level %s"
+     (:user-threads level-info))
+    (jdi/resume-threads (:user-threads level-info)))
   connection)
 
 (defn- return-or-activate-sldb-levels
@@ -904,19 +905,27 @@ otherwise pass it on."
     ;; The remote-condition-printer will cause class not found exceptions
     ;; (especially the first time it runs).
     (let [thread (jdi/event-thread event)
+          user-threads (conj
+                        (set
+                         (jdi/threads-in-group
+                          (.virtualMachine thread)
+                          executor/ritz-executor-group-name))
+                        thread)
+          _ (logging/trace "user threads %s" user-threads)
           thread-id (.uniqueID thread)
           _ (logging/trace "building condition")
           condition (condition-info event @connection)
           restarts (restarts event condition connection)
           _ (logging/trace "adding sldb level")
-          level-info {:restarts restarts :thread thread :event event}
+          level-info {:restarts restarts :thread thread :event event
+                      :user-threads user-threads}
           level (connection/next-sldb-level connection level-info)
           _ (logging/trace "building backtrace")
           backtrace (if (instance? InvocationExceptionEvent event)
                       [{:function "Unavailble"
                         :source "UNKNOWN" :line "UNKNOWN"}]
                       (build-backtrace thread 0 *sldb-initial-frames*))]
-      [thread-id level condition restarts backtrace])))
+      [thread-id level level-info condition restarts backtrace])))
 
 (defn invoke-debugger*
   "Calculate debugger information and invoke"
@@ -935,14 +944,13 @@ otherwise pass it on."
   [connection event]
   (logging/trace "invoke-debugger")
 
-  (let [[thread-id level condition restarts backtrace]
+  (let [[thread-id level level-info condition restarts backtrace]
         (debugger-event-info connection event)]
-    (invoke-debugger* connection thread-id level condition restarts backtrace))
+    (invoke-debugger* connection thread-id level condition restarts backtrace)
 
-  ;; The handler resumes threads, so make sure we suspend them
-  ;; again first. The restart from the sldb buffer will resume these
-  ;; threads.
-  (jdi/suspend-event-threads event))
+    ;; The handler resumes threads, so make sure we suspend them again
+    ;; first. The restart from the sldb buffer will resume these threads.
+    (jdi/suspend-threads (:user-threads level-info))))
 
 (defn debugger-info-for-emacs
   "Calculate debugger information and invoke"
@@ -1173,7 +1181,7 @@ otherwise pass it on."
     (catch com.sun.jdi.InvocationException e
       (if connection
         (let [event (InvocationExceptionEvent. (.exception e) thread)
-              [thread-id level condition restarts backtrace]
+              [thread-id level level-info condition restarts backtrace]
               (debugger-event-info connection event)]
           (invoke-debugger*
            connection thread-id level condition restarts backtrace))
@@ -1209,7 +1217,7 @@ otherwise pass it on."
     (catch com.sun.jdi.InvocationException e
       (if connection
         (let [event (InvocationExceptionEvent. (.exception e) thread)
-              [thread-id level condition restarts backtrace]
+              [thread-id level level-info condition restarts backtrace]
               (debugger-event-info connection event)]
           (invoke-debugger*
            connection thread-id level condition restarts backtrace))

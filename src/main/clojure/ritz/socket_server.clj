@@ -38,7 +38,11 @@
     (let [connection (.accept socket)]
       (logging/trace "accept-connection: starting connection")
       (executor/execute
-       #(f (rpc-socket-connection/create connection options) options)))))
+       #(do
+          (.setName
+           (Thread/currentThread)
+           (str "Accept-Connection-" (.getId (Thread/currentThread))))
+          (f (rpc-socket-connection/create connection options) options))))))
 
 (defn server-socket
   "Open the server socket"
@@ -100,6 +104,8 @@
     :or {server-ns 'ritz.proxy}
     :as options}]
   (logging/trace "socket-server/start")
+  @executor/ritz-executor-group
+  @executor/ritz-control-group
   (let [stop (atom false)
         options (-> options
                     (update-in
