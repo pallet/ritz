@@ -173,6 +173,10 @@ To list breakpoints, use `M-x slime-list-exception-filters` or press `f` in the
  - d disable
  - g refresh list
  - k remove exception filter
+ - s save the exception filters
+
+Exception filters are saved to .ritz-exception-filters, which is read by ritz on
+startup.
 
 ### Javadoc
 
