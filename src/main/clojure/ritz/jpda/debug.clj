@@ -1256,7 +1256,7 @@ otherwise pass it on."
              (or (not type) (= type exception-type))
              (or (not location)
                  (equal-or-matches? location location-name))
-             (or (not catch-location)
+             (or (not catch-location) (not catch-location-name)
                  (equal-or-matches? catch-location catch-location-name))
              (or (not message)
                  (equal-or-matches? message exception-message))))]
@@ -1271,7 +1271,8 @@ otherwise pass it on."
         location-name (jdi/location-type-name location)
         exception (.exception exception-event)
         exception-type (.. exception referenceType name)
-        catch-location-name (jdi/location-type-name catch-location)
+        catch-location-name (when catch-location
+                              (jdi/location-type-name catch-location))
         exception-msg (jdi-clj/exception-message
                        @(:vm-context @connection) exception-event)]
     (logging/trace
