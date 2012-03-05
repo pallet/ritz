@@ -11,6 +11,7 @@
    [ritz.jpda.jdi :as jdi]
    [ritz.jpda.jdi-clj :as jdi-clj]
    [ritz.jpda.jdi-vm :as jdi-vm]
+   [ritz.jpda.swell.impl :as swell-impl]
    [ritz.logging :as logging]
    [ritz.repl-utils.find :as find]
    [ritz.repl-utils.helpers :as helpers]
@@ -780,68 +781,81 @@ otherwise pass it on."
   (restarts
     [^ExceptionEvent exception condition connection]
     (logging/trace "calculate-restarts exception")
-    (let [thread (.thread exception)]
+    (let [thread (.thread exception)
+          context @(:vm-context @connection)]
       (if (.request exception)
         (filter
          identity
-         [(make-restart
-           :continue "CONTINUE" "Pass exception to program"
-           (fn [connection]
-             (logging/trace "restart Continuing")
-             (continue-level connection)))
-          (make-restart
-           :abort "ABORT" "Return to SLIME's top level."
-           (fn [connection]
-             (logging/trace "restart Aborting to top level")
-             (abort-all-levels connection)))
-          (when (pos? (connection/sldb-level connection))
-            (make-restart
-             :quit "QUIT" "Return to previous level."
-             (fn [connection]
-               (logging/trace "restart Quiting to previous level")
-               (quit-level connection))))
-          (make-restart
-           :ignore-type "IGNORE" "Do not enter debugger for this exception type"
-           (fn [connection]
-             (logging/trace "restart Ignoring exceptions")
-             (ignore-exception-type
-              connection (.. exception exception referenceType name))
-             (continue-level connection)))
-          (when-not (string/blank? (:exception-message condition))
-            (make-restart
-             :ignore-message "IGNORE-MSG"
-             "Do not enter debugger for this exception message"
-             (fn [connection]
-               (logging/trace "restart Ignoring exceptions")
-               (ignore-exception-message
-                connection (:exception-message condition))
-               (continue-level connection))))
-          (when-let [location (jdi/location-type-name
-                               (jdi/catch-location exception))]
-            (let [location (re-find #"[^\$]+" location)]
-              (make-restart
-               :ignore-message "IGNORE-CATCH"
-               (str
-                "Do not enter debugger for exceptions with catch location "
-                location ".*")
+         (concat
+          [(make-restart
+            :continue "CONTINUE" "Pass exception to program"
+            (fn [connection]
+              (logging/trace "restart Continuing")
+              (continue-level connection)))
+           (make-restart
+            :abort "ABORT" "Return to SLIME's top level."
+            (fn [connection]
+              (logging/trace "restart Aborting to top level")
+              (abort-all-levels connection)))
+           (when (pos? (connection/sldb-level connection))
+             (make-restart
+              :quit "QUIT" "Return to previous level."
+              (fn [connection]
+                (logging/trace "restart Quiting to previous level")
+                (quit-level connection))))
+           (make-restart
+            :ignore-type "IGNORE" "Do not enter debugger for this exception type"
+            (fn [connection]
+              (logging/trace "restart Ignoring exceptions")
+              (ignore-exception-type
+               connection (.. exception exception referenceType name))
+              (continue-level connection)))
+           (when-not (string/blank? (:exception-message condition))
+             (make-restart
+              :ignore-message "IGNORE-MSG"
+              "Do not enter debugger for this exception message"
+              (fn [connection]
+                (logging/trace "restart Ignoring exceptions")
+                (ignore-exception-message
+                 connection (:exception-message condition))
+                (continue-level connection))))
+           (when-let [location (jdi/location-type-name
+                                (jdi/catch-location exception))]
+             (let [location (re-find #"[^\$]+" location)]
+               (make-restart
+                :ignore-message "IGNORE-CATCH"
+                (str
+                 "Do not enter debugger for exceptions with catch location "
+                 location ".*")
+                (fn [connection]
+                  (logging/trace "restart Ignoring exceptions")
+                  (ignore-exception-catch-location
+                   connection (re-pattern (str location ".*")))
+                  (continue-level connection)))))
+           (when-let [location (jdi/location-type-name
+                                (jdi/location exception))]
+             (let [location (re-find #"[^\$]+" location)]
+               (make-restart
+                :ignore-message "IGNORE-LOC"
+                (str
+                 "Do not enter debugger for exceptions with throw location "
+                 location ".*")
+                (fn [connection]
+                  (logging/trace "restart Ignoring exceptions")
+                  (ignore-exception-location
+                   connection (re-pattern (str location ".*")))
+                  (continue-level connection)))))]
+          (when-let [restarts (seq
+                               (swell-impl/available-restarts context thread))]
+            (map
+             #(make-restart
+               :restart (str "RESTART " %)
+               (str "Invoke restart " %)
                (fn [connection]
                  (logging/trace "restart Ignoring exceptions")
-                 (ignore-exception-catch-location
-                  connection (re-pattern (str location ".*")))
-                 (continue-level connection)))))
-          (when-let [location (jdi/location-type-name
-                               (jdi/location exception))]
-            (let [location (re-find #"[^\$]+" location)]
-              (make-restart
-               :ignore-message "IGNORE-LOC"
-               (str
-                "Do not enter debugger for exceptions with throw location "
-                location ".*")
-               (fn [connection]
-                 (logging/trace "restart Ignoring exceptions")
-                 (ignore-exception-location
-                  connection (re-pattern (str location ".*")))
-                 (continue-level connection)))))])
+                 (swell-impl/select-restart context thread %)
+                 (continue-level connection)))
+             restarts))))
         (filter
          identity
          [(when (pos? (connection/sldb-level connection))

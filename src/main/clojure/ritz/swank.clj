@@ -11,6 +11,8 @@
    [ritz.swank.commands :as commands]
    [ritz.swank.indent :as indent]
    [ritz.swank.messages :as messages])
+  (:use
+   [ritz.jpda.swell :only [with-swell]])
   (:import
    java.io.InputStreamReader
    java.io.OutputStreamWriter
@@ -98,16 +100,18 @@
         (let [last-values (:result-history @connection)]
           (try
             (clojure.main/with-bindings
-              (binding [*1 (first last-values)
-                        *2 (fnext last-values)
-                        *3 (first (nnext last-values))
-                        *e (:last-exception @connection)
-                        *out* (:writer-redir @connection)
-                        *in* (:input-redir @connection)
-                        *ns* (:namespace @connection)]
-                (try
-                  (eval-for-emacs connection form-string package id)
-                  (finally (flush)))))
+              (with-swell
+                (binding [*1 (first last-values)
+                          *2 (fnext last-values)
+                          *3 (first (nnext last-values))
+                          *e (:last-exception @connection)
+                          *out* (:writer-redir @connection)
+                          *in* (:input-redir @connection)
+                          *ns* (:namespace @connection)]
+                  (try
+                    (logging/trace "calling eval-for-emacs")
+                    (eval-for-emacs connection form-string package id)
+                    (finally (flush))))))
             (finally (flush)))))
 
       :emacs-return-string
