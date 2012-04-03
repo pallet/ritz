@@ -3,7 +3,8 @@
   (:refer-clojure :exclude [print-doc])
   (:require
    [clojure.java.javadoc :as javadoc]
-   [clojure.java.io :as io])
+   [clojure.java.io :as io]
+   [clojure.string :as string])
   (:import
    java.io.File))
 
@@ -122,9 +123,10 @@ that symbols accessible in the current namespace go first."
   {:tag String
    :added "1.2"}
   [^String classname]
-  (let [classname (if (.endsWith classname ".")
-                    (.substring classname 0 (dec (count classname)))
-                    classname)
+  (let [field (second (re-find #"/(.*)$" classname))
+        classname (-> classname
+                      (string/replace #"\.$" "")
+                      (string/replace #"/.*$" ""))
         file-path (str (-> classname
                            (.replace  \. java.io.File/separatorChar)
                            (.replace \$ \.))
@@ -140,8 +142,11 @@ that symbols accessible in the current namespace go first."
                          (filter
                           #(.exists ^File %)
                           (map #(io/file (.getParent %) file-path) files)))]
-      (-> file .toURI str)
-      ;; If no local file, try remote URLs:
+      (let [url (-> file .toURI str)]
+        (if field
+          (str url "#" field) ; try to treat this as a field
+          url))
+        ;; If no local file, try remote URLs:
       (or
        (some (fn [[prefix url]]
                (when (.startsWith classname prefix)
