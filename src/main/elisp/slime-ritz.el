@@ -1,6 +1,6 @@
 ;;; slime-ritz.el --- slime extensions for ritz
 ;;
-;; Copyright 2011 Hugo Duncan
+;; Copyright 2011, 2012 Hugo Duncan
 ;;
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
@@ -371,19 +371,19 @@
 (defun slime-connection-is-clojure-p ()
   (compare-strings "clojure" 0 7 (slime-connection-name) 0 7))
 
+(defun slime-ritz-connected ()
+  (slime-ritz-bind-keys)
+  (when (slime-connection-is-clojure-p)
+    (run-hooks 'slime-ritz-connected-hook)))
+
+(defun slime-ritz-repl-connected ()
+  (when (slime-connection-is-clojure-p)
+    (run-hooks 'slime-ritz-repl-mode-hook)))
+
 (defun slime-ritz-init ()
   "Initialise slime-ritz.  Creates clojure specific slime hooks."
-  (add-hook
-   'slime-connected-hook
-   (lambda ()
-     (slime-ritz-bind-keys)
-     (when (slime-connection-is-clojure-p)
-       (run-hooks 'slime-ritz-connected-hook))))
-  (add-hook
-   'slime-repl-mode-hook
-   (lambda ()
-     (when (slime-connection-is-clojure-p)
-       (run-hooks 'slime-ritz-repl-mode-hook)))))
+  (add-hook 'slime-connected-hook slime-ritz-connected)
+  (add-hook 'slime-repl-mode-hook slime-ritz-repl-connected))
 
 (add-hook 'slime-ritz-connected-hook 'slime-clojure-connection-setup)
 (add-hook 'slime-ritz-repl-mode-hook 'slime-clojure-repl-setup)
