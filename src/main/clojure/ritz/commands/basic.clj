@@ -194,7 +194,9 @@
     `(let [c-o# (compile-options ~options)]
        (if (:debug c-o#)
          (binding [*compiler-options*
-                   (assoc *compiler-options* :locals-clearing false)]
+                   (assoc *compiler-options*
+                     :locals-clearing false           ; for clojure-1.3.0-p1
+                     :disable-locals-clearing false)] ; for clojure-1.4.0
            ~@body)
          (do ~@body)))
     `(do ~@body)))
