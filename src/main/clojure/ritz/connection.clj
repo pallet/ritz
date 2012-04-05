@@ -130,10 +130,10 @@
    {:catch-location #"com.sun.*" :enabled true}
    {:catch-location #"sun.*" :enabled true}
    {:catch-location #"ritz.commands.*" :enabled true}
-   {:message "Could not locate ritz/commands/contrib.*"}
-   {:message #".*accessibility.properties (No such file or directory)"}
-   {:message #".*accessibility.properties (No such file or directory)"}
-   {:message #".*mailcap (No such file or directory)"}])
+   {:message #"Could not locate ritz/commands/contrib.*" :enabled true}
+   {:message #".*accessibility.properties \(No such file or directory\)"
+    :enabled true}
+   {:message #".*mailcap \(No such file or directory\)" :enabled true}])
 
 (defn- initialise
   "Set up the initial state of an accepted connection."
