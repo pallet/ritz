@@ -75,8 +75,13 @@
   (some
    (fn [[[sym & sexp] index]]
      (let [[sym index] (handle-apply sym sexp index)]
-       (when (and (string? sym) (not (string/blank? sym)))
-         (when-let [sym (try (read-string sym) (catch Exception _))]
-           (when-let [arglist (arglist sym ns)]
-             [arglist (dec index)])))))
+       (when (and (string? sym) (not= ":" sym))
+         (let [sym (string/replace sym #"[/.]$" "")]
+           (when (not (string/blank? sym))
+             (when-let [sym (try
+                              (read-string sym)
+                              (catch Exception _))]
+               (when (instance? clojure.lang.Named sym)
+                 (when-let [arglist (arglist sym ns)]
+                   [arglist (dec index)]))))))))
    (indexed-sexps sexp terminal)))

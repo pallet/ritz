@@ -123,10 +123,11 @@ that symbols accessible in the current namespace go first."
   {:tag String
    :added "1.2"}
   [^String classname]
-  (let [field (second (re-find #"/(.*)$" classname))
+  (let [field (second (re-find #".+/(.*)$" classname))
         classname (-> classname
                       (string/replace #"\.$" "")
-                      (string/replace #"/.*$" ""))
+                      (string/replace #"^/" "")
+                      (string/replace #".+/.*$" ""))
         file-path (str (-> classname
                            (.replace  \. java.io.File/separatorChar)
                            (.replace \$ \.))
