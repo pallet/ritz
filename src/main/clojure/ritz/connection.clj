@@ -129,7 +129,11 @@
    {:type "com.google.inject.internal.ErrorsException" :enabled true}
    {:catch-location #"com.sun.*" :enabled true}
    {:catch-location #"sun.*" :enabled true}
-   {:catch-location #"ritz.commands.*" :enabled true}])
+   {:catch-location #"ritz.commands.*" :enabled true}
+   {:message "Could not locate ritz/commands/contrib.*"}
+   {:message #".*accessibility.properties (No such file or directory)"}
+   {:message #".*accessibility.properties (No such file or directory)"}
+   {:message #".*mailcap (No such file or directory)"}])
 
 (defn- initialise
   "Set up the initial state of an accepted connection."
