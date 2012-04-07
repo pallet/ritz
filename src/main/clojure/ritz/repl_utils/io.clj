@@ -26,3 +26,20 @@
        (second (first (filter #(= :line (first %)) position)))
        (when-let [p (second (first (filter #(= :position (first %)) position)))]
          (line-at-position file p))))))
+
+(defn read-ns
+  "Given a reader on a Clojure source file, read until an ns form is found."
+  [rdr]
+  (let [form (try (read rdr false ::done)
+                  (catch Exception e ::done))]
+    (if (try
+          (and (list? form) (= 'ns (first form)))
+          (catch Exception _))
+      (try
+        (str form) ;; force the read to read the whole form, throwing on error
+        (let [sym (second form)]
+          (when (instance? clojure.lang.Named sym)
+            sym))
+        (catch Exception _))
+      (when-not (= ::done form)
+        (recur rdr)))))

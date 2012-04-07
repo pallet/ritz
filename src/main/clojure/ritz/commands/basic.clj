@@ -1,8 +1,11 @@
 (ns ritz.commands.basic
   (:refer-clojure :exclude [load-file])
   (:use
-   [ritz.swank.commands :only [defslimefn]])
+   [ritz.swank.commands :only [defslimefn]]
+   [ritz.repl-utils.io :only [read-ns]]
+   [ritz.repl-utils.namespaces :only [with-var-clearing]])
   (:require
+   [clojure.java.io :as io]
    [ritz.clj-contrib.macroexpand :as macroexpand]
    [ritz.connection :as connection]
    [ritz.logging :as logging]
@@ -12,7 +15,7 @@
    [ritz.repl-utils.find :as find]
    [ritz.repl-utils.format :as format]
    [ritz.repl-utils.helpers :as helpers]
-   [ritz.repl-utils.io :as io]
+   [ritz.repl-utils.io :as utils-io]
    [ritz.repl-utils.sys :as sys]
    [ritz.repl-utils.trace :as trace]
    [ritz.swank.core :as core]
@@ -208,14 +211,17 @@
       (compile-file-for-emacs* file-name))))
 
 (defslimefn load-file [connection file-name]
-  (pr-str (clojure.core/load-file file-name)))
+  (if-let [file-ns (read-ns (java.io.PushbackReader. (io/reader file-name)))]
+    (with-var-clearing file-ns
+      (pr-str (clojure.core/load-file file-name)))
+    (pr-str (clojure.core/load-file file-name))))
 
 (defslimefn compile-string-for-emacs
   [connection string buffer position buffer-path debug]
   (let [start (System/nanoTime)
         file (java.io.File. buffer-path)
-        line (io/read-position-line file position)
-        ret (binding [*ns* (or (io/guess-namespace file) *ns*)]
+        line (utils-io/read-position-line file position)
+        ret (binding [*ns* (or (utils-io/guess-namespace file) *ns*)]
               (with-compile-options debug
                 (compile/compile-region string buffer-path line)))
         delta (- (System/nanoTime) start)]
