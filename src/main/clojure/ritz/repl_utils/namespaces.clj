@@ -6,7 +6,7 @@
   (doseq [[_ v] (ns-interns ns)
           :let [m (meta v)]
           :when (not (:defonce m))]
-    (.setMeta v (assoc m ::marked true))))
+    (alter-meta! v assoc ::marked true)))
 
 (defn clear-marked-vars
   [ns]

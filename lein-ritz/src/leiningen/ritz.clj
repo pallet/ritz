@@ -20,7 +20,7 @@
          (require '~'ritz.socket-server)
          (@(ns-resolve '~'ritz.socket-server '~'start)
           '~(merge
-             (select-keys project [:jvm-opts])
+             (select-keys project [:jvm-opts :properties])
              (zipmap
               (map read-string (keys opts))
               (map read-string (vals opts)))
