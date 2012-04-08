@@ -233,6 +233,11 @@
   (try (ns-resolve (connection/request-ns connection) (symbol symbol-name))
     (catch ClassNotFoundException e nil)))
 
+(defn- refers-sym
+  [connection symbol-name]
+  (try (get (ns-refers (connection/request-ns connection)) (symbol symbol-name))
+    (catch ClassNotFoundException e nil)))
+
 (defn- describe-symbol* [connection symbol-name]
   (if-let [v (resolve-sym connection symbol-name)]
     (with-out-str (doc/print-doc v))
@@ -245,9 +250,11 @@
   (describe-symbol* connection symbol-name))
 
 (defslimefn undefine-function [connection symbol-name]
-  (when-let [v (resolve-sym connection symbol-name)]
+  (when-let [v (or (resolve-sym connection symbol-name)
+                   (refers-sym connection symbol-name))]
     (let [m (meta v)]
-      (ns-unmap (ns-name (:ns m)) (:name m)))))
+      (ns-unmap (connection/request-ns connection) (:name m))
+      (pr-str (:name m)))))
 
 ;; lisp-1, so no kinds
 (defslimefn describe-definition-for-emacs [connection name kind]
