@@ -1262,7 +1262,8 @@ otherwise pass it on."
             (logging/trace "checking equal-or-matches? %s %s" expr value)
             (cond
              (string? expr) (= expr value)
-             :else (re-matches expr value)))
+             (string? value) (re-matches expr value)
+             :else false))
           (matches? [{:keys [type location catch-location enabled message]
                       :as filter}]
             (and
