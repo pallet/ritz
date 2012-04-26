@@ -21,14 +21,17 @@ emacs (if you are not using jack-in), and the second is to enable
 
 ### SLIME
 
-Install the slime-ritz.el contrib from [marmalade](http://marmalade-repo.org/).
-
 A compatible slime.el is in slime/slime.el. It is available as a `package.el`
 package file you can
 [download](https://github.com/downloads/pallet/ritz/slime-20101113.1.tar)
 and install with `M-x package-install-file`.  Note that you may need to remove
 this package to use
 [swank-clojure](https://github.com/technomancy/swank-clojure) again.
+
+Install the slime-ritz.el contrib from
+[marmalade](http://marmalade-repo.org/). If you are using a SNAPSHOT version of
+ritz, you probably will need to install slime-ritz.el from
+[melpa](http://melpa.milkbox.net/packages/) instead.
 
 ### Lein 2
 
