@@ -819,9 +819,9 @@ otherwise pass it on."
                 (ignore-exception-message
                  connection (:exception-message condition))
                 (continue-level connection))))
-           (when-let [location (jdi/location-type-name
-                                (jdi/catch-location exception))]
-             (let [location (re-find #"[^\$]+" location)]
+           (when-let [location (jdi/catch-location exception)]
+             (let [location (jdi/location-type-name location)
+                   location (re-find #"[^\$]+" location)]
                (make-restart
                 :ignore-message "IGNORE-CATCH"
                 (str
@@ -832,9 +832,9 @@ otherwise pass it on."
                   (ignore-exception-catch-location
                    connection (re-pattern (str location ".*")))
                   (continue-level connection)))))
-           (when-let [location (jdi/location-type-name
-                                (jdi/location exception))]
-             (let [location (re-find #"[^\$]+" location)]
+           (when-let [location (jdi/location exception)]
+             (let [location (jdi/location-type-name location)
+                   location (re-find #"[^\$]+" location)]
                (make-restart
                 :ignore-message "IGNORE-LOC"
                 (str
