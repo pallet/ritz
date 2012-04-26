@@ -16,7 +16,7 @@ Should work with any version of clojure from 1.2.0.
 ## Install
 
 The install has two parts. The first is to install the slime components into
-emacs, the second is to enable
+emacs (if you are not using jack-in), and the second is to enable
 [Leiningen](http://github.com/technomancy/leiningen) to use ritz.
 
 ### SLIME
@@ -30,7 +30,7 @@ and install with `M-x package-install-file`.  Note that you may need to remove
 this package to use
 [swank-clojure](https://github.com/technomancy/swank-clojure) again.
 
-### lein 2
+### Lein 2
 
 To make ritz available in all your projects, add the lein-ritz plugin to your
 `:user` profile in `~/.lein/profiles.clj`.
@@ -45,6 +45,9 @@ To enable ritz on a per project basis, add it to your `project.clj`'s :dev profi
 {:dev {:plugins [[lein-ritz "0.3.0-SNAPSHOT"]]}}
 ```
 
+In either case, start a swank server with `lein ritz` inside your project directory,
+and then use `M-x slime-connect` in emacs to connect to it.
+
 ### Lein 1
 
 To make ritz available in all your projects, install the lein-ritz plugin.
@@ -55,10 +58,16 @@ lein plugin install lein-ritz "0.3.0-SNAPSHOT"
 
 Add `[lein-ritz "0.3.0-SNAPSHOT"]` to your project.clj `:dev-dependencies`.
 
+
+Start a swank server with `lein ritz` inside your project directory,
+and then use `M-x slime-connect` in emacs to connect to it.
+
 ### Experimental 'jack-in' support
 
 There is experimental support to "jack in" from an existing project
 using [Leiningen](http://github.com/technomancy/leiningen):
+
+For "jack-in" to work, you can not have SLIME installed.
 
 * Install `clojure-mode` either from
   [Marmalade](http://marmalade-repo.org) or from
