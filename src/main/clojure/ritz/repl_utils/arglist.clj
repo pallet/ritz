@@ -62,7 +62,7 @@
     (rest (branch-for-terminal sexp terminal)))))
 
 (defn handle-apply [sym sexp index]
-  (if (and (> index 1) (= sym "apply")
+  (if (and (> index 1) (#{"apply" "partial"} sym)
            (string? (first sexp)) (not (string/blank? (first sexp))))
     [(first sexp) (dec index)]
     [sym index]))
@@ -71,7 +71,7 @@
   "Returns an arglist and an index for the position of the expression containing
    the given terminal."
   [sexp terminal ns]
-  (logging/trace "arglist-at-terminal %s" terminal)
+  (logging/trace "arglist-at-terminal %s %s" sexp terminal)
   (some
    (fn [[[sym & sexp] index]]
      (let [[sym index] (handle-apply sym sexp index)]
