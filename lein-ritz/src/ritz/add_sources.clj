@@ -25,5 +25,3 @@
 (defn add-source-artifacts
   [f project]
   (classpath-with-source-jars (f project)))
-
-(add-hook #'leiningen.core.classpath/get-classpath add-source-artifacts)

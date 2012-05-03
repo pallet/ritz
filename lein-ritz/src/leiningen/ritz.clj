@@ -1,6 +1,9 @@
 (ns leiningen.ritz
   "Launch ritz server for Emacs to connect."
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io])
+  (:use
+   [robert.hooke :only [add-hook]]
+   [ritz.add-sources :only [add-source-artifacts]]))
 
 (defn opts-list [port host opts]
   (apply concat (merge {:host host :port (Integer. port)
@@ -37,15 +40,32 @@
                      (catch java.io.FileNotFoundException _)))]
     (apply eip args)))
 
+(defn add-jpda-jars
+  "JPDA is in the JDK's tools.jar and sa-jdi.jar. Add them to the classpath."
+  [f project]
+  (let [libdir (io/file (System/getProperty "java.home") ".." "lib")
+        extra-cp (for [j ["tools.jar" "sa-jdi.jar"]
+                       :when (.exists (io/file libdir j))]
+                   (.getCanonicalPath (io/file libdir j)))]
+    (concat (f project) extra-cp)))
+
+(defn add-ritz
+  "JPDA is in the JDK's tools.jar and sa-jdi.jar. Add them to the classpath."
+  [project]
+  (update-in project [:dependencies]
+             conj ['ritz
+                   (or (System/getenv "RITZ_VERSION")
+                       (System/getProperty
+                        "ritz.version" "0.3.0-SNAPSHOT"))]))
+
 (defn ritz
   "Launch ritz server for Emacs to connect. Optionally takes PORT and HOST."
   ([project port host & {:as opts}]
      (eval-in-project
-      (update-in project [:dependencies]
-                 conj ['ritz
-                       (or (System/getenv "RITZ_VERSION")
-                           (System/getProperty
-                            "ritz.version" "0.3.0-SNAPSHOT"))])
+      (add-ritz project)
       (ritz-form project port host opts)))
   ([project port] (ritz project port "localhost"))
   ([project] (ritz project 4005)))
+
+(add-hook #'leiningen.core.classpath/get-classpath add-jpda-jars)
+(add-hook #'leiningen.core.classpath/get-classpath add-source-artifacts)
