@@ -89,32 +89,6 @@ For "jack-in" to work, you can not have SLIME installed.
 
 See [zi](https://github.com/pallet/zi).
 
-## Sun/Oracle JDK and OpenJDK
-
-To use the Sun/Oracle JDK, and possibly OpenJDK, you
-[need to add](http://download.oracle.com/javase/1.5.0/docs/tooldocs/findingclasses.html)
-`tools.jar` from your JDK install to your classpath. This is not required on OS
-X, where `tools.jar` does not exist.
-
-For lein, add the tools.jar to the dev-resources-path:
-
-    :dev-resources-path "/usr/lib/jvm/java-6-sun/lib/tools.jar"
-
-For lein2, add the tools.jar to your :user profile:
-
-    :user {:plugins [[lein-ritz "0.3.0-SNAPSHOT"]]
-           :resource-paths ["/usr/lib/jvm/java-6-sun/lib/tools.jar"]}
-
-If you are using maven then there are
-[instructions in the FAQ](http://maven.apache.org/general.html#tools-jar-dependency).
-
-For cake, add the following (with the correct jdk path), to
-`PROJECT_ROOT/.cake/config`:
-    project.classpath = /usr/lib/jvm/java-6-sun/lib/tools.jar
-
-
-If you are missing tools.jar from the classpath, you will see an exception like `java.lang.ClassNotFoundException: com.sun.jdi.VirtualMachine`.
-
 ## Source Browsing
 
 If you would like to browse into java sources then add the source jars
