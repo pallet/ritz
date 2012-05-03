@@ -3,10 +3,11 @@
 
 (defn mark-vars-with-meta
   [ns]
-  (doseq [[_ v] (ns-interns ns)
-          :let [m (meta v)]
-          :when (not (:defonce m))]
-    (alter-meta! v assoc ::marked true)))
+  (when (find-ns ns)
+    (doseq [[_ v] (ns-interns ns)
+            :let [m (meta v)]
+            :when (not (:defonce m))]
+      (alter-meta! v assoc ::marked true))))
 
 (defn clear-marked-vars
   [ns]
