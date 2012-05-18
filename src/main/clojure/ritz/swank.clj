@@ -11,6 +11,8 @@
    [ritz.swank.commands :as commands]
    [ritz.swank.indent :as indent]
    [ritz.swank.messages :as messages])
+  (:use
+   [ritz.jpda.swell :only [with-swell]])
   (:import
    java.io.InputStreamReader
    java.io.OutputStreamWriter
@@ -58,8 +60,9 @@
        "swank/eval-for-emacs: exception %s %s"
        (pr-str t)
        (helpers/stack-trace-string t))
-      (.printStackTrace t)
+      (.printStackTrace t) (flush)
       ;;(Thread/interrupted)
+      (connection/set-last-exception connection t)
       (connection/send-to-emacs connection (messages/abort id t))
       ;; (finally
       ;;  (connection/remove-pending-id connection id))
@@ -97,15 +100,18 @@
         (let [last-values (:result-history @connection)]
           (try
             (clojure.main/with-bindings
-              (binding [*1 (first last-values)
-                        *2 (fnext last-values)
-                        *3 (first (nnext last-values))
-                        *e (:last-exception @connection)
-                        *out* (:writer-redir @connection)
-                        *in* (:input-redir @connection)]
-                (try
-                  (eval-for-emacs connection form-string package id)
-                  (finally (flush)))))
+              (with-swell
+                (binding [*1 (first last-values)
+                          *2 (fnext last-values)
+                          *3 (first (nnext last-values))
+                          *e (:last-exception @connection)
+                          *out* (:writer-redir @connection)
+                          *in* (:input-redir @connection)
+                          *ns* (:namespace @connection)]
+                  (try
+                    (logging/trace "calling eval-for-emacs")
+                    (eval-for-emacs connection form-string package id)
+                    (finally (flush))))))
             (finally (flush)))))
 
       :emacs-return-string
@@ -188,7 +194,7 @@
   "Handle a message on a connection."
   [connection message]
   (logging/trace "swank/handle-message %s" message)
-  (let [future (executor/execute #(dispatch-event message connection))]
+  (let [future (executor/execute-request #(dispatch-event message connection))]
     (swap! repl-futures (fn [futures]
                           (conj (remove #(.isDone %) futures) future)))
-    (executor/execute #(response future message connection))))
+    (executor/execute-request #(response future message connection))))

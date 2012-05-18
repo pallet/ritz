@@ -1,8 +1,11 @@
 (ns ritz.commands.basic
   (:refer-clojure :exclude [load-file])
   (:use
-   [ritz.swank.commands :only [defslimefn]])
+   [ritz.swank.commands :only [defslimefn]]
+   [ritz.repl-utils.io :only [read-ns]]
+   [ritz.repl-utils.namespaces :only [with-var-clearing]])
   (:require
+   [clojure.java.io :as io]
    [ritz.clj-contrib.macroexpand :as macroexpand]
    [ritz.connection :as connection]
    [ritz.logging :as logging]
@@ -12,7 +15,7 @@
    [ritz.repl-utils.find :as find]
    [ritz.repl-utils.format :as format]
    [ritz.repl-utils.helpers :as helpers]
-   [ritz.repl-utils.io :as io]
+   [ritz.repl-utils.io :as utils-io]
    [ritz.repl-utils.sys :as sys]
    [ritz.repl-utils.trace :as trace]
    [ritz.swank.core :as core]
@@ -52,7 +55,7 @@
   (compile/eval-region
    string
    (find/source-form-path (connection/request-id connection))
-   0))
+   1))
 
 (defn interactive-eval* [connection string]
   (logging/trace "basic/interactive-eval* %s" string)
@@ -79,6 +82,7 @@
 
 (defslimefn listener-eval [connection form]
   (logging/trace "listener-eval %s" form)
+  (in-ns (connection/current-namespace connection))
   (let [[result exception] (eval-form
                             connection
                             (string/replace
@@ -88,7 +92,13 @@
       (do
         (.printStackTrace exception)
         [:ritz.swank/abort exception])
-      ((:send-repl-results-function @connection) connection [result]))))
+      (do
+        (when-not (= (connection/current-namespace connection) (ns-name *ns*))
+          (connection/send-to-emacs
+           connection
+           (messages/new-package (str (ns-name *ns*)) (str (ns-name *ns*))))
+          (connection/set-namespace connection (ns-name *ns*)))
+        ((:send-repl-results-function @connection) connection [result])))))
 
 (defmacro with-out-str-and-value
   [& body]
@@ -173,31 +183,63 @@
          (.getAbsolutePath file) (inc (count (.getAbsolutePath base))))
         file-path))))
 
+(defn compile-options
+  "Process compile options. These look like (:policy ((cl/debug . 3)))"
+  [options]
+  (when (and (seq options) (even? (count options)))
+    (let [{:keys [policy]} (apply hash-map options)]
+      {:debug (some #(= 'cl/debug (first %)) policy)})))
+
+(defmacro with-compile-options
+  {:indent 1}
+  [options & body]
+  (if-let [co (ns-resolve 'clojure.core '*compiler-options*)]
+    `(let [c-o# (compile-options ~options)]
+       (if (:debug c-o#)
+         (binding [*compiler-options*
+                   (assoc *compiler-options*
+                     :locals-clearing false          ; for clojure-1.3.0-p1
+                     :disable-locals-clearing true)] ; for clojure-1.4.0
+           ~@body)
+         (do ~@body)))
+    `(do ~@body)))
+
 (defslimefn compile-file-for-emacs
   [connection file-name load? & compile-options]
   (when load?
-    (compile-file-for-emacs* file-name)))
+    (with-compile-options compile-options
+      (compile-file-for-emacs* file-name))))
 
 (defslimefn load-file [connection file-name]
-  (pr-str (clojure.core/load-file file-name)))
+  (if-let [file-ns (read-ns (java.io.PushbackReader. (io/reader file-name)))]
+    (with-var-clearing file-ns
+      (pr-str (clojure.core/load-file file-name)))
+    (pr-str (clojure.core/load-file file-name))))
 
 (defslimefn compile-string-for-emacs
   [connection string buffer position buffer-path debug]
   (let [start (System/nanoTime)
         file (java.io.File. buffer-path)
-        line (io/read-position-line file position)
-        ret (binding [*ns* (or (io/guess-namespace file) *ns*)]
-              (compile/compile-region string buffer-path line))
+        line (utils-io/read-position-line file position)
+        ret (binding [*ns* (or (utils-io/guess-namespace file) *ns*)]
+              (with-compile-options debug
+                (compile/compile-region string buffer-path line)))
         delta (- (System/nanoTime) start)]
     (messages/compilation-result nil ret (/ delta 1000000000.0))))
 
 ;;;; Describe
+(defn- resolve-sym
+  [connection symbol-name]
+  (try (ns-resolve (connection/request-ns connection) (symbol symbol-name))
+    (catch ClassNotFoundException e nil)))
+
+(defn- refers-sym
+  [connection symbol-name]
+  (try (get (ns-refers (connection/request-ns connection)) (symbol symbol-name))
+    (catch ClassNotFoundException e nil)))
 
 (defn- describe-symbol* [connection symbol-name]
-  (if-let [v (try
-               (ns-resolve
-                (connection/request-ns connection) (symbol symbol-name))
-               (catch ClassNotFoundException e nil))]
+  (if-let [v (resolve-sym connection symbol-name)]
     (with-out-str (doc/print-doc v))
     (str "Unknown symbol " symbol-name)))
 
@@ -206,6 +248,13 @@
 
 (defslimefn describe-function [connection symbol-name]
   (describe-symbol* connection symbol-name))
+
+(defslimefn undefine-function [connection symbol-name]
+  (when-let [v (or (resolve-sym connection symbol-name)
+                   (refers-sym connection symbol-name))]
+    (let [m (meta v)]
+      (ns-unmap (connection/request-ns connection) (:name m))
+      (pr-str (:name m)))))
 
 ;; lisp-1, so no kinds
 (defslimefn describe-definition-for-emacs [connection name kind]
@@ -266,6 +315,7 @@
 (defslimefn set-package [connection name]
   (let [ns (utils/maybe-ns name)]
     (in-ns (ns-name ns))
+    (connection/set-namespace connection (ns-name ns))
     (list (str (ns-name ns)) (str (ns-name ns)))))
 
 ;;;; Tracing

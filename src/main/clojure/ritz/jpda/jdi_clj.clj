@@ -49,7 +49,8 @@
    value being readable. If it is unreadable, then a string as output by pr-str
    on the remote machine is returned."
   [context thread options form]
-  (let [s (eval-to-string context thread options `(pr-str ~form))]
+  (let [s (eval-to-string
+           context thread options `(try (pr-str ~form) (catch Exception _#)))]
     (try
       (when s
         (read-string s))
@@ -143,6 +144,7 @@
    a Method for n arguments."
   [context thread options ns name n]
   {:pre [thread]}
+  (logging/trace "clojure-fn %s %s %s" ns name n)
   (let [object (jdi/invoke-method
                 thread options
                 (:RT context) (:var context)

@@ -32,13 +32,13 @@
          (arglist/arglist-at-terminal
           '("list" ("list" "q" ::m) 1 2) ::m (the-ns 'clojure.core))))
   (testing "apply"
-    (is (= ['([f args* argseq]) 0]
+    (is (= [(-> #'apply meta :arglists) 0]
            (arglist/arglist-at-terminal
             '("apply" ::m "list" "q" ) ::m (the-ns 'clojure.core))))
-    (is (= ['([f args* argseq]) 0]
+    (is (= [(-> #'apply meta :arglists) 0]
            (arglist/arglist-at-terminal
             '("apply" ::m ) ::m (the-ns 'clojure.core))))
-    (is (= ['([f args* argseq]) 1]
+    (is (= [(-> #'apply meta :arglists) 1]
            (arglist/arglist-at-terminal
             '("apply" "" ::m ) ::m (the-ns 'clojure.core))))
     (is (= ['([& items]) 0]

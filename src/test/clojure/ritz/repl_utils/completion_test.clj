@@ -9,4 +9,8 @@
   (is (= [["ns-aliases" "ns-imports" "ns-interns" "ns-map" "ns-name"
            "ns-publics" "ns-refers" "ns-resolve" "ns-unalias" "ns-unmap"]
           "ns-"]
-           (simple-completion "ns-" (the-ns 'clojure.core)))))
+           (simple-completion "ns-" (the-ns 'clojure.core))))
+  (let [[completions s] (simple-completion
+                         "clojure.pprint." (the-ns 'clojure.core))]
+    (is (= "clojure.pprint." s))
+    (is ((set completions) "clojure.pprint.dispatch"))))

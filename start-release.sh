@@ -15,7 +15,7 @@ echo "Start release of $version, previous version is $previous_version"
 echo ""
 echo ""
 
-git flow release start $version
+git flow release start $version || exit 1
 
 echo ""
 echo ""
@@ -26,6 +26,8 @@ echo ""
 echo "Now edit project.clj, ReleaseNotes and README"
 
 $EDITOR project.clj
+$EDITOR lein-ritz/project.clj
+$EDITOR lein-ritz/src/leiningen/ritz.clj
 $EDITOR ReleaseNotes.md
 $EDITOR README.md
 

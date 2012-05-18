@@ -1,11 +1,11 @@
 ;;; slime-ritz.el --- slime extensions for ritz
 ;;
-;; Copyright 2011 Hugo Duncan
+;; Copyright 2011, 2012 Hugo Duncan
 ;;
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.2.1
+;; Version: 0.3.0
 ;; License: EPL
 
 (define-slime-contrib slime-ritz
@@ -13,7 +13,8 @@
   (:authors "Hugo Duncan <hugo_duncan@yahoo.com>")
   (:license "EPL")
   (:on-load
-   (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)))
+   (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)
+   (define-key java-mode-map "\C-c\C-x\C-b" 'slime-java-line-breakpoint)))
 
 (defun slime-line-breakpoint ()
   "Set a breakpoint at the current line"
@@ -21,6 +22,12 @@
   (slime-eval-with-transcript
    `(swank:line-breakpoint
      ,(slime-current-package) ,(buffer-name) ,(line-number-at-pos))))
+
+(defun slime-java-line-breakpoint ()
+  "Set a breakpoint at the current line in java"
+  (interactive)
+  (slime-eval-with-transcript
+   `(swank:line-breakpoint nil ,(buffer-name) ,(line-number-at-pos))))
 
 ;;;; Breakpoints
 (defvar slime-breakpoints-buffer-name (slime-buffer-name :breakpoints))
@@ -364,19 +371,19 @@
 (defun slime-connection-is-clojure-p ()
   (compare-strings "clojure" 0 7 (slime-connection-name) 0 7))
 
+(defun slime-ritz-connected ()
+  (slime-ritz-bind-keys)
+  (when (slime-connection-is-clojure-p)
+    (run-hooks 'slime-ritz-connected-hook)))
+
+(defun slime-ritz-repl-connected ()
+  (when (slime-connection-is-clojure-p)
+    (run-hooks 'slime-ritz-repl-mode-hook)))
+
 (defun slime-ritz-init ()
   "Initialise slime-ritz.  Creates clojure specific slime hooks."
-  (add-hook
-   'slime-connected-hook
-   (lambda ()
-     (slime-ritz-bind-keys)
-     (when (slime-connection-is-clojure-p)
-       (run-hooks 'slime-ritz-connected-hook))))
-  (add-hook
-   'slime-repl-mode-hook
-   (lambda ()
-     (when (slime-connection-is-clojure-p)
-       (run-hooks 'slime-ritz-repl-mode-hook)))))
+  (add-hook 'slime-connected-hook slime-ritz-connected)
+  (add-hook 'slime-repl-mode-hook slime-ritz-repl-connected))
 
 (add-hook 'slime-ritz-connected-hook 'slime-clojure-connection-setup)
 (add-hook 'slime-ritz-repl-mode-hook 'slime-clojure-repl-setup)

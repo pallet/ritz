@@ -129,7 +129,11 @@
    {:type "com.google.inject.internal.ErrorsException" :enabled true}
    {:catch-location #"com.sun.*" :enabled true}
    {:catch-location #"sun.*" :enabled true}
-   {:catch-location #"ritz.commands.*" :enabled true}])
+   {:catch-location #"ritz.commands.*" :enabled true}
+   {:message #"Could not locate ritz/commands/contrib.*" :enabled true}
+   {:message #".*accessibility.properties \(No such file or directory\)"
+    :enabled true}
+   {:message #".*mailcap \(No such file or directory\)" :enabled true}])
 
 (defn- initialise
   "Set up the initial state of an accepted connection."
@@ -151,7 +155,8 @@
                           :indent-cache (ref {})
                           :send-repl-results-function nil
                           :exception-filters (or (read-exception-filters)
-                                                 default-exception-filters)})))]
+                                                 default-exception-filters)
+                          :namespace 'user})))]
     ;;(when-not (:proxy-to options))
 
     (swap! connection
@@ -311,6 +316,12 @@
             (take 3 (conj history result))))
    :result-history))
 
+(defn set-last-exception
+  "Add an exception"
+  [connection e]
+  (swap! connection assoc :last-exception e)
+  nil)
+
 (defn connection-type
   [connection]
   (if (:proxy-to @connection)
@@ -321,3 +332,11 @@
   [connection]
   (when-let [vm-context (:vm-context @connection)]
     @vm-context))
+
+(defn set-namespace
+  [connection ns]
+  (swap! connection assoc :namespace ns))
+
+(defn current-namespace
+  [connection]
+  (:namespace @connection))

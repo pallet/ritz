@@ -1,8 +1,91 @@
 # Release Notes
 
-Current release is 0.2.1.
+Current release is 0.3.0.
 
-* 0.2.1
+## 0.3.0
+
+### Features
+
+- Update arglist display to recognise partial
+
+- Automatically add tools.jar to the classpath
+
+- Make undefine-function work on namespace refers
+
+- Make slime-load-file remove old vars
+
+- Allow C-c C-l to be used in interactive development to clear old
+  definitions on file load
+
+- Add slime-undefine-function
+  This will unmap any var
+
+- Initial support for swell restart selection
+
+- Only block user threads on exceptions, and breakpoints
+  In order to allow code navigation and compilation while at a breakpoint,
+  only suspend user threads.
+
+- Enable setting of line breakpoints in java code
+
+- Disable locals clearing when compiling with debug policy
+
+- Allow for alternative announce message
+
+- Add ignore restarts for exception throw and catch locations
+  When a stack trace is presented in sldb, it now has restarts to allow
+  ignoring throw and catch locations
+
+
+### Fixes
+
+- Make restarts robust to missing locations in exceptions
+
+- Fix logic for disable-locals-clearing in 1.4.0
+
+- Fix default exception filters so they actually work
+
+- Filter the symbols used for arglist lookup
+
+- Update default exception filters
+
+- Fix ritz slime-mode hooks
+
+- Process field when looking javadoc for ClassName/field
+
+- Update for clojure-1.4 *compiler-options*
+
+- Handle case with no catch location in r.j.debug/break-for?
+
+- Add :source-path to location-data, and recognise SOURCE_FORM as clojure
+
+- Make eval-region mimic clojure.lang.Compiler/load
+
+- Add hook to put -sources jars on classpath
+  To use this, add :hooks [ritz.add-sources]
+
+- Fix eval of strings containing ns forms
+
+- Add namespace tracking to eval requests
+  Fixes #10
+
+- Move to lein2 and clojure 1.3.0
+
+- Remove cake :tasks from project.clj
+
+- Add imported symbols to fuzzy completion
+
+- Fix issue with simple class completion
+
+- Pick up :jvm-opts from project map
+
+- Switch to separate lein-ritz plugin, with ritz-in functionality
+
+- Disable exception event requests when retrieving exception messages
+
+- Ensure *e is set when an exception is thrown
+
+## 0.2.1
 
 - Tweak remote-swank-port to try and reduce hangs on startup
 
@@ -30,7 +113,7 @@ Current release is 0.2.1.
 - Add processing of :repl-init and :repl-init-script to lein task
 
 
-* 0.2.0
+## 0.2.0
 
 - Update readme with section on exception filtering
 
@@ -71,7 +154,7 @@ Current release is 0.2.1.
 - Add pallet script to set up a dev environment for ritz
   Basic tmux, emacs, git install, with clone of ritz repo
 
-* 0.1.7
+## 0.1.7
 
 - Add missing require for clojure.main
 
@@ -89,7 +172,7 @@ Current release is 0.2.1.
 - Implement slime autodoc
 
 
-* 0.1.6
+## 0.1.6
 
 - Add debug/pprint-eval-string-in-frame
   This moves the pretty printing into the debugee
@@ -117,7 +200,7 @@ Current release is 0.2.1.
 
 - Fix return value of fuzzy-completions when no completions found
 
-* 0.1.5
+## 0.1.5
 
 - Add slime-javadoc-local-paths and slime-javadoc
   slime-javadoc-local-paths can be used to set paths to local javadoc.
@@ -136,17 +219,17 @@ Current release is 0.2.1.
 - Implement disassemble-form for slime-disassemble-symbol
   Enables disassembly of a function given its symbol
 
-* 0.1.4
+## 0.1.4
 
 - Fix broken lein swank plugin
 
-* 0.1.3
+## 0.1.3
 
-## Known Issues
+### Known Issues
 
 - Broken lein swank plugin
 
-## Changes
+### Changes
 
 - Add slime-disassemble to show bytecode for a frame
   When debugging it is sometimes useful to see the bytecode generated for a
@@ -176,7 +259,7 @@ Current release is 0.2.1.
 
 - Add autoload and keybinding for slime-line-breakpoint
 
-* 0.1.2
+## 0.1.2
 
 - Fix nth-part and last for inspector
 
@@ -186,10 +269,10 @@ Current release is 0.2.1.
 
 - Update 1.2.0 source jar requirements
 
-* 0.1.1
+## 0.1.1
 
 - Add support for clojure 1.2.1, and 1.3.0-master-SNAPSHOT.
 
-* 0.1.0
+## 0.1.0
 
 Initial release.

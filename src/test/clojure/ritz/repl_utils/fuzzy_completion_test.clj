@@ -99,15 +99,39 @@
       (remove-ns 'testing-testing0)
       (remove-ns 'testing-testing1)))))
 
+(deftest fuzzy-find-matching-imports-test
+  (try
+    (create-ns 'testing-testing0)
+    (is (= '["StringBuffer" "StringBuilder" "StringIndexOutOfBoundsException"]
+           (->>
+            (#'sf/fuzzy-find-matching-imports "StringB" 'testing-testing0)
+            (map (comp str :symbol))
+            sort)))
+    (finally
+     (try!
+      (remove-ns 'testing-testing0)))))
+
 (deftest fuzzy-generate-matchings-test
   (let [ns (the-ns 'user)]
-    (try
-      (is
-       (= ["ritz.repl-utils.fuzzy-completion-test/testing-testing0"]
-          (->>
-           (#'sf/fuzzy-generate-matchings
-            "ritz.repl-utils.fuzzy-completion-test/testing"
-            ns
-            (fn [] false))
-           (map #(str (:ns-name %) "/" (name (:symbol %))))
-           (filter #(re-find #"/test" %))))))))
+    (is
+     (= ["ritz.repl-utils.fuzzy-completion-test/testing-testing0"]
+        (->>
+         (#'sf/fuzzy-generate-matchings
+          "ritz.repl-utils.fuzzy-completion-test/testing"
+          ns
+          (fn [] false))
+         (map #(str (:ns-name %) "/" (name (:symbol %))))
+         (filter #(re-find #"/test" %))))))
+  (let [ns (the-ns 'ritz.repl-utils.fuzzy-completion-test)]
+    (is
+     (= ["StringBuffer" "StringBuilder" "StringIndexOutOfBoundsException"]
+        (->>
+         (#'sf/fuzzy-generate-matchings "StringB" *ns* (fn [] false))
+         (map (comp str :symbol))))))
+  (let [ns (the-ns 'ritz.repl-utils.fuzzy-completion-test)]
+    (is
+     (= [["StringBuffer" nil] ["StringBuilder" nil]
+         ["StringIndexOutOfBoundsException" nil]]
+        (->>
+         (#'sf/fuzzy-generate-matchings "StringB" *ns* (fn [] false))
+         (map #(fuzzy-extract-matching-info % "StringB")))))))

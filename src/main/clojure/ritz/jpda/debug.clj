@@ -11,6 +11,7 @@
    [ritz.jpda.jdi :as jdi]
    [ritz.jpda.jdi-clj :as jdi-clj]
    [ritz.jpda.jdi-vm :as jdi-vm]
+   [ritz.jpda.swell.impl :as swell-impl]
    [ritz.logging :as logging]
    [ritz.repl-utils.find :as find]
    [ritz.repl-utils.helpers :as helpers]
@@ -39,16 +40,15 @@
     BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
     LongValue ShortValue StringReference)))
 
-(def control-thread-name "ritz-debug-thread")
-
 (def exception-suspend-policy :suspend-all)
 (def breakpoint-suspend-policy :suspend-all)
+
 (def exception-policy
   (atom {:uncaught-only true
          :class-exclusion ["java.net.URLClassLoader*"
                            "java.lang.ClassLoader*"
                            "*ClassLoader.java"]
-         :system-thread-names [control-thread-name
+         :system-thread-names [jdi-vm/control-thread-name
                                "REPL" "Accept loop"
                                "Connection dispatch loop :repl"]}))
 
@@ -93,12 +93,14 @@
 (defn launch-vm-with-swank
   "Launch and configure the vm for the debugee."
   [{:keys [port announce log-level classpath] :as options}]
-  (jdi-vm/launch-vm
+  (apply
+   jdi-vm/launch-vm
    (or classpath (jdi-vm/current-classpath))
    (vm-swank-main {:port port
                    :announce announce
                    :server-ns `(quote ritz.repl)
-                   :log-level (keyword log-level)})))
+                   :log-level (keyword log-level)})
+   (mapcat identity options)))
 
 (defn launch-vm
   "Launch and configure the vm for the debugee."
@@ -133,24 +135,30 @@
 (defn remote-swank-port
   "Obtain the swank port on the remote vm"
   [context]
-  (loop []
-    (logging/trace "debug/remote-swank-port: loop")
-    (if-let [port (jdi-clj/control-eval
-                   context
-                   ;; NB very important that this doesn't throw
-                   ;; as that can cause hangs in the startup
-                   `(when (find-ns '~'ritz.socket-server)
-                      (when-let [v# (ns-resolve
-                                     '~'ritz.socket-server
-                                     '~'acceptor-port)]
-                        (when-let [a# (var-get v#)]
-                          (when (instance? clojure.lang.Atom a#)
-                            (deref a#))))))]
-      port
-      (do
-        (logging/trace "debug/remote-swank-port: no port yet ...")
-        (Thread/sleep 1000)
-        (recur)))))
+  (letfn [(get-port []
+            (try
+              (jdi-clj/control-eval
+               context
+               ;; NB very important that this doesn't throw
+               ;; as that can cause hangs in the startup
+               `(try
+                  (when (find-ns '~'ritz.socket-server)
+                    (when-let [v# (ns-resolve
+                                   '~'ritz.socket-server
+                                   '~'acceptor-port)]
+                      (when-let [a# (var-get v#)]
+                        (when (instance? clojure.lang.Atom a#)
+                          (deref a#)))))
+                  (catch Exception _#)))
+              (catch Exception _)))]
+    (loop []
+      (logging/trace "debug/remote-swank-port: loop")
+      (if-let [port (get-port)]
+        port
+        (do
+          (logging/trace "debug/remote-swank-port: no port yet ...")
+          (Thread/sleep 1000)
+          (recur))))))
 
 ;;; interactive form tracking
 (defn swank-peek
@@ -477,8 +485,10 @@ otherwise pass it on."
   (doseq [level-info (:resume-sldb-levels connection)
           :let [event (:event level-info)]
           :when (not (instance? InvocationExceptionEvent event))]
-    (logging/trace "resuming threads for sldb-level")
-    (jdi/resume-event-threads event))
+    (logging/trace
+     "resuming threads for sldb-level %s"
+     (:user-threads level-info))
+    (jdi/resume-threads (:user-threads level-info)))
   connection)
 
 (defn- return-or-activate-sldb-levels
@@ -588,6 +598,22 @@ otherwise pass it on."
   (swap! connection update-in [:exception-filters] conj
          {:message exception-message :enabled true}))
 
+(defn ignore-exception-catch-location
+  "Add the specified exception catch location to the connection's
+   never-break-exceptions set."
+  [connection catch-location]
+  (logging/trace "Adding %s to never-break-exceptions" catch-location)
+  (swap! connection update-in [:exception-filters] conj
+         {:catch-location catch-location :enabled true}))
+
+(defn ignore-exception-location
+  "Add the specified exception throw location to the connection's
+   never-break-exceptions set."
+  [connection catch-location]
+  (logging/trace "Adding %s to never-break-exceptions" catch-location)
+  (swap! connection update-in [:exception-filters] conj
+         {:location catch-location :enabled true}))
+
 (defn make-restart
   "Make a restart map.
    Contains
@@ -635,69 +661,72 @@ otherwise pass it on."
               c `(do
                    (require '~'clojure.pprint)
                    (defn ~(symbol s) [c#]
-                     (let [f# (fn ~'classify-exception-fn [e#]
-                                (case (.getName (class e#))
-                                  "clojure.contrib.condition.Condition"
-                                  :condition
+                     (try
+                       (let [f# (fn ~'classify-exception-fn [e#]
+                                  (case (.getName (class e#))
+                                    "clojure.contrib.condition.Condition"
+                                    :condition
 
-                                  "slingshot.Stone" :stone
-                                  "slingshot.ExceptionInfo" :exception-info
-                                  "clojure.lang.ExceptionInfo" :exception-info
+                                    "slingshot.Stone" :stone
+                                    "slingshot.ExceptionInfo" :exception-info
+                                    "clojure.lang.ExceptionInfo" :exception-info
 
-                                  "clojure.lang.PersistentHashMap"
-                                  :stone-context
+                                    "clojure.lang.PersistentHashMap"
+                                    :stone-context
 
-                                  "clojure.lang.PersistentArrayMap"
-                                  :stone-context
+                                    "clojure.lang.PersistentArrayMap"
+                                    :stone-context
 
-                                  :throwable))
-                           gc# (fn ~'get-cause-fn [e#]
-                                 (case (f# e#)
-                                   :stone (:cause (.context e#))
-                                   :stone-context (:next e#)
-                                   (.getCause e#)))
-                           pc# (fn ~'print-cause-fn [e#]
-                                 (case (f# e#)
-                                   :condition [(:message e#)
-                                               (first (:stack-trace e#))]
-                                   :throwable [(.getMessage e#)
-                                               (first (.getStackTrace e#))]
-                                   :stone [(dissoc (.context e#) :stack :next)
-                                           (first (:stack (.context e#)))]
-                                   :exception-info [(dissoc (.getData e#)
-                                                            :stack :next)
-                                                    (first
-                                                     (:stack (.getData e#)))]
-                                   :stone-context [(dissoc e# :stack :next)
-                                                   (first (:stack e#))]))
-                           ca# (fn ~'cause-chain-fn [e#]
-                                 (vec
-                                  (map
-                                   pc#
-                                   (take-while identity (iterate gc# e#)))))]
-                       (case (f# c#)
-                         :condition
-                         (with-out-str
-                           (println (:message @(.state c#)))
-                           (clojure.pprint/pprint
-                            [(dissoc @(.state c#) :message)
-                             (ca# c#)]))
-                         :exception-info
-                         (with-out-str
-                           (println (.getMessage c#))
-                           (clojure.pprint/pprint (.getData c#)))
-                         :stone
-                         (with-out-str
-                           (println (.messagePrefix c#))
-                           (clojure.pprint/pprint
-                            (.object c#))
-                           (clojure.pprint/pprint
-                            (.context c#)))
-                         :throwable
-                         (with-out-str
-                           (clojure.pprint/pprint
-                            [(.getMessage c#)
-                             (ca# c#)])))))
+                                    :throwable))
+                             gc# (fn ~'get-cause-fn [e#]
+                                   (case (f# e#)
+                                     :stone (:cause (.context e#))
+                                     :stone-context (:next e#)
+                                     (.getCause e#)))
+                             pc# (fn ~'print-cause-fn [e#]
+                                   (case (f# e#)
+                                     :condition [(:message e#)
+                                                 (first (:stack-trace e#))]
+                                     :throwable [(.getMessage e#)
+                                                 (first (.getStackTrace e#))]
+                                     :stone [(dissoc (.context e#) :stack :next)
+                                             (first (:stack (.context e#)))]
+                                     :exception-info [(dissoc (.getData e#)
+                                                              :stack :next)
+                                                      (first
+                                                       (:stack (.getData e#)))]
+                                     :stone-context [(dissoc e# :stack :next)
+                                                     (first (:stack e#))]))
+                             ca# (fn ~'cause-chain-fn [e#]
+                                   (vec
+                                    (map
+                                     pc#
+                                     (take-while identity (iterate gc# e#)))))]
+                         (case (f# c#)
+                           :condition
+                           (with-out-str
+                             (println (:message @(.state c#)))
+                             (clojure.pprint/pprint
+                              [(dissoc @(.state c#) :message)
+                               (ca# c#)]))
+                           :exception-info
+                           (with-out-str
+                             (println (.getMessage c#))
+                             (clojure.pprint/pprint (.getData c#)))
+                           :stone
+                           (with-out-str
+                             (println (.messagePrefix c#))
+                             (clojure.pprint/pprint
+                              (.object c#))
+                             (clojure.pprint/pprint
+                              (.context c#)))
+                           :throwable
+                           (with-out-str
+                             (clojure.pprint/pprint
+                              [(.getMessage c#)
+                               (ca# c#)]))))
+                       (catch Exception e#
+                         (.printStackTrace e#))))
                    ;; force loading of some classes
                    (~(symbol s) (Exception. "")))]
           (logging/trace "remote-condition-printer code %s" c)
@@ -752,43 +781,81 @@ otherwise pass it on."
   (restarts
     [^ExceptionEvent exception condition connection]
     (logging/trace "calculate-restarts exception")
-    (let [thread (.thread exception)]
+    (let [thread (.thread exception)
+          context @(:vm-context @connection)]
       (if (.request exception)
         (filter
          identity
-         [(make-restart
-           :continue "CONTINUE" "Pass exception to program"
-           (fn [connection]
-             (logging/trace "restart Continuing")
-             (continue-level connection)))
-          (make-restart
-           :abort "ABORT" "Return to SLIME's top level."
-           (fn [connection]
-             (logging/trace "restart Aborting to top level")
-             (abort-all-levels connection)))
-          (when (pos? (connection/sldb-level connection))
-            (make-restart
-             :quit "QUIT" "Return to previous level."
-             (fn [connection]
-               (logging/trace "restart Quiting to previous level")
-               (quit-level connection))))
-          (make-restart
-           :ignore-type "IGNORE" "Do not enter debugger for this exception type"
-           (fn [connection]
-             (logging/trace "restart Ignoring exceptions")
-             (ignore-exception-type
-              connection (.. exception exception referenceType name))
-             (continue-level connection)))
-          (make-restart
-           :ignore-message "IGNORE-MSG"
-           "Do not enter debugger for this exception message"
-           (fn [connection]
-             (logging/trace "restart Ignoring exceptions")
-             (ignore-exception-message
-              connection (:exception-message condition))
-             (continue-level connection)))])
-        ;; Never break on this exception at this catch location
-        ;; Never break on this exception at this throw location
+         (concat
+          [(make-restart
+            :continue "CONTINUE" "Pass exception to program"
+            (fn [connection]
+              (logging/trace "restart Continuing")
+              (continue-level connection)))
+           (make-restart
+            :abort "ABORT" "Return to SLIME's top level."
+            (fn [connection]
+              (logging/trace "restart Aborting to top level")
+              (abort-all-levels connection)))
+           (when (pos? (connection/sldb-level connection))
+             (make-restart
+              :quit "QUIT" "Return to previous level."
+              (fn [connection]
+                (logging/trace "restart Quiting to previous level")
+                (quit-level connection))))
+           (make-restart
+            :ignore-type "IGNORE" "Do not enter debugger for this exception type"
+            (fn [connection]
+              (logging/trace "restart Ignoring exceptions")
+              (ignore-exception-type
+               connection (.. exception exception referenceType name))
+              (continue-level connection)))
+           (when-not (string/blank? (:exception-message condition))
+             (make-restart
+              :ignore-message "IGNORE-MSG"
+              "Do not enter debugger for this exception message"
+              (fn [connection]
+                (logging/trace "restart Ignoring exceptions")
+                (ignore-exception-message
+                 connection (:exception-message condition))
+                (continue-level connection))))
+           (when-let [location (jdi/catch-location exception)]
+             (let [location (jdi/location-type-name location)
+                   location (re-find #"[^\$]+" location)]
+               (make-restart
+                :ignore-message "IGNORE-CATCH"
+                (str
+                 "Do not enter debugger for exceptions with catch location "
+                 location ".*")
+                (fn [connection]
+                  (logging/trace "restart Ignoring exceptions")
+                  (ignore-exception-catch-location
+                   connection (re-pattern (str location ".*")))
+                  (continue-level connection)))))
+           (when-let [location (jdi/location exception)]
+             (let [location (jdi/location-type-name location)
+                   location (re-find #"[^\$]+" location)]
+               (make-restart
+                :ignore-message "IGNORE-LOC"
+                (str
+                 "Do not enter debugger for exceptions with throw location "
+                 location ".*")
+                (fn [connection]
+                  (logging/trace "restart Ignoring exceptions")
+                  (ignore-exception-location
+                   connection (re-pattern (str location ".*")))
+                  (continue-level connection)))))]
+          (when-let [restarts (seq
+                               (swell-impl/available-restarts context thread))]
+            (map
+             #(make-restart
+               :restart (str "RESTART " %)
+               (str "Invoke restart " %)
+               (fn [connection]
+                 (logging/trace "restart Ignoring exceptions")
+                 (swell-impl/select-restart context thread %)
+                 (continue-level connection)))
+             restarts))))
         (filter
          identity
          [(when (pos? (connection/sldb-level connection))
@@ -847,19 +914,32 @@ otherwise pass it on."
   "Calculate debugger information and invoke"
   [connection event]
   (logging/trace "debugger-event-info")
-  (let [thread (jdi/event-thread event)
-        thread-id (.uniqueID thread)
-        _ (logging/trace "building condition")
-        condition (condition-info event @connection)
-        restarts (restarts event condition connection)
-        _ (logging/trace "adding sldb level")
-        level-info {:restarts restarts :thread thread :event event}
-        level (connection/next-sldb-level connection level-info)
-        _ (logging/trace "building backtrace")
-        backtrace (if (instance? InvocationExceptionEvent event)
-                    [{:function "Unavailble" :source "UNKNOWN" :line "UNKNOWN"}]
-                    (build-backtrace thread 0 *sldb-initial-frames*))]
-    [thread-id level condition restarts backtrace]))
+  (jdi/with-disabled-exception-requests
+    [(:vm (connection/vm-context connection))]
+    ;; The remote-condition-printer will cause class not found exceptions
+    ;; (especially the first time it runs).
+    (let [thread (jdi/event-thread event)
+          user-threads (conj
+                        (set
+                         (jdi/threads-in-group
+                          (.virtualMachine thread)
+                          executor/ritz-executor-group-name))
+                        thread)
+          _ (logging/trace "user threads %s" user-threads)
+          thread-id (.uniqueID thread)
+          _ (logging/trace "building condition")
+          condition (condition-info event @connection)
+          restarts (restarts event condition connection)
+          _ (logging/trace "adding sldb level")
+          level-info {:restarts restarts :thread thread :event event
+                      :user-threads user-threads}
+          level (connection/next-sldb-level connection level-info)
+          _ (logging/trace "building backtrace")
+          backtrace (if (instance? InvocationExceptionEvent event)
+                      [{:function "Unavailble"
+                        :source "UNKNOWN" :line "UNKNOWN"}]
+                      (build-backtrace thread 0 *sldb-initial-frames*))]
+      [thread-id level level-info condition restarts backtrace])))
 
 (defn invoke-debugger*
   "Calculate debugger information and invoke"
@@ -878,18 +958,13 @@ otherwise pass it on."
   [connection event]
   (logging/trace "invoke-debugger")
 
-  ;; The handler resumes threads, so make sure we suspend them
-  ;; again first. The restart from the sldb buffer will resume these
-  ;; threads.
-  (jdi/suspend-event-threads event)
-  ;; Invoke debugger from a new thread, so we don't block the
-  ;; event loop. The remote-condition-printer will cause class not found
-  ;; exceptions (especially the first time it runs).
-  (executor/execute
-   #(let [[thread-id level condition restarts backtrace]
-          (debugger-event-info connection event)]
-      (invoke-debugger*
-       connection thread-id level condition restarts backtrace))))
+  (let [[thread-id level level-info condition restarts backtrace]
+        (debugger-event-info connection event)]
+    (invoke-debugger* connection thread-id level condition restarts backtrace)
+
+    ;; The handler resumes threads, so make sure we suspend them again
+    ;; first. The restart from the sldb buffer will resume these threads.
+    (jdi/suspend-threads (:user-threads level-info))))
 
 (defn debugger-info-for-emacs
   "Calculate debugger information and invoke"
@@ -1120,7 +1195,7 @@ otherwise pass it on."
     (catch com.sun.jdi.InvocationException e
       (if connection
         (let [event (InvocationExceptionEvent. (.exception e) thread)
-              [thread-id level condition restarts backtrace]
+              [thread-id level level-info condition restarts backtrace]
               (debugger-event-info connection event)]
           (invoke-debugger*
            connection thread-id level condition restarts backtrace))
@@ -1156,7 +1231,7 @@ otherwise pass it on."
     (catch com.sun.jdi.InvocationException e
       (if connection
         (let [event (InvocationExceptionEvent. (.exception e) thread)
-              [thread-id level condition restarts backtrace]
+              [thread-id level level-info condition restarts backtrace]
               (debugger-event-info connection event)]
           (invoke-debugger*
            connection thread-id level condition restarts backtrace))
@@ -1187,7 +1262,8 @@ otherwise pass it on."
             (logging/trace "checking equal-or-matches? %s %s" expr value)
             (cond
              (string? expr) (= expr value)
-             :else (re-matches expr value)))
+             (string? value) (re-matches expr value)
+             :else false))
           (matches? [{:keys [type location catch-location enabled message]
                       :as filter}]
             (and
@@ -1195,7 +1271,7 @@ otherwise pass it on."
              (or (not type) (= type exception-type))
              (or (not location)
                  (equal-or-matches? location location-name))
-             (or (not catch-location)
+             (or (not catch-location) (not catch-location-name)
                  (equal-or-matches? catch-location catch-location-name))
              (or (not message)
                  (equal-or-matches? message exception-message))))]
@@ -1210,9 +1286,10 @@ otherwise pass it on."
         location-name (jdi/location-type-name location)
         exception (.exception exception-event)
         exception-type (.. exception referenceType name)
-        catch-location-name (jdi/location-type-name catch-location)
+        catch-location-name (when catch-location
+                              (jdi/location-type-name catch-location))
         exception-msg (jdi-clj/exception-message
-                         @(:vm-context @connection) exception-event)]
+                       @(:vm-context @connection) exception-event)]
     (logging/trace
      "break-for-exception? %s %s %s"
      catch-location-name location-name exception-msg)
@@ -1257,6 +1334,7 @@ otherwise pass it on."
         ;; (logging/trace "EXCEPTION %s" event)
         ;; assume a single connection for now
         (do
+          (logging/trace "EVENT %s" (.toString event))
           (logging/trace "EXCEPTION %s" exception)
           ;; would like to print this, but can cause hangs
           ;;    (jdi-clj/exception-message context event)
@@ -1366,7 +1444,10 @@ otherwise pass it on."
           [(conj output s) location]
           [(->
             output
-            (conj (format "%s:%s" (:function op) (:line op)))
+            (conj (format
+                   "%s:%s"
+                   (or (:source-path op) (:source op) (:function op))
+                   (:line op)))
             (conj s))
            (select-keys op [:function :line])])))
     [[] {}]

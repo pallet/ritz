@@ -14,8 +14,13 @@
     Writer OutputStreamWriter BufferedWriter PrintWriter StringWriter
     IOException)))
 
-(defn announce-port-to-out [port]
-  (println "Swank server listening on local port " port))
+(def default-announce-msg "Swank server listening on local port")
+
+(defn announce-port-to-out
+  ([port msg]
+     (println (or msg default-announce-msg) port))
+  ([port]
+     (announce-port-to-out port default-announce-msg)))
 
 (defn announce-port-to-file
   "Writes the given port number into a file."
@@ -33,7 +38,11 @@
     (let [connection (.accept socket)]
       (logging/trace "accept-connection: starting connection")
       (executor/execute
-       #(f (rpc-socket-connection/create connection options) options)))))
+       #(do
+          (.setName
+           (Thread/currentThread)
+           (str "Accept-Connection-" (.getId (Thread/currentThread))))
+          (f (rpc-socket-connection/create connection options) options))))))
 
 (defn server-socket
   "Open the server socket"
@@ -54,7 +63,8 @@
   [connection-f port-file {:keys [announce join log-level]
                            :or {join true announce :default}
                            :as options}]
-  (logging/set-level (keyword (:log-level options)))
+  (logging/set-level (when-let [level (:log-level options)]
+                       (keyword level)))
   (logging/trace "socket-server/start-server")
   (logging/trace "*compile-path* %s" *compile-path*)
   (when *compile-path*
@@ -78,7 +88,7 @@
             (and (= announce :default)
                  (do
                    (announce-port-to-file port port-file)
-                   (announce-port-to-out port))))
+                   (announce-port-to-out port (:message options)))))
         [socket acceptor]
         (when join
           (.get acceptor)))
@@ -94,6 +104,8 @@
     :or {server-ns 'ritz.proxy}
     :as options}]
   (logging/trace "socket-server/start")
+  @executor/ritz-executor-group
+  @executor/ritz-control-group
   (let [stop (atom false)
         options (-> options
                     (update-in

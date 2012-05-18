@@ -3,12 +3,6 @@
 Ritz is a swank server for running [clojure](http://clojure.org) in
 [slime](http://common-lisp.net/project/slime).
 
-Ritz was originally based on
-[swank-clojure](http://github.com/technomancy/swank-clojure) and was
-originally called swank-clj.  The last swank-clj release is 0.1.6.
-
-This is alpha quality.
-
 ## Features
 
 - Break on exceptions and breakpoints.
@@ -17,13 +11,15 @@ This is alpha quality.
 - Inspection of locals in any stack frame
 - Disassembly of functions from symbol or stack frame
 
-Should work with clojure 1.2.0, 1.2.1 and 1.3.0-alpha7.
+Should work with any version of clojure from 1.2.0.
 
 ## Install
 
-### SLIME
+The install has two parts. The first is to install the slime components into
+emacs (if you are not using jack-in), and the second is to enable
+[Leiningen](http://github.com/technomancy/leiningen) to use ritz.
 
-Install the slime-ritz.el contrib from [marmalade](http://marmalade-repo.org/).
+### SLIME
 
 A compatible slime.el is in slime/slime.el. It is available as a `package.el`
 package file you can
@@ -32,42 +28,73 @@ and install with `M-x package-install-file`.  Note that you may need to remove
 this package to use
 [swank-clojure](https://github.com/technomancy/swank-clojure) again.
 
-### Lein/Cake Project
+Install the slime-ritz.el contrib from
+[marmalade](http://marmalade-repo.org/). If you are using a SNAPSHOT version of
+ritz, you probably will need to install slime-ritz.el from
+[melpa](http://melpa.milkbox.net/packages/) instead.
 
-Add `[ritz "0.2.1"]` to your project.clj `:dev-dependencies`.
+### Lein 2
 
-### Lein Plugin
+To make ritz available in all your projects, add the lein-ritz plugin to your
+`:user` profile in `~/.lein/profiles.clj`. This is the preferred over enabling
+ritz on a per project basis.
 
-Run `lein plugin install ritz 0.2.1`.
+```clj
+{:user {:plugins [[lein-ritz "0.3.0"]]}}
+```
 
-### Maven Plugin
+To enable ritz on a per project basis, add it to your `project.clj`'s :dev
+profile.
+
+```clj
+{:dev {:plugins [[lein-ritz "0.3.0"]]}}
+```
+
+In either case, start a swank server with `lein ritz` inside your project
+directory, and then use `M-x slime-connect` in emacs to connect to it.
+
+### Lein 1
+
+To make ritz available in all your projects, install the lein-ritz plugin.
+
+```
+lein plugin install lein-ritz "0.3.0-SNAPSHOT"
+```
+
+Add `[lein-ritz "0.3.0-SNAPSHOT"]` to your project.clj `:dev-dependencies`.
+
+
+Start a swank server with `lein ritz` inside your project directory,
+and then use `M-x slime-connect` in emacs to connect to it.
+
+### Experimental 'jack-in' support
+
+There is experimental support to "jack in" from an existing project
+using [Leiningen](http://github.com/technomancy/leiningen):
+
+For "jack-in" to work, you can not have SLIME installed.
+
+* Install `clojure-mode` either from
+  [Marmalade](http://marmalade-repo.org) or from
+  [git](http://github.com/technomancy/clojure-mode).
+* lein plugin install lein-ritz "0.3.0-SNAPSHOT"
+* in your .emacs file, add the following and evalulate it (or restart emacs)
+```lisp
+(setq clojure-swank-command
+  (if (or (locate-file "lein" exec-path) (locate-file "lein.bat" exec-path))
+    "lein ritz-in %s"
+    "echo \"lein ritz-in %s\" | $SHELL -l"))
+```
+* From an Emacs buffer inside a project, invoke `M-x clojure-jack-in`
+
+## Maven Plugin
 
 See [zi](https://github.com/pallet/zi).
 
-### Sun/Oracle JDK and OpenJDK
+## Source Browsing
 
-To use the Sun/Oracle JDK, and possibly OpenJDK, you
-[need to add](http://download.oracle.com/javase/1.5.0/docs/tooldocs/findingclasses.html)
-`tools.jar` from your JDK install to your classpath. This is not required on OS
-X, where `tools.jar` does not exist.
-
-If you are using maven then there are
-[instructions in the FAQ](http://maven.apache.org/general.html#tools-jar-dependency).
-
-For cake, add the following (with the correct jdk path), to
-`PROJECT_ROOT/.cake/config`:
-    project.classpath = /usr/lib/jvm/java-6-sun/lib/tools.jar
-
-For lein, add the tools.jar to the dev-resources-path:
-
-    :dev-resources-path "/usr/lib/jvm/java-6-sun/lib/tools.jar"
-
-If you are missing tools.jar from the classpath, you will see an exception like `java.lang.ClassNotFoundException: com.sun.jdi.VirtualMachine`.
-
-### Source Browsing
-
-If you would like to browse into the clojure java sources then add the following
-to your `:dev-dependencies`, with the appropriate clojure version.
+If you would like to browse into java sources then add the source jars
+to your `:dev-dependencies`, with the appropriate versions.
 
     [org.clojure/clojure "1.2.1" :classifier "sources"]
 
@@ -80,7 +107,18 @@ classpath. e.g. for lein:
 
     :dev-resources-path "/usr/lib/jvm/java-6-openjdk/src.zip"
 
-## Usage
+### lein 2
+
+In lein 2 this is simplified. You can add a hook to your user profile to have
+source jars automatically put on the classpath.
+
+    :hooks [ritz.add-sources]
+
+To obtain source jars for your project you can use
+
+    lein pom; mvn dependency:sources;
+
+## USAGE
 
 To run ritz with debugging capabilities (notice that it will need to spawn an
 extra JVM process):
@@ -123,6 +161,10 @@ To list breakpoints, use `M-x slime-list-exception-filters` or press `f` in the
  - d disable
  - g refresh list
  - k remove exception filter
+ - s save the exception filters
+
+Exception filters are saved to .ritz-exception-filters, which is read by ritz on
+startup.
 
 ### Javadoc
 
@@ -178,6 +220,12 @@ JVM process.
 
 Run swank server in process and attach slime as required. This requires the
 debugger to run in process.
+
+## History
+
+Ritz was originally based on
+[swank-clojure](http://github.com/technomancy/swank-clojure) and was
+originally called swank-clj.  The last swank-clj release is 0.1.6.
 
 ## License
 
