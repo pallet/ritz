@@ -26,6 +26,8 @@ echo ""
 echo "Now edit project.clj, ReleaseNotes and README"
 
 $EDITOR project.clj
+$EDITOR lein-ritz/project.clj
+$EDITOR lein-ritz/src/leiningen/ritz.clj
 $EDITOR ReleaseNotes.md
 $EDITOR README.md
 

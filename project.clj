@@ -1,4 +1,4 @@
-(defproject ritz "0.3.0-SNAPSHOT"
+(defproject ritz "0.3.0"
   :description "Another swank server for clojure in SLIME"
   :source-paths ["src/main/clojure"]
   :resources-paths ["src/main/resources"]
@@ -18,7 +18,6 @@
                                  [ch.qos.logback/logback-classic "1.0.0"]
                                  [vmfest "0.2.3"]
                                  [org.clojure/clojure-contrib "1.2.0"]]}}
-  :jvm-opts ["-Dclojure.compile.clear-locals=false"
-             "-Djava.awt.headless=true"]
+  :jvm-opts ["-Djava.awt.headless=true"]
   :repositories
   {"sonatype" "https://oss.sonatype.org/content/repositories/releases/"})

@@ -36,20 +36,22 @@ ritz, you probably will need to install slime-ritz.el from
 ### Lein 2
 
 To make ritz available in all your projects, add the lein-ritz plugin to your
-`:user` profile in `~/.lein/profiles.clj`.
+`:user` profile in `~/.lein/profiles.clj`. This is the preferred over enabling
+ritz on a per project basis.
 
 ```clj
-{:user {:plugins [[lein-ritz "0.3.0-SNAPSHOT"]]}}
+{:user {:plugins [[lein-ritz "0.3.0"]]}}
 ```
 
-To enable ritz on a per project basis, add it to your `project.clj`'s :dev profile.
+To enable ritz on a per project basis, add it to your `project.clj`'s :dev
+profile.
 
 ```clj
-{:dev {:plugins [[lein-ritz "0.3.0-SNAPSHOT"]]}}
+{:dev {:plugins [[lein-ritz "0.3.0"]]}}
 ```
 
-In either case, start a swank server with `lein ritz` inside your project directory,
-and then use `M-x slime-connect` in emacs to connect to it.
+In either case, start a swank server with `lein ritz` inside your project
+directory, and then use `M-x slime-connect` in emacs to connect to it.
 
 ### Lein 1
 
