@@ -382,8 +382,8 @@
 
 (defun slime-ritz-init ()
   "Initialise slime-ritz.  Creates clojure specific slime hooks."
-  (add-hook 'slime-connected-hook slime-ritz-connected)
-  (add-hook 'slime-repl-mode-hook slime-ritz-repl-connected))
+  (add-hook 'slime-connected-hook 'slime-ritz-connected)
+  (add-hook 'slime-repl-mode-hook 'slime-ritz-repl-connected))
 
 (add-hook 'slime-ritz-connected-hook 'slime-clojure-connection-setup)
 (add-hook 'slime-ritz-repl-mode-hook 'slime-clojure-repl-setup)
