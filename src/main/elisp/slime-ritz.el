@@ -380,10 +380,11 @@
   (when (slime-connection-is-clojure-p)
     (run-hooks 'slime-ritz-repl-mode-hook)))
 
+;;;###autoload
 (defun slime-ritz-init ()
   "Initialise slime-ritz.  Creates clojure specific slime hooks."
-  (add-hook 'slime-connected-hook slime-ritz-connected)
-  (add-hook 'slime-repl-mode-hook slime-ritz-repl-connected))
+  (add-hook 'slime-connected-hook 'slime-ritz-connected)
+  (add-hook 'slime-repl-mode-hook 'slime-ritz-repl-connected))
 
 (add-hook 'slime-ritz-connected-hook 'slime-clojure-connection-setup)
 (add-hook 'slime-ritz-repl-mode-hook 'slime-clojure-repl-setup)
@@ -401,11 +402,7 @@
 (defun slime-ritz-bind-repl-keys ()
   (define-key slime-repl-mode-map (kbd "C-c b") 'slime-javadoc))
 
-;;;###autoload
-(add-hook 'slime-load-hook
-          (lambda ()
-            (require 'slime-ritz)
-            (slime-ritz-init)))
+;;;###autoload (eval-after-load "slime" '(slime-ritz-init))
 
 (provide 'slime-ritz)
 ;;; slime-ritz.el ends here
