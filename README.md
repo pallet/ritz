@@ -100,12 +100,13 @@ For "jack-in" to work, you can not have SLIME installed.
   [git](http://github.com/technomancy/clojure-mode).
 * lein plugin install lein-ritz "0.3.0-SNAPSHOT"
 * in your .emacs file, add the following and evalulate it (or restart emacs)
-```lisp
-(setq clojure-swank-command
-  (if (or (locate-file "lein" exec-path) (locate-file "lein.bat" exec-path))
-    "lein ritz-in %s"
-    "echo \"lein ritz-in %s\" | $SHELL -l"))
-```
+
+    ```lisp
+    (setq clojure-swank-command
+      (if (or (locate-file "lein" exec-path) (locate-file "lein.bat" exec-path))
+        "lein ritz-in %s"
+        "echo \"lein ritz-in %s\" | $SHELL -l"))
+    ```
 * From an Emacs buffer inside a project, invoke `M-x clojure-jack-in`
 
 ## Maven Plugin
