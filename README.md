@@ -25,10 +25,14 @@ slime than [swank-clojure](https://github.com/technomancy/swank-clojure).
 
 ### SLIME
 
-A compatible version of slime is in the ritz source tree at slime/slime.el. It
-is available as a `package.el` package file you can
-[download](https://github.com/downloads/pallet/ritz/slime-20101113.1.tar) and
-install with `M-x package-install-file` (no un-tar required).
+The easiest way to install a compatible version of slime is to use the emacs
+packaging system `package.el` - download the
+[package file](https://github.com/downloads/pallet/ritz/slime-20101113.1.tar)
+and install with `M-x package-install-file` (pass the path to the downloaded
+package file, no un-tar required).
+
+(Alternatively, the same version of slime is in the ritz source tree at
+slime/slime.el.)
 
 Install the slime-ritz.el contrib from
 [marmalade](http://marmalade-repo.org/). If you are using a SNAPSHOT version of
