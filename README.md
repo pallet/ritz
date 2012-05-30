@@ -19,19 +19,36 @@ The install has two parts. The first is to install the slime components into
 emacs (if you are not using jack-in), and the second is to enable
 [Leiningen](http://github.com/technomancy/leiningen) to use ritz.
 
+To try Ritz without destroying your swank-clojure install, you may wish to back
+up your .emacs file and .emacs.d directory. Ritz uses a different version of
+slime than [swank-clojure](https://github.com/technomancy/swank-clojure).
+
 ### SLIME
 
-A compatible slime.el is in slime/slime.el. It is available as a `package.el`
-package file you can
-[download](https://github.com/downloads/pallet/ritz/slime-20101113.1.tar)
-and install with `M-x package-install-file`.  Note that you may need to remove
-this package to use
-[swank-clojure](https://github.com/technomancy/swank-clojure) again.
+A compatible version of slime is in the ritz source tree at slime/slime.el. It
+is available as a `package.el` package file you can
+[download](https://github.com/downloads/pallet/ritz/slime-20101113.1.tar) and
+install with `M-x package-install-file` (no un-tar required).
 
 Install the slime-ritz.el contrib from
 [marmalade](http://marmalade-repo.org/). If you are using a SNAPSHOT version of
-ritz, you probably will need to install slime-ritz.el from
+Ritz, you probably will need to install slime-ritz.el from
 [melpa](http://melpa.milkbox.net/packages/) instead.
+
+Note that on Emacs 23 you will need to
+[install](http://tromey.com/elpa/install.html) package.el.
+
+To add the repositories to the emacs package system, you will need the following
+in your `.emacs` file, and eval it or restart emacs.
+
+```elisp
+(require 'package)
+(add-to-list 'package-archives
+  '("marmalade" . "http://marmalade-repo.org/packages/") t)
+(add-to-list 'package-archives
+  '("melpa" . "http://melpa.milkbox.net/packages/") t)
+(package-initialize)
+```
 
 ### Lein 2
 
