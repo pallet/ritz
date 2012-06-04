@@ -1,10 +1,9 @@
-(defproject ritz "0.3.0"
+(defproject ritz "0.3.1-SNAPSHOT"
   :description "Another swank server for clojure in SLIME"
   :source-paths ["src/main/clojure"]
   :resources-paths ["src/main/resources"]
   :test-paths ["src/test/clojure"]
   :dependencies [[org.clojure/clojure "1.3.0"]
-                 [useful "0.4.0"]
                  [org.clojure/data.codec "0.1.0"]]
   :profiles {:it {:source-paths ["src/main/clojure" "src/it/clojure"]
                   :dependencies [[org.palletops/clojure "1.3.0-p1"]
