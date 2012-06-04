@@ -19,19 +19,40 @@ The install has two parts. The first is to install the slime components into
 emacs (if you are not using jack-in), and the second is to enable
 [Leiningen](http://github.com/technomancy/leiningen) to use ritz.
 
+To try Ritz without destroying your swank-clojure install, you may wish to back
+up your .emacs file and .emacs.d directory. Ritz uses a different version of
+slime than [swank-clojure](https://github.com/technomancy/swank-clojure).
+
 ### SLIME
 
-A compatible slime.el is in slime/slime.el. It is available as a `package.el`
-package file you can
-[download](https://github.com/downloads/pallet/ritz/slime-20101113.1.tar)
-and install with `M-x package-install-file`.  Note that you may need to remove
-this package to use
-[swank-clojure](https://github.com/technomancy/swank-clojure) again.
+The easiest way to install a compatible version of slime is to use the emacs
+packaging system `package.el` - download the
+[package file](https://github.com/downloads/pallet/ritz/slime-20101113.1.tar)
+and install with `M-x package-install-file` (pass the path to the downloaded
+package file, no un-tar required).
+
+(Alternatively, the same version of slime is in the ritz source tree at
+slime/slime.el.)
 
 Install the slime-ritz.el contrib from
 [marmalade](http://marmalade-repo.org/). If you are using a SNAPSHOT version of
-ritz, you probably will need to install slime-ritz.el from
+Ritz, you probably will need to install slime-ritz.el from
 [melpa](http://melpa.milkbox.net/packages/) instead.
+
+Note that on Emacs 23 you will need to
+[install](http://tromey.com/elpa/install.html) package.el.
+
+To add the repositories to the emacs package system, you will need the following
+in your `.emacs` file, and eval it or restart emacs.
+
+```elisp
+(require 'package)
+(add-to-list 'package-archives
+  '("marmalade" . "http://marmalade-repo.org/packages/") t)
+(add-to-list 'package-archives
+  '("melpa" . "http://melpa.milkbox.net/packages/") t)
+(package-initialize)
+```
 
 ### Lein 2
 
@@ -40,14 +61,14 @@ To make ritz available in all your projects, add the lein-ritz plugin to your
 ritz on a per project basis.
 
 ```clj
-{:user {:plugins [[lein-ritz "0.3.0"]]}}
+{:user {:plugins [[lein-ritz "0.3.1"]]}}
 ```
 
 To enable ritz on a per project basis, add it to your `project.clj`'s :dev
 profile.
 
 ```clj
-{:dev {:plugins [[lein-ritz "0.3.0"]]}}
+{:dev {:plugins [[lein-ritz "0.3.1"]]}}
 ```
 
 In either case, start a swank server with `lein ritz` inside your project
@@ -58,10 +79,10 @@ directory, and then use `M-x slime-connect` in emacs to connect to it.
 To make ritz available in all your projects, install the lein-ritz plugin.
 
 ```
-lein plugin install lein-ritz "0.3.0-SNAPSHOT"
+lein plugin install lein-ritz "0.3.1"
 ```
 
-Add `[lein-ritz "0.3.0-SNAPSHOT"]` to your project.clj `:dev-dependencies`.
+Add `[lein-ritz "0.3.1"]` to your project.clj `:dev-dependencies`.
 
 
 Start a swank server with `lein ritz` inside your project directory,
@@ -77,14 +98,15 @@ For "jack-in" to work, you can not have SLIME installed.
 * Install `clojure-mode` either from
   [Marmalade](http://marmalade-repo.org) or from
   [git](http://github.com/technomancy/clojure-mode).
-* lein plugin install lein-ritz "0.3.0-SNAPSHOT"
+* lein plugin install lein-ritz "0.3.1"
 * in your .emacs file, add the following and evalulate it (or restart emacs)
-```lisp
-(setq clojure-swank-command
-  (if (or (locate-file "lein" exec-path) (locate-file "lein.bat" exec-path))
-    "lein ritz-in %s"
-    "echo \"lein ritz-in %s\" | $SHELL -l"))
-```
+
+    ```lisp
+    (setq clojure-swank-command
+      (if (or (locate-file "lein" exec-path) (locate-file "lein.bat" exec-path))
+        "lein ritz-in %s"
+        "echo \"lein ritz-in %s\" | $SHELL -l"))
+    ```
 * From an Emacs buffer inside a project, invoke `M-x clojure-jack-in`
 
 ## Maven Plugin
