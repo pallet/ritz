@@ -1,6 +1,16 @@
 # Release Notes
 
-Current release is 0.3.0.
+Current release is 0.3.1.
+
+## 0.3.1
+
+- use `eval-after-load` instead of a load-hook
+  This way slime-ritz will initialize properly if slime was already
+  loaded..
+
+- Remove cake support (no longer depends on useful)
+
+- Fix markdown formatting
 
 ## 0.3.0
 
