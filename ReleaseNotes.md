@@ -1,6 +1,12 @@
 # Release Notes
 
-Current release is 0.3.1.
+Current release is 0.3.2.
+
+## 0.3.2
+
+- Fix autoloads
+
+- Fix hooks for lein1
 
 ## 0.3.1
 

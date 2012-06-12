@@ -55,7 +55,7 @@
   (update-in project [:dependencies]
              conj ['ritz
                    (or (System/getenv "RITZ_VERSION")
-                       (System/getProperty "ritz.version" "0.3.1"))]))
+                       (System/getProperty "ritz.version" "0.3.2"))]))
 
 (defn ritz
   "Launch ritz server for Emacs to connect. Optionally takes PORT and HOST."
@@ -66,5 +66,21 @@
   ([project port] (ritz project port "localhost"))
   ([project] (ritz project 4005)))
 
-(add-hook #'leiningen.core.classpath/get-classpath add-jpda-jars)
-(add-hook #'leiningen.core.classpath/get-classpath add-source-artifacts)
+(defmacro add-hooks
+  []
+  (if (and
+       (find-ns 'leiningen.core.classpath)
+       (ns-resolve 'leiningen.core.classpath 'get-classpath))
+    `(do
+       (add-hook
+        #'leiningen.core.classpath/get-classpath add-jpda-jars)
+       (add-hook
+        #'leiningen.core.classpath/get-classpath add-source-artifacts))
+    `(do
+       (require 'leiningen.classpath)
+       (add-hook
+        #'leiningen.classpath/get-classpath add-jpda-jars)
+       (add-hook
+        #'leiningen.classpath/get-classpath add-source-artifacts))))
+
+(add-hooks)
