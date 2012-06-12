@@ -19,6 +19,7 @@
    classpath-elements
    (->>
     classpath-elements
+    (map #(.getCanonicalPath (io/file %)))
     (map source-jar)
     (filter identity))))
 
