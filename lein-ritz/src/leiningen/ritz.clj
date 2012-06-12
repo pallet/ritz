@@ -55,7 +55,7 @@
   (update-in project [:dependencies]
              conj ['ritz
                    (or (System/getenv "RITZ_VERSION")
-                       (System/getProperty "ritz.version" "0.3.1"))]))
+                       (System/getProperty "ritz.version" "0.3.2"))]))
 
 (defn ritz
   "Launch ritz server for Emacs to connect. Optionally takes PORT and HOST."
