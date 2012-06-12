@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.3.1
+;; Version: 0.3.2
 ;; License: EPL
 
 (define-slime-contrib slime-ritz
@@ -368,14 +368,17 @@
   :type 'hook
   :group 'slime-lisp)
 
+;;;###autoload
 (defun slime-connection-is-clojure-p ()
   (compare-strings "clojure" 0 7 (slime-connection-name) 0 7))
 
+;;;###autoload
 (defun slime-ritz-connected ()
   (slime-ritz-bind-keys)
   (when (slime-connection-is-clojure-p)
     (run-hooks 'slime-ritz-connected-hook)))
 
+;;;###autoload
 (defun slime-ritz-repl-connected ()
   (when (slime-connection-is-clojure-p)
     (run-hooks 'slime-ritz-repl-mode-hook)))
@@ -383,26 +386,31 @@
 ;;;###autoload
 (defun slime-ritz-init ()
   "Initialise slime-ritz.  Creates clojure specific slime hooks."
-  (add-hook 'slime-connected-hook slime-ritz-connected)
-  (add-hook 'slime-repl-mode-hook slime-ritz-repl-connected))
+  (add-hook 'slime-connected-hook 'slime-ritz-connected)
+  (add-hook 'slime-repl-mode-hook 'slime-ritz-repl-connected))
 
 (add-hook 'slime-ritz-connected-hook 'slime-clojure-connection-setup)
 (add-hook 'slime-ritz-repl-mode-hook 'slime-clojure-repl-setup)
 
+;;;###autoload
 (defun slime-clojure-connection-setup ()
   (slime-ritz-bind-keys))
 
+;;;###autoload
 (defun slime-clojure-repl-setup ()
   (slime-ritz-bind-repl-keys))
 
+;;;###autoload
 (defun slime-ritz-bind-keys ()
   (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)
   (define-key slime-mode-map (kbd "C-c b") 'slime-javadoc))
 
+;;;###autoload
 (defun slime-ritz-bind-repl-keys ()
   (define-key slime-repl-mode-map (kbd "C-c b") 'slime-javadoc))
 
-;;;###autoload (eval-after-load "slime" '(slime-ritz-init))
+;;;###autoload
+(eval-after-load "slime" '(slime-ritz-init))
 
 (provide 'slime-ritz)
 ;;; slime-ritz.el ends here
