@@ -753,7 +753,9 @@ otherwise pass it on."
 
 (def data-carrying-exception
   #{"clojure.contrib.condition.Condition"
-    "slingshot.Stone" "slingshot.ExceptionInfo"})
+    "slingshot.Stone"
+    "slingshot.ExceptionInfo"
+    "clojure.lang.ExceptionInfo"})
 
 (extend-type ExceptionEvent
   Debugger
