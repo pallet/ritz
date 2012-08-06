@@ -41,6 +41,19 @@
   (let [name (connector-names connector-kw)]
     (some #(and (= (.name %) name) %) (connectors))))
 
+(defn connector-args
+  "Returns connector arguments based on name value pairs in arg-map."
+  [connector arg-map]
+  (let [args (.defaultArguments connector)]
+    (doseq [[arg-name value] arg-map
+            :let [arg (.get args arg-name)]]
+      (when-not arg
+        (throw
+         (IllegalStateException.
+          (str "Could not find JPDA connector argument for " arg-name))))
+      (.setValue arg value))
+    args))
+
 (defn launch
   "Launch a vm.
    `classpath` is a string to pass as the classpath, and `expr` is an

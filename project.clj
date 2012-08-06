@@ -4,7 +4,8 @@
   :resources-paths ["src/main/resources"]
   :test-paths ["src/test/clojure"]
   :dependencies [[org.clojure/clojure "1.3.0"]
-                 [org.clojure/data.codec "0.1.0"]]
+                 [org.clojure/data.codec "0.1.0"]
+                 [org.clojure/tools.nrepl "0.2.0-beta8"]]
   :profiles {:it {:source-paths ["src/main/clojure" "src/it/clojure"]
                   :dependencies [[org.palletops/clojure "1.3.0-p1"]
                                  [org.cloudhoist/pallet "0.6.7"]
@@ -16,7 +17,8 @@
                                  [ch.qos.logback/logback-core "1.0.0"]
                                  [ch.qos.logback/logback-classic "1.0.0"]
                                  [vmfest "0.2.3"]
-                                 [org.clojure/clojure-contrib "1.2.0"]]}}
-  :jvm-opts ["-Djava.awt.headless=true"]
-  :repositories
-  {"sonatype" "https://oss.sonatype.org/content/repositories/releases/"})
+                                 [org.clojure/clojure-contrib "1.2.0"]]
+                  :repositories
+                  {"sonatype"
+                   "https://oss.sonatype.org/content/repositories/releases/"}}}
+  :jvm-opts ["-Djava.awt.headless=true"])

@@ -8,102 +8,149 @@
    [clojure.pprint :as pprint]
    [clojure.string :as string])
   (:import
+   com.sun.jdi.event.EventSet
    com.sun.jdi.event.ExceptionEvent
    com.sun.jdi.event.VMDeathEvent
    com.sun.jdi.request.ExceptionRequest
    com.sun.jdi.VirtualMachine))
 
+;;; VM resume
+(defn vm-resume
+  [context]
+  (.resume (:vm context)))
+
+
 ;;; Control thread acquisition
 (def control-thread-name "JDI-VM-Control-Thread")
 
-(defn- start-control-thread-body
+(defn start-control-thread-body
   "Form to start a thread for the debugger to work with.  This should contain
-   only clojure.core symbols."
-  []
-  `(do
-     (let [thread# (Thread.
-                    (fn []
-                      (try
-                        (throw (Exception.
-                                (str '~(symbol control-thread-name))))
-                        (catch Exception _#
-                          (throw
-                           (Exception. (str 'CONTROL-THREAD-CONTINUED)))))))]
-       (.setName thread# (str '~(symbol control-thread-name)))
-       (.setDaemon thread# false)
-       (.start thread#))))
+   only clojure.core symbols. Strings can also cause quoting issues."
+  [thread-name]
+  `(let [thread# (Thread.
+                  (fn []
+                    ;; Not sure why timing is an issue here, as events should
+                    ;; just be queued.
+                    (Thread/sleep 1000)
+                    (throw (Exception. (str '~(symbol thread-name))))
+                    ;; (try
+                    ;;   (throw (Exception.
+                    ;;           (str '~(symbol thread-name))))
+                    ;;   (catch Exception _#
+                    ;;     (throw
+                    ;;      (Exception.
+                    ;;       (str '~(symbol thread-name) '~'-CONTINUED)))))
+                    ))]
+     (.setName thread# (str '~(symbol thread-name)))
+     (.setDaemon thread# false)
+     (.start thread#)
+     nil))
 
-(defn- request-exception-for-control-thread
+(defn- request-exception-for-acquire-thread
   [^VirtualMachine vm]
-  (logging/trace "request-exception-for-control-thread")
+  (logging/trace "request-exception-for-acquire-thread")
   (doto (jdi/exception-request vm nil false true)
     (jdi/suspend-policy :suspend-all)
     (.enable)))
 
 (defn- handle-acquire-event
-  [context connected control-thread event]
+  "Filter the event for an exception from the specified thread name."
+  [context event acquire-thread-name]
   (try
+    (logging/trace "jdi-vm/handle-acquire-event: event %s" event)
     (cond
-     (instance? ExceptionEvent event)
-     (let [thread (.thread ^ExceptionEvent event)]
-       (if (= control-thread-name (.name thread))
-         (do
-           (logging/trace
-            "jdi-vm/acquire-control-thread: found-thread")
-           ;; so it remains suspended when the vm is resumed
-           (reset! control-thread thread)
-           (.suspend thread)
-           (.. event (virtualMachine) (suspend)))
-         (logging/trace
-          "jdi-vm/acquire-control-thread: unexpected exception %s"
-          (jdi/exception-event-string context event))))
+      (instance? ExceptionEvent event)
+      (let [thread (.thread ^ExceptionEvent event)]
+        (if (= acquire-thread-name (.name thread))
+          (do
+            (logging/trace
+             "jdi-vm/handle-acquire-event: found-thread")
+            ;; so it remains suspended when the vm is resumed
+            (.suspend thread)
+            (.. event (virtualMachine) (suspend))
+            [true thread])
+          (do
+            (logging/trace
+             "jdi-vm/handle-acquire-event: unexpected exception %s"
+             (jdi/exception-event-string context event))
+            [true nil])))
 
-     (instance? VMDeathEvent event)
-     (do
-       (reset! connected false)
-       (logging/trace
-        "jdi-vm/acquire-control-thread: unexpected VM shutdown"))
+      (instance? VMDeathEvent event)
+      (do
+        (logging/trace
+         "jdi-vm/handle-acquire-event: unexpected VM shutdown")
+        [false nil])
 
-     :else (logging/trace "Ignoring event %s" event))
+      :else (do
+              (logging/trace "Ignoring event %s" event)
+              [true nil]))
 
     (catch com.sun.jdi.VMDisconnectedException e
-      (reset! connected false))
+      [false nil])
     (catch Throwable e
       (logging/trace
-       "jdi/acquire-control-thread: Unexpected exeception %s"
-       e))))
+       "jdi/handle-acquire-event: Unexpected exeception %s"
+       e)
+      [true nil])))
 
-(defn- acquire-control-thread
-  "Acquire the control thread."
-  [context]
-  (let [control-thread (atom nil)
-        ^VirtualMachine vm (:vm context)
+(defn- handle-acquire-event-set
+  [context ^EventSet event-set connected acquire-thread-name]
+  (try
+    (first
+     (for [event event-set
+           :let [[connected? thread] (handle-acquire-event
+                                      context event
+                                      acquire-thread-name)
+                 _ (reset! connected connected?)]
+           :while connected?
+           :when thread]
+       thread))
+    (finally (when @connected (.resume event-set)))))
+
+(defn- acquire-thread-via-exception
+  "Acquire the thread named by `acquire-thread-name`."
+  [context acquire-thread-name]
+  (let [^VirtualMachine vm (:vm context)
         connected (:connected context)
-        queue (.eventQueue vm)]
-    (loop []
-      (when (and @connected (not @control-thread))
-        (try
-          (let [event-set (.remove queue)]
-            (try
-              (doseq [event event-set]
-                (handle-acquire-event context connected control-thread event))
-              (finally (when @connected (.resume event-set)))))
-          (catch com.sun.jdi.InternalException e
-            (logging/trace
-             "jdi/acquire-control-thread: Unexpected exeception %s" e)))
-        (recur)))
-    (logging/trace "Control thread %s" @control-thread)
-    (assoc context :control-thread @control-thread)))
+        queue (.eventQueue vm)
+        thread (loop []
+                 (when @connected
+                   (if-let [thread (try
+                                     (handle-acquire-event-set
+                                      context
+                                      (.remove queue)
+                                      connected
+                                      acquire-thread-name)
+                                     (catch com.sun.jdi.InternalException e
+                                       (logging/trace
+                                        "jdi/acquire-thread: Exception %s" e)))]
+                     thread
+                     (recur))))]
+    (logging/trace "Acquired thread %s" thread)
+    thread))
+
+(defn acquire-thread
+  [context acquire-thread-name acquire-f]
+  (let [^VirtualMachine vm (:vm context)
+        exception-request (request-exception-for-acquire-thread vm)]
+    (logging/trace "Added exception event request")
+    (vm-resume context)
+    (logging/trace "Resumed vm")
+    (when acquire-f
+      (logging/trace "Starting acquisition function")
+      (acquire-f context acquire-thread-name))
+    (logging/trace "Acquiring thread...")
+    (let [connected (:connected context)
+          thread (acquire-thread-via-exception context acquire-thread-name)]
+      (jdi/discard-event-request vm exception-request)
+      (logging/trace "Discarded event request")
+      thread)))
 
 ;;; VM Control
-(defn vm-resume
-  [context]
-  (.resume (:vm context)))
-
 (defn wrap-launch-cmd
   [cmd]
   `(do
-     ~(start-control-thread-body)
+     ~(start-control-thread-body control-thread-name)
      ~cmd))
 
 (def ^{:private true}
@@ -152,11 +199,11 @@
   (let [vm (jdi/launch classpath (wrap-launch-cmd cmd) (:jvm-opts options))
         connected (atom true)
         context {:vm vm :connected connected}
-        context (merge (jdi/vm-stream-daemons vm options) context)
-        exception-request (request-exception-for-control-thread vm)]
-    (vm-resume context)
-    (let [context (acquire-control-thread context)]
-      (jdi/discard-event-request vm exception-request)
+        context (merge (jdi/vm-stream-daemons vm options) context)]
+    (let [thread (acquire-thread context control-thread-name nil)
+          context (if thread
+                    (assoc context :control-thread thread)
+                    context)]
       (if @(:connected context)
         (let [context (vm-rt context)
               context (merge
