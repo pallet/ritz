@@ -1,5 +1,10 @@
 (ns ritz.nrepl
-  "nrepl support for ritz"
+  "nrepl support for ritz.
+
+nREPL has a concept of session, that maintains state based on a session id
+that is passed back and forth from client and server. We use this session to
+store some extra info. We also unify the session id across the jpda and user
+processes."
   (:use
    [clojure.tools.nrepl.server :only [unknown-op]]
    [clojure.tools.nrepl.middleware.interruptible-eval
@@ -16,7 +21,8 @@
    [ritz.logging :only [set-level trace]]
    [ritz.nrepl.commands :only [jpda-op]]
    [ritz.nrepl.exec :only [read-msg]]
-   [ritz.nrepl.rexec :only [rexec]])
+   [ritz.nrepl.rexec :only [rexec]]
+   [ritz.nrepl.simple-eval :onl [simple-eval]])
   (:require
    [clojure.java.io :as io]
    [clojure.tools.nrepl.transport :as transport]
@@ -24,23 +30,17 @@
 
 (set-level :trace)
 
-(defonce vm (atom nil))
+(defonce
+  ^{:doc "A map from message id to messages from the client."}
+  pending-ids (atom {}))
 
-(defn set-vm [vm]
-  (reset! ritz.nrepl/vm vm))
+(defonce
+  ^{:doc "A map from session id to connection"}
+  connections (atom {}))
 
-(defonce pending-ids (atom {}))
-
-(defonce connections (atom {}))
-
-(defn connect
-  [host port]
-  (let [c (connector :attach-socket)]
-    (.attach
-     c
-     (connector-args c {"port" port "hostname" (or host "localhost")}))))
-
-(def default-connection
+(def
+  ^{:doc "The initial connection information"}
+  default-connection
   {:sldb-levels []
    :pending #{}
    :timeout nil
@@ -56,33 +56,28 @@
                           default-exception-filters)
    :namespace 'user})
 
+
+(defonce vm (atom nil))
+
+(defn set-vm [vm]
+  (reset! ritz.nrepl/vm vm))
+
 (defn make-connection
-  [host port]
-  ;; (assoc default-connection
-  ;;   :vm (connect host port))
-  (assoc default-connection
-    :vm @vm))
+  "Return a new connection map, saving the message's transport for later
+reference."
+  [msg]
+  (->
+   default-connection
+   (assoc :vm-context @vm)
+   (merge (select-keys msg [:transport]))))
 
-(defn connection-for [host port]
-  (let [m {:host host :port port}]
-    (or (get @connections m)
-        (let [connection (make-connection host port)]
-          (swap! connections assoc m connection)
-          connection))))
-
+;;; # jpda command execution
 (defn execute-jpda
   "Execute a jpda action"
   [host port {:keys [op transport] :as msg}]
   (trace "execute-jpda %s" op)
-  (let [connection (connection-for host port)]
+  (let [connection (::connection msg)]
     (jpda-op (keyword op) connection msg)))
-
-(defn execute-eval
-  "Execute a jpda action"
-  [host port {:keys [op transport] :as msg}]
-  (trace "execute-jpda %s" op)
-  (let [connection (connection-for host port)]
-    (rexec (:vm connection) msg)))
 
 (defn return-execute-jpda
   [host port {:keys [op transport] :as msg}]
@@ -92,14 +87,34 @@
      (response-for msg :status :done :value value :op op))
     value))
 
-(defn return-execute-eval
-  [host port {:keys [id op transport] :as msg}]
-  (let [value (execute-eval host port msg)]
-    (trace "return-execute-eval %s" value)
-    (swap! pending-ids assoc id transport)
-    value))
+;;; # nREPL handler and middleware
 
-(defn jpda-handler
+;;; ## Message log
+(defn log-message
+  [handler]
+  (fn [{:keys [id session] :as msg}]
+    (trace "Message %s" msg)
+    (handler msg)))
+
+;;; ## Connection middleware
+
+;;; This looks up a connection map based on session id. If the session id is not
+;;; set yet, then a new connection is made and stored in the pending-ids map, so
+;;; that on reply the link from session to connection can be established. Since
+;;; this expects the session id, it has to before any session middleware in the
+;;; handler.
+
+(defn connection
+  [handler]
+  (fn [{:keys [id session] :as msg}]
+    (if session
+      (handler (assoc msg ::connection (@connections session)))
+      (let [connection (make-connection msg)]
+        (swap! pending-ids assoc id connection)
+        (handler (assoc msg ::connection connection))))))
+
+;;; ## jpda command execution
+(defn jpda-middleware
   "Handler for jpda actions"
   [host port]
   (fn [handler]
@@ -108,67 +123,123 @@
         (return-execute-jpda host port msg)
         (handler msg)))))
 
-(defn jpda-eval-middleware
-  []
-  (-> unknown-op interruptible-eval pr-values add-stdin))
-
+;;; ## `eval` in jpda process
+;;; This lets us eval in the jpda process, just as we would normally do in the
+;;; user process
 (defn jpda-eval-handler
+  []
+  (-> unknown-op simple-eval pr-values))
+
+(defn jpda-eval-middleware
   "Handler for jpda actions"
   []
-  (let [mw (jpda-eval-middleware)]
+  (let [sub-handler (jpda-eval-handler)]
     (fn [handler]
       (fn [{:keys [op transport] :as msg}]
         (if (= op "jpda-eval")
           (do
             (trace "jpda-eval-handler %s" msg)
-            (mw (assoc msg :op "eval")))
+            (sub-handler (assoc msg :op "eval")))
           (handler msg))))))
+
+;;; ## `eval`, etc, in user process
+;;; We forward the message to the user process. The reply pump
+;;; will pump all replies back to the client.
+(defn execute-eval
+  "Execute a jpda action"
+  [host port {:keys [op transport] :as msg}]
+  (trace "execute-jpda %s" op)
+  (let [connection (::connection msg)]
+    (rexec (:vm-context connection) msg)))
+
+(defn return-execute-eval
+  [host port {:keys [id op transport] :as msg}]
+  (let [value (execute-eval host port msg)]
+    (trace "return-execute-eval %s" value)
+    value))
 
 (defn rexec-handler
   "Handler for jpda actions"
   [host port]
   (fn [handler]
     (fn [{:keys [op transport] :as msg}]
-      (if (= op "eval")
+      (if (#{"eval" "clone" "stdin" "interrupt"} op)
         (return-execute-eval host port msg)
         (handler msg)))))
 
+;;; ## The overall nREPL handler for the jpda process
 (defn debug-handler
   "nrepl handler with debug support"
   [host port]
   (let [rexec (rexec-handler host port)
-        jpda (jpda-handler host port)
-        jpda-eval (jpda-eval-handler)]
-    (-> unknown-op rexec jpda-eval jpda session ;; add-stdin session
-        )))
+        jpda (jpda-middleware host port)
+        jpda-eval (jpda-eval-middleware)]
+    (-> unknown-op rexec jpda-eval jpda ;; session ;; add-stdin session
+        connection log-message)))
+
+;;; # Reply pump
+;;; The reply pump takes all nREPL replies sent from the user process, and
+;;; forwards them to the client.
+(defn process-reply
+  "Process a reply. The reply is expected to have a session id. If this is the
+first reply for a session, the connection is looked up in the pending-ids map
+based on the message id and added to the connections map. Otherwise the
+connection is found in the connections map based on the session id."
+  [{:keys [id new-session session status] :as msg}]
+  (trace "Read reply %s" msg)
+  (assert session)
+  (let [connection (or
+                    (@connections session)
+                    (let [connection (@pending-ids id)]
+                      (trace "Looking for connection in pending-ids")
+                      (assert connection)
+                      (swap! connections assoc session connection)
+                      (swap! pending-ids dissoc id)
+                      connection))]
+    (assert connection)
+    (when new-session
+      (trace "New session %s" new-session)
+      (swap! connections assoc new-session connection)
+      (swap! connections dissoc session))
+    (let [transport (:transport connection)]
+      (assert transport)
+      (transport/send transport msg)))
+  (trace "Reply forwarded"))
+
+(defn reply-pump
+  [vm thread]
+  (loop []
+    (try
+      (process-reply
+       (jdi-clj/eval
+        vm thread invoke-single-threaded
+        `(read-msg)))
+      (catch Exception e
+        (trace "Unexpected exception in reply-pump %s" e)))
+    (recur)))
 
 (defn start-reply-pump
   [server vm]
-  (let [transport (:transport @server)
-        thread (:msg-pump-thread vm)]
-    (assert transport)
+  (let [thread (:msg-pump-thread vm)]
     (assert thread)
-    (jdi-clj/eval
-     vm thread invoke-single-threaded
-     `(require 'ritz.nrepl.exec))
-    (doto (Thread.
-           (fn []
-             (loop []
-               (try
-                 (let [{:keys [id status] :as msg} (jdi-clj/eval
-                                             vm thread invoke-single-threaded
-                                             `(read-msg))]
-                   (trace "Read reply %s" msg)
-                   (transport/send (get @pending-ids id) msg)
-                   (trace "Reply forwarded")
-                   (when (= :done status)
-                     (swap! pending-ids dissoc id)))
-                 (catch Exception e
-                   (trace "Unexpected exception in reply-pump %s" e)))
-               (recur))))
+    (jdi-clj/eval vm thread invoke-single-threaded `(require 'ritz.nrepl.exec))
+    (doto (Thread. (partial reply-pump vm thread))
       (.setName "Ritz-reply-msg-pump")
       (.setDaemon false)
-      (.start))))
+      (.start))
+    (trace "Reply pump started")))
+
+;;; # Server set-up
+(defn start-remote-thread
+  "Start a remote thread in the specified vm context, using thread-name to
+generate a name for the thread."
+  [vm thread-name]
+  (let [msg-thread-name (name (gensym thread-name))]
+    (acquire-thread
+     vm msg-thread-name
+     (fn [context thread-name]
+       (control-eval
+        context (start-control-thread-body msg-thread-name))))))
 
 (defn start-jpda-server
   [host port ack-port repl-port-path classpath]
@@ -177,12 +248,7 @@
                 :bind "localhost" :port 0 :ack-port ack-port
                 :handler (ritz.nrepl/debug-handler host port))
         vm (launch-vm classpath `@(promise))
-        msg-thread-name "msg-pump"
-        msg-thread (acquire-thread
-                    vm msg-thread-name
-                    (fn [context thread-name]
-                      (control-eval
-                       context (start-control-thread-body msg-thread-name))))
+        msg-thread (start-remote-thread vm "msg-pump")
         vm (assoc vm :msg-pump-thread msg-thread)
         _ (ritz.nrepl/set-vm vm)
         port (-> server deref :ss .getLocalPort)]
@@ -190,93 +256,3 @@
     (start-reply-pump server vm)
     (println "nREPL server started on port" port)
     (spit repl-port-path port)))
-
-
-;; (defn- pump [reader out]
-;;   (let [buffer (make-array Character/TYPE 1000)]
-;;     (loop [len (.read reader buffer)]
-;;       (when-not (neg? len)
-;;         (.write out buffer 0 len)
-;;         (.flush out)
-;;         (Thread/sleep 100)
-;;         (recur (.read reader buffer))))))
-
-;; (defn sh
-;;   "A version of clojure.java.shell/sh that streams out/err."
-;;   [& cmd]
-;;   (let [env (System/getenv)
-;;         dir (System/getProperty "user.dir")
-;;         proc (.exec (Runtime/getRuntime) (into-array cmd) env (io/file dir))]
-;;     (.addShutdownHook (Runtime/getRuntime)
-;;                       (Thread. (fn [] (.destroy proc))))
-;;     (with-open [out (io/reader (.getInputStream proc))
-;;                 err (io/reader (.getErrorStream proc))]
-;;       (let [pump-out (doto (Thread. (bound-fn [] (pump out *out*))) .start)
-;;             pump-err (doto (Thread. (bound-fn [] (pump err *err*))) .start)]
-;;         (.join pump-out)
-;;         (.join pump-err))
-;;       (.waitFor proc))))
-
-;; ;; work around java's command line handling on windows
-;; ;; http://bit.ly/9c6biv This isn't perfect, but works for what's
-;; ;; currently being passed; see http://www.perlmonks.org/?node_id=300286
-;; ;; for some of the landmines involved in doing it properly
-;; (defn- form-string [form]
-;;   (if (= (get-os) :windows)
-;;     (pr-str (pr-str form))
-;;     (pr-str form)))
-
-;; (defn- classpath-arg [project]
-;;   (if (:bootclasspath project)
-;;     [(apply str "-Xbootclasspath/a:"
-;;             (interpose java.io.File/pathSeparatorChar
-;;                        (classpath/get-classpath project)))]
-;;     ["-cp" (string/join java.io.File/pathSeparatorChar
-;;                         (classpath/get-classpath project))]))
-
-;; (defn shell-command [project form]
-;;   `(~(or (:java-cmd project) (System/getenv "JAVA_CMD") "java")
-;;     ~@(classpath-arg project)
-;;     ~@(get-jvm-args project)
-;;     "clojure.main" "-e" ~(form-string form)))
-
-;; (defn eval-in-subprocess
-;;   [project form]
-;;   (let [exit-code (apply sh (shell-command project form))]
-;;     (when (pos? exit-code)
-;;       (throw (ex-info "Subprocess failed" {:exit-code exit-code})))))
-
-;; (defn eval-in-project
-;;   "Executes form in isolation with the classpath and compile path set correctly
-;;   for the project. If the form depends on any requires, put them in the init arg
-;;   to avoid the Gilardi Scenario: http://technomancy.us/143"
-;;   [project form init]
-;;   (prep project)
-;;   (eval-in project
-;;            `(do ~init
-;;                 ~@(:injections project)
-;;                 (set! ~'*warn-on-reflection*
-;;                       ~(:warn-on-reflection project))
-;;                 ~form)))
-
-
-;; (defn start-nrepl-server
-;;   "Start the user nrepl server"
-;;   [project host port ack-port {:keys [headless? debug?]}]
-;;   (println "start-jpda-server user repl")
-;;   (trace "start-nrepl-server: host %s port %s project %s"
-;;     host port project)
-;;   (let [server-starting-form
-;;         `(let [server# (clojure.tools.nrepl.server/start-server
-;;                         :bind ~host :port ~port :ack-port ~ack-port)
-;;                port# (-> server# deref :ss .getLocalPort)]
-;;            (println "nREPL user server started on port" port#)
-;;            (spit
-;;             ~(str (io/file (:target-path project) "user-repl-port")) port#))]
-;;     (eval-in-project
-;;      project
-;;      server-starting-form
-;;      '(do
-;;         (require
-;;          'clojure.tools.nrepl.server
-;;          'complete.core)))))

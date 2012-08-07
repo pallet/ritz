@@ -14,4 +14,4 @@
    `(require 'ritz.nrepl.exec))
   (jdi-clj/control-eval
    context
-   `(exec ~(dissoc msg :transport :session))))
+   `(exec ~(dissoc msg :transport :ritz.nrepl/connection))))
