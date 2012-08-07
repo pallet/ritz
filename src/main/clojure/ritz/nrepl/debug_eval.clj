@@ -1,29 +1,31 @@
-(ns ritz.nrepl.simple-eval
-  "Simple eval middleware for nrepl"
+(ns ritz.nrepl.debug-eval
+  "nREPL middleware for debug evaluation"
   (:require
-   [clojure.string :as string]
    [clojure.tools.nrepl.transport :as transport]
-   [clojure.main :as main])
+   [clojure.main :as main]
+   ritz.nrepl.commands) ;; ensure commands are loaded
   (:use
    [clojure.tools.nrepl.misc :only [response-for]]
    [clojure.tools.nrepl.middleware.interruptible-eval :only [*msg*]]
    [ritz.logging :only [trace]]))
 
 (defn evaluate
-  [{:keys [code ns transport] :as msg}]
+  [{:keys [code ns session transport] :as msg}]
   (let [connection (:ritz.nrepl/connection msg)
         bindings (merge @(:bindings connection)
                         (when ns {#'*ns* (-> ns symbol find-ns)}))
-        out (get bindings #'*out*)
-        err (get bindings #'*err*)]
+        out (bindings #'*out*)
+        err (bindings #'*err*)]
     (with-bindings bindings
       (binding [*msg* msg]
         (try
-          (trace "simple-eval connection %s" connection)
           (trace "Evaluating %s in %s" code ns)
-          (trace "*e is %s" *e)
-          (let [form (if (string/blank? code) nil (read-string code))
-                value (eval form)]
+          (let [connection (:ritz.nrepl/connection msg)
+                form (read-string code)
+                op (resolve (first form))
+                args (map eval (rest form))
+                _ (trace "op %s args %s" op (vec args))
+                value (apply op connection args)]
             (trace "value %s" value)
             (.flush ^java.io.Writer err)
             (.flush ^java.io.Writer out)
@@ -45,11 +47,11 @@
               :ex (-> e class str)
               :root-ex (-> (#'clojure.main/root-cause e) class str)))))))))
 
-(defn simple-eval
-  "nREPL Middleware for simple evaluation."
+(defn debug-eval
+  "nREPL Middleware for debug evaluation."
   [handler]
   (fn [{:keys [code op transport] :as msg}]
-    (if (= "eval" op)
+    (if (= "jpda" op)
       (if-not code
         (transport/send transport (response-for msg :status #{:error :no-code}))
         (evaluate msg))

@@ -6,7 +6,7 @@ that is passed back and forth from client and server. We use this session to
 store some extra info. We also unify the session id across the jpda and user
 processes."
   (:use
-   [clojure.tools.nrepl.server :only [unknown-op]]
+   [clojure.tools.nrepl.server :only [start-server unknown-op]]
    [clojure.tools.nrepl.middleware.interruptible-eval
     :only [interruptible-eval]]
    [clojure.tools.nrepl.middleware.pr-values :only [pr-values]]
@@ -19,14 +19,15 @@ processes."
    [ritz.jpda.jdi-vm
     :only [acquire-thread launch-vm start-control-thread-body vm-resume]]
    [ritz.logging :only [set-level trace]]
-   [ritz.nrepl.commands :only [jpda-op]]
+   [ritz.nrepl.debug-eval :only [debug-eval]]
    [ritz.nrepl.exec :only [read-msg]]
    [ritz.nrepl.rexec :only [rexec]]
-   [ritz.nrepl.simple-eval :onl [simple-eval]])
+   [ritz.nrepl.simple-eval :only [simple-eval]])
   (:require
    [clojure.java.io :as io]
    [clojure.tools.nrepl.transport :as transport]
-   [ritz.jpda.jdi-clj :as jdi-clj]))
+   [ritz.jpda.jdi-clj :as jdi-clj]
+   [ritz.nrepl.pr-values :as pr-values]))
 
 (set-level :trace)
 
@@ -54,7 +55,8 @@ processes."
    :send-repl-results-function nil
    :exception-filters (or (read-exception-filters)
                           default-exception-filters)
-   :namespace 'user})
+   :namespace 'user
+   :bindings (atom {})})
 
 
 (defonce vm (atom nil))
@@ -71,21 +73,21 @@ reference."
    (assoc :vm-context @vm)
    (merge (select-keys msg [:transport]))))
 
-;;; # jpda command execution
-(defn execute-jpda
-  "Execute a jpda action"
-  [host port {:keys [op transport] :as msg}]
-  (trace "execute-jpda %s" op)
-  (let [connection (::connection msg)]
-    (jpda-op (keyword op) connection msg)))
+;; ;;; # jpda command execution
+;; (defn execute-jpda
+;;   "Execute a jpda action"
+;;   [host port {:keys [op transport] :as msg}]
+;;   (trace "execute-jpda %s" op)
+;;   (let [connection (::connection msg)]
+;;     (jpda-op (keyword op) connection msg)))
 
-(defn return-execute-jpda
-  [host port {:keys [op transport] :as msg}]
-  (let [value (execute-jpda host port msg)]
-    (transport/send
-     transport
-     (response-for msg :status :done :value value :op op))
-    value))
+;; (defn return-execute-jpda
+;;   [host port {:keys [op transport] :as msg}]
+;;   (let [value (execute-jpda host port msg)]
+;;     (transport/send
+;;      transport
+;;      (response-for msg :status :done :value value :op op))
+;;     value))
 
 ;;; # nREPL handler and middleware
 
@@ -114,14 +116,14 @@ reference."
         (handler (assoc msg ::connection connection))))))
 
 ;;; ## jpda command execution
-(defn jpda-middleware
-  "Handler for jpda actions"
-  [host port]
-  (fn [handler]
-    (fn [{:keys [op transport] :as msg}]
-      (if (= op "jpda")
-        (return-execute-jpda host port msg)
-        (handler msg)))))
+;; (defn jpda-middleware
+;;   "Handler for jpda actions"
+;;   [host port]
+;;   (fn [handler]
+;;     (fn [{:keys [op transport] :as msg}]
+;;       (if (= op "jpda")
+;;         (return-execute-jpda host port msg)
+;;         (handler msg)))))
 
 ;;; ## `eval` in jpda process
 ;;; This lets us eval in the jpda process, just as we would normally do in the
@@ -172,10 +174,11 @@ reference."
   "nrepl handler with debug support"
   [host port]
   (let [rexec (rexec-handler host port)
-        jpda (jpda-middleware host port)
-        jpda-eval (jpda-eval-middleware)]
-    (-> unknown-op rexec jpda-eval jpda ;; session ;; add-stdin session
-        connection log-message)))
+        ;; jpda (jpda-middleware host port)
+        jpda-eval (jpda-eval-middleware)
+        pr-values (pr-values/pr-values #{"jpda"})]
+    (-> unknown-op rexec jpda-eval debug-eval ;; session ;; add-stdin session
+        pr-values connection log-message)))
 
 ;;; # Reply pump
 ;;; The reply pump takes all nREPL replies sent from the user process, and
@@ -200,7 +203,17 @@ connection is found in the connections map based on the session id."
     (when new-session
       (trace "New session %s" new-session)
       (swap! connections assoc new-session connection)
-      (swap! connections dissoc session))
+      (swap! connections dissoc session)
+      ;; a refactored create-session could simplify this
+      (let [s @(#'clojure.tools.nrepl.middleware.session/create-session
+                (:transport connection)
+                @(:bindings connection))
+            out (#'clojure.tools.nrepl.middleware.session/session-out
+                 :out new-session (:transport connection))
+            err (#'clojure.tools.nrepl.middleware.session/session-out
+                 :err new-session (:transport connection))]
+        (trace "jpda session %s" s)
+        (swap! (:bindings connection) merge s {#'*out* out #'*err* err})))
     (let [transport (:transport connection)]
       (assert transport)
       (transport/send transport msg)))
@@ -215,7 +228,8 @@ connection is found in the connections map based on the session id."
         vm thread invoke-single-threaded
         `(read-msg)))
       (catch Exception e
-        (trace "Unexpected exception in reply-pump %s" e)))
+        (trace "Unexpected exception in reply-pump %s" e)
+        (clojure.stacktrace/print-cause-trace e)))
     (recur)))
 
 (defn start-reply-pump
@@ -244,13 +258,13 @@ generate a name for the thread."
 (defn start-jpda-server
   [host port ack-port repl-port-path classpath]
   (println "start-jpda-server")
-  (let [server (clojure.tools.nrepl.server/start-server
+  (let [server (start-server
                 :bind "localhost" :port 0 :ack-port ack-port
-                :handler (ritz.nrepl/debug-handler host port))
+                :handler (debug-handler host port))
         vm (launch-vm classpath `@(promise))
         msg-thread (start-remote-thread vm "msg-pump")
         vm (assoc vm :msg-pump-thread msg-thread)
-        _ (ritz.nrepl/set-vm vm)
+        _ (set-vm vm)
         port (-> server deref :ss .getLocalPort)]
     (vm-resume vm)
     (start-reply-pump server vm)

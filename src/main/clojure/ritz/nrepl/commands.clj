@@ -1,19 +1,11 @@
 (ns ritz.nrepl.commands
   (:use
-   [ritz.logging :only [set-level trace]]))
+   [ritz.logging :only [set-level trace]])
+  (:require
+   [ritz.jpda.debug :as debug]))
 
-(set-level :trace)
-
-(defmulti jpda-op
-  "Execute a jpda operation"
-  (fn [op connection msg]
-    (trace "jpda-op %s" op)
-    op))
-
-(defmethod jpda-op :ritz-version
-  [_ connection message]
-  "it's alive!")
-
-(defmethod jpda-op :jpda
-  [_ connection message]
-  (pr-str "it's alive!"))
+(defn threads
+  "Return a sequence containing a thread reference for each remote thread."
+  [context]
+  (let [context (debug/thread-list (:vm-context context))]
+    (vec (:threads context))))
