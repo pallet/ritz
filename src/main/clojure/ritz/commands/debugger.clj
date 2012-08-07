@@ -97,7 +97,8 @@
 LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
   [connection]
-  (let [context (swap! (:vm-context @connection) debug/thread-list)
+  (let [threads (debug/thread-list @(:vm-context @connection))
+        context (swap! (:vm-context @connection) assoc :thread-list threads)
         labels '(:id :name :state :at-breakpoint? :suspended? :suspends)]
     (cons labels (map thread-data-fn (:threads context)))))
 

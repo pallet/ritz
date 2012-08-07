@@ -279,11 +279,10 @@ otherwise pass it on."
   "Provide a list of threads. The list is cached in the context
    to allow it to be retrieved by index."
   [context]
-  (let [threads (flatten
-                 (map
-                  #(transform-thread-group "" %)
-                  (jdi/thread-groups (:vm context))))]
-    (assoc context :threads threads)))
+  (flatten
+   (map
+    #(transform-thread-group "" %)
+    (jdi/thread-groups (:vm context)))))
 
 (defn nth-thread
   [context index]
