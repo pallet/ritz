@@ -1,10 +1,10 @@
 (ns ritz.commands.xref
   (:use
    clojure.walk
-   ritz.commands)
+   ritz.swank.commands)
   (:require
-   [ritz.repl-utils.core :as core]
-   [ritz.repl-utils.find :as find])
+   [ritz.repl-utils.find :as find]
+   [ritz.connection :as connection])
   (:import (clojure.lang RT)
            (java.io LineNumberReader InputStreamReader PushbackReader)))
 
@@ -58,7 +58,7 @@ Example: (get-source-from-var 'filter)"
 (defn who-specializes [class]
   (letfn [(xref-lisp [sym] ; see find-definitions-for-emacs
             (if-let [meta (and sym (meta sym))]
-              (if-let [path (find/slime-find-file (:file meta))]
+              (if-let [path (find/find-source-path (:file meta))]
                       `((~(str "(method " (:name meta) ")")
                           (:location
                            ~path
@@ -76,7 +76,7 @@ Example: (get-source-from-var 'filter)"
 (defn who-calls [name]
   (letfn [(xref-lisp [sym-var]        ; see find-definitions-for-emacs
                      (when-let [meta (and sym-var (meta sym-var))]
-                       (if-let [path (find/slime-find-file (:file meta))]
+                       (if-let [path (find/find-source-path (:file meta))]
                          `((~(str (:name meta))
                             (:location
                              ~path
@@ -88,7 +88,8 @@ Example: (get-source-from-var 'filter)"
       (map first (map xref-lisp callers)))))
 
 (defslimefn xref [connection type name]
-  (let [sexp (ns-resolve (connection/ns connection) (symbol name))]
+  (let [sexp (ns-resolve
+              (connection/current-namespace connection) (symbol name))]
        (condp = type
               :specializes (who-specializes sexp)
               :calls   (who-calls (symbol name))

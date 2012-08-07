@@ -8,6 +8,7 @@
    [clojure.pprint :as pprint]
    [clojure.string :as string])
   (:import
+   com.sun.jdi.event.Event
    com.sun.jdi.event.EventSet
    com.sun.jdi.event.ExceptionEvent
    com.sun.jdi.event.VMDeathEvent
@@ -17,8 +18,7 @@
 ;;; VM resume
 (defn vm-resume
   [context]
-  (.resume (:vm context)))
-
+  (.resume ^VirtualMachine (:vm context)))
 
 ;;; Control thread acquisition
 (def control-thread-name "JDI-VM-Control-Thread")
@@ -55,7 +55,7 @@
 
 (defn- handle-acquire-event
   "Filter the event for an exception from the specified thread name."
-  [context event acquire-thread-name]
+  [context ^Event event acquire-thread-name]
   (try
     (logging/trace "jdi-vm/handle-acquire-event: event %s" event)
     (cond
@@ -213,7 +213,7 @@
         context))))
 
 ;;; Classpath Helpers
-(defn- format-classpath-url [url]
+(defn- format-classpath-url [^java.net.URL url]
   (if (= "file" (.getProtocol url))
     (.getPath url)
     url))
@@ -221,4 +221,6 @@
 (defn current-classpath []
   (string/join
    ":"
-   (map format-classpath-url (.getURLs (.getClassLoader clojure.lang.RT)))))
+   (map
+    format-classpath-url
+    (.getURLs ^java.net.URLClassLoader (.getClassLoader clojure.lang.RT)))))

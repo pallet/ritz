@@ -20,5 +20,6 @@
                                  [org.clojure/clojure-contrib "1.2.0"]]
                   :repositories
                   {"sonatype"
-                   "https://oss.sonatype.org/content/repositories/releases/"}}}
+                   "https://oss.sonatype.org/content/repositories/releases/"}}
+             :dev {:dependencies [[leiningen "2.0.0-SNAPSHOT"]]}}
   :jvm-opts ["-Djava.awt.headless=true"])
