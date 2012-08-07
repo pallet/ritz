@@ -16,6 +16,8 @@
     ThreadReference ThreadGroupReference
     ReferenceType Locatable Location StackFrame
     Field LocalVariable Method ClassType)
+   (com.sun.jdi.connect
+    Connector)
    (com.sun.jdi.event
     VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent VMDeathEvent
     BreakpointEvent Event EventSet EventQueue)
@@ -38,14 +40,14 @@
 (defn connector
   "Lookup connector based on a keyword in (keys connector-names)"
   [connector-kw]
-  (let [name (connector-names connector-kw)]
+  (let [name ^String (connector-names connector-kw)]
     (some #(and (= (.name %) name) %) (connectors))))
 
 (defn connector-args
   "Returns connector arguments based on name value pairs in arg-map."
-  [connector arg-map]
+  [^Connector connector arg-map]
   (let [args (.defaultArguments connector)]
-    (doseq [[arg-name value] arg-map
+    (doseq [[^String arg-name value] arg-map
             :let [arg (.get args arg-name)]]
       (when-not arg
         (throw
