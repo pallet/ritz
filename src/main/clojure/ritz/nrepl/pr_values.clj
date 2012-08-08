@@ -21,7 +21,7 @@
                              (send [this resp]
                                (.send transport
                                       (if-let [[_ v] (find resp :value)]
-                                        (assoc resp :value (with-out-str (pr v)))
+                                        (assoc resp :value (pr-str v))
                                         resp))))))
            (h msg)))))
   ([] (pr-values #{"eval"})))
