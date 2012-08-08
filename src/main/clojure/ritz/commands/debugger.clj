@@ -5,9 +5,9 @@
    [clojure.pprint :as pprint]
    [clojure.string :as string]
    [ritz.connection :as connection]
-   [ritz.jpda.debug :as debug]
    [ritz.inspect :as inspect]
    [ritz.logging :as logging]
+   [ritz.swank.debug :as debug]
    [ritz.swank.messages :as messages]
    [ritz.commands.contrib.ritz])
   (:use
@@ -102,14 +102,12 @@ corresponding attribute values per thread."
         labels '(:id :name :state :at-breakpoint? :suspended? :suspends)]
     (cons labels (map thread-data-fn (:threads context)))))
 
-;;; TODO: Find a better way, as Thread.stop is deprecated
 (defslimefn kill-nth-thread
   [connection index]
   (logging/trace "kill-nth-thread %s" index)
   (when index
     (let [context (connection/vm-context connection)]
-      (when-let [thread (debug/nth-thread context index)]
-        (debug/stop-thread context (:id thread))))))
+      (debug/kill-nth-thread context index))))
 
 ;;; stepping
 (defslimefn sldb-step [connection frame]

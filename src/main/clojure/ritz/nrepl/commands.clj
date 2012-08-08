@@ -4,6 +4,7 @@
   (:require
    [ritz.jpda.debug :as debug]))
 
+;;; threads
 (defn threads
   "Return a sequence containing a thread reference for each remote thread."
   [context]

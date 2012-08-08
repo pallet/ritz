@@ -12,7 +12,7 @@
    [ritz.swank.messages :as messages]
    [ritz.rpc-server :as rpc-server]
    [ritz.logging :as logging]
-   [ritz.jpda.debug :as debug]
+   [ritz.swank.debug :as debug]
    [ritz.jpda.jdi :as jdi]
    [ritz.jpda.jdi-clj :as jdi-clj]
    [ritz.jpda.jdi-vm :as jdi-vm]
