@@ -40,5 +40,44 @@
    "(ritz.nrepl.commands/threads)" "user"
    (nrepl-handler (current-buffer))))
 
+;;; javadoc browsing
+(defun nrepl-ritz-javadoc-local-paths (local-paths)
+  "Require JavaDoc namespace, adding a list of local paths."
+  (nrepl-send-string
+   (format
+    "(require 'ritz.repl-utils.doc)
+     (ritz.repl-utils.doc/javadoc-local-paths '%S)" local-paths)
+   "user"
+   (nrepl-handler (current-buffer))))
+
+(defun nrepl-ritz-javadoc-handler (buffer symbol-name)
+  (nrepl-make-response-handler
+   buffer
+   (lambda (buffer value)
+     (lexical-let ((v (car (read-from-string value))))
+       (lexical-let ((url (and (stringp v) v)))
+         (if url
+             (browse-url url)
+           (error "No javadoc url for %s" symbol-name)))))
+   nil nil nil))
+
+(defun nrepl-ritz-javadoc-input-handler (symbol-name)
+  "Browse javadoc on the Java class at point."
+  (when (not symbol-name)
+    (error "No symbol given"))
+  (nrepl-send-string
+   (format "(require 'ritz.repl-utils.doc)
+            (ritz.repl-utils.doc/javadoc-url \"%s\")" symbol-name)
+   "user"
+   (nrepl-ritz-javadoc-handler (current-buffer) symbol-name)))
+
+(defun nrepl-ritz-javadoc (query)
+  "Browse javadoc on the Java class at point."
+  (interactive "P")
+  (nrepl-read-symbol-name
+   "Javadoc for: " 'nrepl-ritz-javadoc-input-handler query))
+
+(define-key nrepl-interaction-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
+
 (provide 'nrepl-ritz)
 ;;; nrepl-ritz.el ends here
