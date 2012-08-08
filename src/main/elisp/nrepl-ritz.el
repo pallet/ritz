@@ -50,26 +50,23 @@
    "user"
    (nrepl-handler (current-buffer))))
 
-(defun nrepl-ritz-javadoc-handler (buffer symbol-name)
-  (nrepl-make-response-handler
-   buffer
-   (lambda (buffer value)
-     (lexical-let ((v (car (read-from-string value))))
-       (lexical-let ((url (and (stringp v) v)))
-         (if url
-             (browse-url url)
-           (error "No javadoc url for %s" symbol-name)))))
-   nil nil nil))
-
 (defun nrepl-ritz-javadoc-input-handler (symbol-name)
   "Browse javadoc on the Java class at point."
   (when (not symbol-name)
     (error "No symbol given"))
   (nrepl-send-string
    (format "(require 'ritz.repl-utils.doc)
-            (ritz.repl-utils.doc/javadoc-url \"%s\")" symbol-name)
+             (ritz.repl-utils.doc/javadoc-url \"%s\")" symbol-name)
    "user"
-   (nrepl-ritz-javadoc-handler (current-buffer) symbol-name)))
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer value)
+      (lexical-let ((v (car (read-from-string value))))
+        (lexical-let ((url (and (stringp v) v)))
+          (if url
+              (browse-url url)
+            (error "No javadoc url for %s" symbol-name)))))
+    nil nil nil)))
 
 (defun nrepl-ritz-javadoc (query)
   "Browse javadoc on the Java class at point."
