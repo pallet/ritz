@@ -76,5 +76,24 @@
 
 (define-key nrepl-interaction-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
 
+;;; undefine symbol
+(defun nrepl-ritz-undefine-symbol-handler (symbol-name)
+  "Browse undefine on the Java class at point."
+  (when (not symbol-name)
+    (error "No symbol given"))
+  (nrepl-send-string
+   (format "(ns-unmap '%s '%s)" (nrepl-current-ns) symbol-name)
+   (nrepl-current-ns)
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+
+(defun nrepl-ritz-undefine-symbol (query)
+  "Undefine the symbol at point."
+  (interactive "P")
+  (nrepl-read-symbol-name
+   "Undefine: " 'nrepl-ritz-undefine-symbol-handler query))
+
+(define-key
+  nrepl-interaction-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
+
 (provide 'nrepl-ritz)
 ;;; nrepl-ritz.el ends here
