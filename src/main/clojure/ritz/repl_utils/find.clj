@@ -34,14 +34,14 @@
   (str source-form-name id))
 
 (defn source-form-from-path
-  [path]
+  [^String path]
   (when (> (count path) source-form-name-count)
     (let [id-string (.substring path (count source-form-name))
           id (eval (read-string id-string))]
       {:source-form (source-form id)})))
 
 (defn source-form-path?
-  [source-path]
+  [^String source-path]
   (when source-path
     (.startsWith source-path source-form-name)))
 
@@ -91,13 +91,15 @@
   (let [[match file line] (re-find compiler-exception-location-re (str t))]
     (when (and file line)
       [{:file (or (when (instance? clojure.lang.Compiler$CompilerException t)
-                    (try (.source t) (catch Exception _)))
+                    (try
+                      (.source ^clojure.lang.Compiler$CompilerException t)
+                      (catch Exception _)))
                   file)}
        {:line (Integer/parseInt line)}])))
 
 (defn java-source-path
   "Take a class-name and a file-name, and generate a file path"
-  [class-name file-name]
+  [^String class-name file-name]
   (.. class-name
       (replace \. \/)
       (substring 0 (.lastIndexOf class-name "."))

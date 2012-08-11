@@ -2,18 +2,18 @@
   "Debugger interaction for swank"
   (:use
    [ritz.jpda.debug
-    :only [step-request resume-sldb-levels level-info-thread-id
-           clear-abort-for-current-level
+    :only [step-request level-info-thread-id
            ignore-exception-type ignore-exception-message
            ignore-exception-location ignore-exception-catch-location
            remove-breakpoint
            build-backtrace
-           aborting-level? break-for-exception?
+           break-for-exception?
            nth-thread stop-thread threads]]
-   [ritz.logging :only [trace trace-str]])
+   [ritz.logging :only [trace trace-str]]
+   [ritz.connection :only [debug-context vm-context]])
   (:require
    [clojure.string :as string]
-   [ritz.connection :as connection]
+   [ritz.swank.connection :as connection]
    [ritz.executor :as executor]
    [ritz.hooks :as hooks]
    [ritz.inspect :as inspect]
@@ -96,7 +96,7 @@
 
 (defn connect-to-repl-on-vm [port]
   (trace "debugger/connect-to-repl-on-vm port %s" port)
-  (Socket. "localhost" port))
+  (Socket. "localhost" (int port)))
 
 (defn create-connection [options]
   (trace "debugger/create-connection: connecting to proxied connection")
@@ -188,7 +188,7 @@ otherwise pass it on."
 (defn forward-command
   [handler]
   (fn [connection form buffer-package id f]
-    (let [proxied-connection (:proxy-to @connection)]
+    (let [proxied-connection (:proxy-to connection)]
       (trace
        "debugger/forward-command: forwarding %s to proxied connection"
        (first form))
@@ -196,8 +196,8 @@ otherwise pass it on."
        "VM threads:\n%s"
        (string/join
         "\n"
-        (map format-thread (threads (connection/vm-context connection)))))
-      (clear-abort-for-current-level connection)
+        (map format-thread (threads (vm-context connection)))))
+      (connection/clear-abort-for-current-level connection)
       (executor/execute-request
        (partial
         connection/send-to-emacs
@@ -206,7 +206,7 @@ otherwise pass it on."
 
 (defn forward-rpc
   [connection rpc]
-  (let [proxied-connection (:proxy-to @connection)]
+  (let [proxied-connection (:proxy-to connection)]
     (trace
      "debugger/forward-command: forwarding %s to proxied connection" rpc)
     (executor/execute-request
@@ -216,7 +216,7 @@ otherwise pass it on."
   [connection]
   (trace
    "debugger/forward-command: waiting reply from proxied connection")
-  (let [proxied-connection (:proxy-to @connection)]
+  (let [proxied-connection (:proxy-to connection)]
     (let [reply (connection/read-from-connection proxied-connection)
           id (last reply)]
       (when (or (not (number? id)) (not (zero? id))) ; filter (= id 0)
@@ -225,72 +225,90 @@ otherwise pass it on."
         (trace "removing pending-id %s" id)
         (connection/remove-pending-id connection id)))))
 
+(defn resume-sldb-levels
+  "Resume sldb levels specified in the connection.
+   This is side effecting, so can not be used within swap!"
+  [connection]
+
+
+  ;; FIXME this should return the debug context used to retrieve the level-infos
+
+  (doseq [level-info (connection/resume-sldb-level-infos connection)
+          :let [event (:event level-info)]
+          :when (not (instance? InvocationExceptionEvent event))]
+    (trace
+     "resuming threads for sldb-level %s"
+     (:user-threads level-info))
+    (jdi/resume-threads (:user-threads level-info)))
+  (debug-context connection))
+
 (defn- return-or-activate-sldb-levels
   "Return the nested debug levels"
-  [connection connection-map]
+  [connection debug-context]
   (if-let [[level-info level] (connection/current-sldb-level-info connection)]
     (connection/send-to-emacs
      connection
-     (messages/debug-activate (.uniqueID (:thread level-info)) level))
-    (let [resume-levels (:resume-sldb-levels connection-map)]
+     (messages/debug-activate
+      (.uniqueID ^ThreadReference (:thread level-info)) level))
+    (let [resume-levels (:resume-sldb-levels debug-context)]
       (connection/send-to-emacs
        connection
        (messages/debug-return
-        (.uniqueID (:thread (first resume-levels))) (count resume-levels)))))
+        (.uniqueID ^ThreadReference (:thread (first resume-levels)))
+        (count resume-levels)))))
   connection)
 
 (defn continue-level
   "Continue the current level"
   [connection]
   (trace "continue-level")
-  (return-or-activate-sldb-levels
-   connection
-   (resume-sldb-levels
-    (swap!
-     connection
-     (fn [current]
-       (->
-        current
-        (assoc-in [:resume-sldb-levels] [(last (:sldb-levels current))])
-        (update-in
-         [:sldb-levels]
-         (fn [levels] (subvec levels 0 (max 0 (dec (count levels)))))))))))
+  (swap!
+   (:debug connection)
+   (fn [current]
+     (->
+      current
+      (assoc-in [:resume-sldb-levels] [(last (:sldb-levels current))])
+      (update-in
+       [:sldb-levels]
+       (fn [levels] (subvec levels 0 (max 0 (dec (count levels)))))))))
+  (return-or-activate-sldb-levels connection (resume-sldb-levels connection))
   nil)
 
 (defn quit-level
   "Abort the current level"
   [connection]
   (trace "quit-level")
-  (return-or-activate-sldb-levels
-   connection
-   (resume-sldb-levels
-    (swap!
-     connection
-     (fn [current]
-       (->
-        current
-        (assoc :abort-to-level (dec (count (:sldb-levels current))))
-        (assoc-in [:resume-sldb-levels] [(last (:sldb-levels current))])
-        (update-in
-         [:sldb-levels]
-         (fn [levels] (subvec levels 0 (dec (count levels))))))))))
+  (swap!
+   (:debug connection)
+   (fn [current]
+     (->
+      current
+      (assoc :abort-to-level (dec (count (:sldb-levels current))))
+      (assoc-in [:resume-sldb-levels] [(last (:sldb-levels current))])
+      (update-in
+       [:sldb-levels]
+       (fn [levels] (subvec levels 0 (dec (count levels))))))))
+  (return-or-activate-sldb-levels connection (resume-sldb-levels connection))
   nil)
 
 (defn abort-all-levels
   [connection]
   (trace "abort-all-levels")
-  (return-or-activate-sldb-levels
-   connection
-   (resume-sldb-levels
-    (swap!
-     connection
-     (fn [connection]
-       (->
-        connection
-        (assoc-in [:resume-sldb-levels] (reverse (:sldb-levels connection)))
-        (assoc-in [:sldb-levels] [])
-        (assoc :abort-to-level 0))))))
+  (swap!
+   (:debug connection)
+   (fn [connection]
+     (->
+      connection
+      (assoc-in [:resume-sldb-levels] (reverse (:sldb-levels connection)))
+      (assoc-in [:sldb-levels] [])
+      (assoc :abort-to-level 0))))
+  (return-or-activate-sldb-levels connection (resume-sldb-levels connection))
   nil)
+
+(defn aborting-level?
+  "Aborting predicate."
+  [connection]
+  (connection/aborting-level? connection))
 
 ;;; Backtrace
 (defn backtrace
@@ -304,15 +322,15 @@ otherwise pass it on."
 (defn frame-source-location
   "Return a source location vector [buffer position] for the specified
    frame number."
-  [thread frame-number]
-  (when-let [frame (nth (.frames thread) frame-number nil)]
+  [^ThreadReference thread frame-number]
+  (when-let [^StackFrame frame (nth (.frames thread) frame-number nil)]
     (let [location (.location frame)]
       [(find/find-source-path (jdi/location-source-path location))
        {:line (jdi/location-line-number location)}])))
 
 ;;; Threads
 (defn format-thread
-  [thread-reference]
+  [^ThreadReference thread-reference]
   (format
    "%s %s (suspend count %s)"
    (.name thread-reference)
@@ -322,13 +340,16 @@ otherwise pass it on."
 (defn thread-list
   "Provide a list of threads. The list is cached in the context
    to allow it to be retrieved by index."
-  [context]
-  (ritz.jpda.debug/thread-list context))
+  [connection]
+  (let [context (vm-context connection)
+        threads (ritz.jpda.debug/thread-list context)
+        context (swap! (:debug connection) assoc :thread-list threads)]
+    threads))
 
 (defn kill-nth-thread
-  [context index]
-  (when-let [thread (nth-thread context index)]
-    (stop-thread context (:id thread))))
+  [connection index]
+  (when-let [thread (nth-thread (debug-context connection) index)]
+    (stop-thread (vm-context connection) (:id thread))))
 
 ;;; Restarts
 (defn make-restart
@@ -478,7 +499,7 @@ otherwise pass it on."
   Debugger
   (condition-info
     [event connection]
-    (let [context @(:vm-context connection)
+    (let [context (:vm-context connection)
           exception (.exception event)
           exception-type (.. exception referenceType name)
           thread (jdi/event-thread event)
@@ -501,7 +522,7 @@ otherwise pass it on."
     [^ExceptionEvent exception condition connection]
     (trace "calculate-restarts exception")
     (let [thread (.thread exception)
-          context @(:vm-context @connection)]
+          context (:vm-context connection)]
       (if (.request exception)
         (filter
          identity
@@ -606,7 +627,7 @@ otherwise pass it on."
         "Continue and clear breakpoint"
         (fn [connection]
           (trace "restart Continue clear")
-          (remove-breakpoint (connection/vm-context connection) breakpoint)
+          (remove-breakpoint (vm-context connection) breakpoint)
           (continue-level connection)))]
       (stepping-restarts thread)))))
 
@@ -633,11 +654,13 @@ otherwise pass it on."
   "Calculate debugger information and invoke"
   [connection event]
   (trace "debugger-event-info")
+  (trace "debugger-event-info connection %s" connection)
   (jdi/with-disabled-exception-requests
-    [(:vm (connection/vm-context connection))]
+    [(:vm (vm-context connection))]
     ;; The remote-condition-printer will cause class not found exceptions
     ;; (especially the first time it runs).
     (let [thread (jdi/event-thread event)
+          _ (trace "bt " (vec (build-backtrace thread 0 *sldb-initial-frames*)))
           user-threads (conj
                         (set
                          (jdi/threads-in-group
@@ -647,7 +670,7 @@ otherwise pass it on."
           _ (trace "user threads %s" user-threads)
           thread-id (.uniqueID thread)
           _ (trace "building condition")
-          condition (condition-info event @connection)
+          condition (condition-info event connection)
           restarts (restarts event condition connection)
           _ (trace "adding sldb level")
           level-info {:restarts restarts :thread thread :event event
@@ -694,7 +717,7 @@ otherwise pass it on."
         event (:event level-info)]
     (trace "invoke-debugger: send-to-emacs")
     (messages/debug-info
-     (condition-info event @connection)
+     (condition-info event connection)
      (:restarts level-info)
      (if (instance? InvocationExceptionEvent event)
        [{:function "Unavailble" :source "UNKNOWN" :line "UNKNOWN"}]
@@ -707,7 +730,7 @@ otherwise pass it on."
     (trace "invoke-restart %s of %s" n (count (:restarts level-info)))
     (when-let [f (:f (try (nth (:restarts level-info) n)
                           (catch IndexOutOfBoundsException _)))]
-      (inspect/reset-inspector (:inspector @connection))
+      (inspect/reset-inspector (:inspector connection))
       (f connection))
     (level-info-thread-id level-info)))
 
@@ -716,17 +739,17 @@ otherwise pass it on."
   (trace "invoke-named-restart %s" kw)
   (when-let [[level-info level] (connection/current-sldb-level-info connection)]
     (if-let [f (:f (some #(and (= kw (:id %)) %) (:restarts level-info)))]
-      (do (inspect/reset-inspector (:inspector @connection))
+      (do (inspect/reset-inspector (:inspector connection))
           (f connection))
       (do (trace "invoke-named-restart %s not found" kw)
           (format "Restart %s not found" kw)))))
 
 (def stm-types #{"clojure.lang.Atom"})
 
-(defn stm-type? [object-reference]
+(defn stm-type? [^ObjectReference object-reference]
   (stm-types (.. object-reference referenceType name)))
 
-(defn lazy-seq? [object-reference]
+(defn lazy-seq? [^ObjectReference object-reference]
   (= "clojure.lang.LazySeq" (.. object-reference referenceType name)))
 
 (defn invoke-option-for [object-reference]
@@ -737,10 +760,12 @@ otherwise pass it on."
     jdi/invoke-single-threaded))
 
 (defmethod inspect/value-as-string com.sun.jdi.PrimitiveValue
-  [context obj] (pr-str (.value obj)))
+  [context obj]
+  (pr-str (.value obj)))
 
 (defmethod inspect/value-as-string com.sun.jdi.StringReference
-  [context obj] (pr-str (.value obj)))
+  [context obj]
+  (pr-str (.value obj)))
 
 (defmethod inspect/value-as-string com.sun.jdi.Value
   [context obj]
@@ -753,7 +778,7 @@ otherwise pass it on."
       (format "#<%s>" (.. obj referenceType name)))))
 
 (defmethod inspect/object-content-range com.sun.jdi.PrimitiveValue
-  [context object start end]
+  [context ^com.sun.jdi.PrimitiveValue object start end]
   (inspect/object-content-range context (.value object) start end))
 
 (defmethod inspect/object-content-range com.sun.jdi.Value
@@ -806,7 +831,7 @@ otherwise pass it on."
 
 (defn frame-locals-with-string-values
   "Return frame locals for slime"
-  [context thread n]
+  [context ^ThreadReference thread n]
   (doall
    (for [{:keys [value] :as map-entry} (jdi/unmangled-frame-locals
                                         (nth (.frames thread) n))]
@@ -816,7 +841,7 @@ otherwise pass it on."
 
 (defn nth-frame-var
   "Return the var-index'th var in the frame-index'th frame"
-  [context thread frame-index var-index]
+  [context ^ThreadReference thread frame-index var-index]
   {:pre [(< frame-index (count (.frames thread)))]}
   (trace "debug/nth-frame-var %s %s" frame-index var-index)
   (->
@@ -893,7 +918,7 @@ otherwise pass it on."
 
 (defn eval-string-in-frame
   "Eval the string `expr` in the context of the specified `frame-number`."
-  [connection context thread expr frame-number]
+  [connection context ^ThreadReference thread expr frame-number]
   (try
     (let [_ (assert (.isSuspended thread))
           locals (jdi/unmangled-frame-locals
@@ -926,7 +951,7 @@ otherwise pass it on."
 (defn pprint-eval-string-in-frame
   "Eval the string `expr` in the context of the specified `frame-number`
    and pretty print the result"
-  [connection context thread expr frame-number]
+  [connection context ^ThreadReference thread expr frame-number]
   (try
     (let [_ (assert (.isSuspended thread))
           locals (jdi/unmangled-frame-locals
@@ -963,9 +988,9 @@ otherwise pass it on."
   "Walk the stack frames to find the eval-for-emacs call and extract
    the id argument.  This finds the connection and id in the target
    vm"
-  [context thread]
+  [context ^ThreadReference thread]
   (trace "connection-and-id-from-thread %s" thread)
-  (some (fn [frame]
+  (some (fn [^StackFrame frame]
           (when-let [location (.location frame)]
             (when (and (= "ritz.swank$eval_for_emacs"
                           (jdi/location-type-name location))

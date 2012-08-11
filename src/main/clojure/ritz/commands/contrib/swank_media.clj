@@ -4,11 +4,11 @@
    [clojure.java.io :as io]
    [clojure.data.codec.base64 :as base64]
    [ritz.commands.emacs :as emacs]
-   [ritz.connection :as connection]
+   [ritz.swank.connection :as connection]
    [ritz.logging :as logging]
    [ritz.swank.core :as core]
    [ritz.swank.messages :as messages]
-   [ritz.swank.utils :as utils]
+   [ritz.repl-utils.utils :as utils]
    [ritz.swank.commands :as commands])
   (:import
    java.util.WeakHashMap))

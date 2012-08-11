@@ -4,13 +4,14 @@
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as string]
-   [ritz.connection :as connection]
+   [ritz.swank.connection :as connection]
    [ritz.inspect :as inspect]
    [ritz.logging :as logging]
    [ritz.swank.debug :as debug]
    [ritz.swank.messages :as messages]
    [ritz.commands.contrib.ritz])
   (:use
+   [ritz.connection :only [vm-context]]
    [ritz.swank.commands :only [defslimefn]]))
 
 (defn invoke-restart [restart]
@@ -46,7 +47,7 @@
   (let [[level-info level] (connection/current-sldb-level-info connection)]
     (messages/frame-locals
      (debug/frame-locals-with-string-values
-       @(:vm-context @connection)
+       (:vm-context connection)
        (:thread level-info) n))))
 
 (defslimefn frame-locals-and-catch-tags [connection n]
@@ -61,7 +62,7 @@
 (defslimefn inspect-frame-var [connection frame index]
   (let [inspector (connection/inspector connection)
         [level-info level] (connection/current-sldb-level-info connection)
-        vm-context (connection/vm-context connection)
+        vm-context (vm-context connection)
         thread (:thread level-info)
         object (debug/nth-frame-var vm-context thread frame index)]
     (when object
@@ -74,7 +75,7 @@
 (defslimefn inspect-nth-part [connection index]
   (let [inspector (connection/inspector connection)
         [level-info level] (connection/current-sldb-level-info connection)
-        vm-context (connection/vm-context connection)
+        vm-context (vm-context connection)
         thread (or (:thread level-info) (:control-thread vm-context))
         vm-context (assoc vm-context :current-thread thread)]
     (inspect/inspect-object
@@ -97,17 +98,15 @@
 LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
   [connection]
-  (let [threads (debug/thread-list @(:vm-context @connection))
-        context (swap! (:vm-context @connection) assoc :thread-list threads)
+  (let [threads (debug/thread-list connection)
         labels '(:id :name :state :at-breakpoint? :suspended? :suspends)]
-    (cons labels (map thread-data-fn (:threads context)))))
+    (cons labels (map thread-data-fn threads))))
 
 (defslimefn kill-nth-thread
   [connection index]
   (logging/trace "kill-nth-thread %s" index)
   (when index
-    (let [context (connection/vm-context connection)]
-      (debug/kill-nth-thread context index))))
+    (debug/kill-nth-thread connection index)))
 
 ;;; stepping
 (defslimefn sldb-step [connection frame]
@@ -124,13 +123,13 @@ corresponding attribute values per thread."
   (let [[level-info level] (connection/current-sldb-level-info connection)
         thread (:thread level-info)]
     (debug/eval-string-in-frame
-     connection (connection/vm-context connection) thread expr n)))
+     connection (vm-context connection) thread expr n)))
 
 (defslimefn pprint-eval-string-in-frame [connection expr n]
   (let [[level-info level] (connection/current-sldb-level-info connection)
         thread (:thread level-info)]
     (debug/pprint-eval-string-in-frame
-     connection (connection/vm-context connection) thread expr n)))
+     connection (vm-context connection) thread expr n)))
 
 ;; disassemble
 (defslimefn sldb-disassemble [connection frame-index]
@@ -138,12 +137,12 @@ corresponding attribute values per thread."
         thread (:thread level-info)]
     (string/join \newline
      (debug/disassemble-frame
-      (connection/vm-context connection) thread frame-index))))
+      (vm-context connection) thread frame-index))))
 
-(defslimefn disassemble-form [connection form-string]
+(defslimefn disassemble-form [connection ^String form-string]
   (when (.startsWith form-string "'")
     (let [sym (eval (read-string form-string))
-          vm-context (connection/vm-context connection)]
+          vm-context (vm-context connection)]
       (string/join \newline
                    (debug/disassemble-symbol
                     vm-context (:control-thread vm-context)

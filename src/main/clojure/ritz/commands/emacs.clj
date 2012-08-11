@@ -2,10 +2,10 @@
   "Emacs interaction"
   (:require
    [clojure.java.io :as io]
-   [ritz.connection :as connection]
+   [ritz.swank.connection :as connection]
    [ritz.logging :as logging]
    [ritz.swank.messages :as messages]
-   [ritz.swank.utils :as utils]
+   [ritz.repl-utils.utils :as utils]
    [ritz.swank.commands :as commands])
   (:import
    java.util.WeakHashMap))

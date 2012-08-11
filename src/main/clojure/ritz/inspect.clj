@@ -1,7 +1,7 @@
 (ns ritz.inspect
   "The inspector is an atom, containing parts"
   (:require
-   [ritz.swank.utils :as utils]
+   [ritz.repl-utils.utils :as utils]
    [ritz.logging :as logging]
    [clojure.string :as string]))
 
@@ -65,7 +65,7 @@
          ")")))
 
 (defmethod value-as-string clojure.lang.Cons
-  [context obj]
+  [context ^clojure.lang.Cons obj]
   (let [sample (take *lazy-seq-items-sample-size* obj)]
     (str "(" (value-as-string (.first obj))
          (when-not (= clojure.lang.PersistentList$EmptyList (class (.more obj)))

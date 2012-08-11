@@ -1,13 +1,13 @@
 (ns ritz.swank.core
   "Base namespace for swank"
   (:require
-   [ritz.connection :as connection]
+   [ritz.swank.connection :as connection]
    [ritz.hooks :as hooks]
    [ritz.logging :as logging]
    [ritz.repl-utils.helpers :as helpers]
    [ritz.swank.commands :as commands]
    [ritz.swank.messages :as messages]
-   [ritz.swank.utils :as utils]
+   [ritz.repl-utils.utils :as utils]
    [clojure.string :as string]))
 
 ;; Protocol version
@@ -22,7 +22,8 @@
 (extend-type Object
   ReplResult
   (write-result [value connection options]
-    (connection/send-to-emacs connection (messages/default-repl-result value options))))
+    (connection/send-to-emacs
+     connection (messages/default-repl-result value options))))
 
 (defn write-result-to-emacs
   [connection value & {:keys [terminator] :as options}]

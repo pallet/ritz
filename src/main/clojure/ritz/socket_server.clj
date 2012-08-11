@@ -31,7 +31,7 @@
          (.flush)))))
 
 (defn accept-connection
-  [f socket options]
+  [f ^ServerSocket socket options]
   (logging/trace "accept-connection")
   (if (.isClosed socket)
     (throw (IllegalArgumentException. "Accept requested on closed socket"))
@@ -44,7 +44,7 @@
            (str "Accept-Connection-" (.getId (Thread/currentThread))))
           (f (rpc-socket-connection/create connection options) options))))))
 
-(defn server-socket
+(defn ^ServerSocket server-socket
   "Open the server socket"
   [{:keys [port backlog host] :or {port 0 backlog 0}}]
   (logging/trace "socket-server/server-socket port %d" port)

@@ -54,7 +54,7 @@
   "Returns a list of Java class and Clojure package names found on the current
   classpath. To minimize noise, list is nil unless a '.' is present in the
   search string, and nested classes are only shown if a '$' is present."
-  [symbol-string]
+  [^String symbol-string]
   (when (.contains symbol-string ".")
     (if (.contains symbol-string "$")
       class-browse/nested-classes

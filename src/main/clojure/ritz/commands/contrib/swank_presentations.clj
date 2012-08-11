@@ -3,11 +3,11 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as string]
-   [ritz.connection :as connection]
+   [ritz.swank.connection :as connection]
    [ritz.logging :as logging]
    [ritz.swank.core :as core]
    [ritz.swank.messages :as messages]
-   [ritz.swank.utils :as utils]
+   [ritz.repl-utils.utils :as utils]
    [ritz.swank.commands :as commands]
    [ritz.commands.emacs :as emacs])
   (:import
@@ -175,7 +175,7 @@ The secondary value indicates the absence of an entry."
   [connection id count item]
   (let [id (clean-id id)
         ob (lookup-presented-object connection id)
-        menu (:presentation-active-menu @connection)]
+        menu (:presentation-active-menu connection)]
     (assert (= id (:id menu)))
     (let [action (second (nth (:menu menu) (dec count)))]
       (swank-ioify (action item ob id)))))
@@ -233,5 +233,4 @@ The secondary value indicates the absence of an entry."
 (defn initialize
   "Set up the connection to use slime presentations"
   [connection]
-  (swap! connection assoc :send-repl-results-function #'present-repl-results)
-  connection)
+  (assoc connection :send-repl-results-function #'present-repl-results))

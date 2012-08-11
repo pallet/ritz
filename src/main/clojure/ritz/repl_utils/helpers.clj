@@ -9,7 +9,7 @@
               (exception-causes cause)))))
 
 (defn stack-trace-string
-  [throwable]
+  [^Throwable throwable]
   (with-out-str
     (with-open [out-writer (java.io.PrintWriter. *out*)]
       (.printStackTrace throwable out-writer))))

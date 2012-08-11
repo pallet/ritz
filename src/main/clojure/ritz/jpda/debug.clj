@@ -15,6 +15,8 @@
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as string])
+  (:use
+   [ritz.connection :only [debug-context vm-context]])
   (:import
    java.io.File
    java.net.Socket
@@ -23,16 +25,19 @@
    com.sun.jdi.event.BreakpointEvent
    com.sun.jdi.event.ExceptionEvent
    com.sun.jdi.event.StepEvent
+   com.sun.jdi.event.Event
    com.sun.jdi.request.ExceptionRequest
+   com.sun.jdi.request.BreakpointRequest
    com.sun.jdi.event.VMStartEvent
    com.sun.jdi.event.VMDeathEvent
+   com.sun.jdi.Method
    com.sun.jdi.VirtualMachine
    com.sun.jdi.ObjectReference
    com.sun.jdi.ThreadReference
    com.sun.jdi.StackFrame
    (com.sun.jdi
     BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
-    LongValue ShortValue StringReference)))
+    LongValue ShortValue StringReference Value)))
 
 (def exception-suspend-policy :suspend-all)
 (def breakpoint-suspend-policy :suspend-all)
@@ -96,23 +101,27 @@
     (jdi/thread-groups (:vm context)))))
 
 (defn nth-thread
-  [context index]
-  (nth (:threads context) index nil))
+  [debug-context index]
+  (nth (:thread-list debug-context) index nil))
 
 (defn stop-thread
-  [context thread-id]
-  (when-let [thread (some
-                     #(and (= thread-id (.uniqueID %)) %)
-                     (threads context))]
+  [vm-context thread-id]
+  (when-let [^ThreadReference thread (first
+                                      (filter
+                                       #(= thread-id
+                                           (.uniqueID ^ThreadReference %))
+                                       (threads vm-context)))]
     (.stop
      thread
      (jdi-clj/control-eval-to-value
-      context `(new java.lang.Throwable "Stopped by swank")))))
+      vm-context `(new java.lang.Throwable "Stopped by swank")))))
 
 (defn level-info-thread-id
   [level-info]
-  (.uniqueID (:thread level-info)))
+  (.uniqueID ^ThreadReference (:thread level-info)))
 
+(defn user-threads [vm]
+ (set (jdi/threads-in-group vm executor/ritz-executor-group-name)))
 
 ;;; stacktrace
 (defn- frame-data
@@ -140,26 +149,25 @@
   "Update the context with a list of breakpoints. The list is cached in the
    context to allow it to be retrieveb by index."
   [context]
-  (let [breakpoints (map
-                     #(->
-                       (jdi/breakpoint-data %1)
-                       (assoc :id %2))
-                     (jdi/breakpoints (:vm context))
-                     (iterate inc 0))]
-    (assoc-in context [:breakpoints] breakpoints)))
+  (map
+   #(->
+     (jdi/breakpoint-data %1)
+     (assoc :id %2))
+   (jdi/breakpoints (:vm context))
+   (iterate inc 0)))
 
 (defn line-breakpoint
   "Set a line breakpoint."
-  [context namespace filename line]
-  (let [breakpoints (jdi/line-breakpoints
-                     (:vm context) breakpoint-suspend-policy
-                     namespace filename line)]
-    (update-in context [:breakpoints] concat breakpoints)))
+  [vm-context namespace filename line]
+  (jdi/line-breakpoints
+   ^VirtualMachine (:vm vm-context)
+   breakpoint-suspend-policy namespace filename line))
 
 (defn remove-breakpoint
-  "Set a line breakpoint."
-  [context event]
-  (update-in context [:breakpoints]
+  "Remove a line breakpoint."
+  [connection ^Event event]
+  (update-in (:debug connection)
+             [:breakpoints]
              (fn [breakpoints]
                (when-let [request (.request event)]
                  (.disable request)
@@ -168,36 +176,40 @@
                  (remove #(= % request) breakpoints)))))
 
 (defn breakpoints-for-id
-  [context id]
-  (let [vm (:vm context)]
-    (when-let [breakpoints (:breakpoints context)]
+  [connection id]
+  (let [vm (:vm (vm-context connection))]
+    (when-let [breakpoints (:breakpoints (debug-context connection))]
       (when-let [{:keys [file line]} (nth breakpoints id nil)]
         (doall (filter
-                #(let [location (.location %)]
+                #(let [location (.location ^BreakpointRequest %)]
                    (and (= file (.sourcePath location))
                         (= line (.lineNumber location))))
                 (jdi/breakpoints vm)))))))
 
 (defn breakpoint-kill
-  [context breakpoint-id]
-  (doseq [breakpoint (breakpoints-for-id context breakpoint-id)]
+  [connection breakpoint-id]
+  (doseq [^BreakpointRequest breakpoint
+          (breakpoints-for-id connection breakpoint-id)]
     (.disable breakpoint)
     (.. breakpoint (virtualMachine) (eventRequestManager)
         (deleteEventRequest breakpoint))))
 
 (defn breakpoint-enable
-  [context breakpoint-id]
-  (doseq [breakpoint (breakpoints-for-id context breakpoint-id)]
+  [connection breakpoint-id]
+  (doseq [^BreakpointRequest breakpoint
+          (breakpoints-for-id connection breakpoint-id)]
     (.enable breakpoint)))
 
 (defn breakpoint-disable
-  [context breakpoint-id]
-  (doseq [breakpoint (breakpoints-for-id context breakpoint-id)]
+  [connection breakpoint-id]
+  (doseq [^BreakpointRequest breakpoint
+          (breakpoints-for-id connection breakpoint-id)]
     (.disable breakpoint)))
 
 (defn breakpoint-location
-  [context breakpoint-id]
-  (when-let [breakpoint (first (breakpoints-for-id context breakpoint-id))]
+  [connection breakpoint-id]
+  (when-let [^BreakpointRequest breakpoint
+             (first (breakpoints-for-id connection breakpoint-id))]
     (let [location (.location breakpoint)]
       (logging/trace
        "debug/breakpoint-location %s %s %s"
@@ -220,19 +232,19 @@
       (update-in [:location] str)
       (update-in [:catch-location] str)
       (update-in [:message] str)))
-   (:exception-filters connection)))
+   (:exception-filters (debug-context connection))))
 
 (defn exception-filter-kill
   "Remove an exception-filter."
   [connection id]
-  (swap! connection update-in [:exception-filters]
+  (swap! (:debug connection) update-in [:exception-filters]
          #(vec (concat
                 (take (max id 0) %)
                 (drop (inc id) %)))))
 
 (defn update-filter-exception
   [connection id f]
-  (swap! connection update-in [:exception-filters]
+  (swap! (:debug connection) update-in [:exception-filters]
          #(vec (concat
                (take id %)
                [(f (nth % id))]
@@ -253,7 +265,7 @@
 ;; thread calling invokeMethod.  These exceptions are (unfortunately) not
 ;; reported through the jdi debug event loop.
 (deftype InvocationExceptionEvent
-    [exception thread]
+    [^ExceptionEvent exception thread]
   com.sun.jdi.event.ExceptionEvent
   (catchLocation [_] nil)
   (exception [_] exception)
@@ -264,45 +276,11 @@
 
 ;; Restarts
 (defn resume
-  [thread-ref suspend-policy]
+  [^ThreadReference thread-ref suspend-policy]
   (case suspend-policy
     :suspend-all (.resume (.virtualMachine thread-ref))
     :suspend-event-thread (.resume thread-ref)
     nil))
-
-
-(defn resume-sldb-levels
-  "Resume sldb levels specified in the connection.
-   This is side effecting, so can not be used within swap!"
-  [connection]
-  (doseq [level-info (:resume-sldb-levels connection)
-          :let [event (:event level-info)]
-          :when (not (instance? InvocationExceptionEvent event))]
-    (logging/trace
-     "resuming threads for sldb-level %s"
-     (:user-threads level-info))
-    (jdi/resume-threads (:user-threads level-info)))
-  connection)
-
-
-(defn aborting-level?
-  "Aborting predicate."
-  [connection]
-  (connection/aborting-level? connection))
-
-(defn clear-abort-for-current-level
-  "Clear any abort for the current level"
-  [connection]
-  (swap!
-   connection
-   (fn [c]
-     (logging/trace
-      "clear-abort-for-current-level %s %s"
-      (count (:sldb-levels c)) (:abort-to-level c))
-     (if (and (:abort-to-level c)
-              (= (count (:sldb-levels c)) (:abort-to-level c)))
-       (dissoc c :abort-to-level)
-       c))))
 
 (defn step-request
   [thread size depth]
@@ -315,14 +293,14 @@
   "Add the specified exception to the connection's never-break-exceptions set."
   [connection exception-type]
   (logging/trace "Adding %s to never-break-exceptions" exception-type)
-  (swap! connection update-in [:exception-filters] conj
+  (swap! (:debug connection) update-in [:exception-filters] conj
          {:type exception-type :enabled true}))
 
 (defn ignore-exception-message
   "Add the specified exception to the connection's never-break-exceptions set."
   [connection exception-message]
   (logging/trace "Adding %s to never-break-exceptions" exception-message)
-  (swap! connection update-in [:exception-filters] conj
+  (swap! (:debug connection) update-in [:exception-filters] conj
          {:message exception-message :enabled true}))
 
 (defn ignore-exception-catch-location
@@ -330,7 +308,7 @@
    never-break-exceptions set."
   [connection catch-location]
   (logging/trace "Adding %s to never-break-exceptions" catch-location)
-  (swap! connection update-in [:exception-filters] conj
+  (swap! (:debug connection) update-in [:exception-filters] conj
          {:catch-location catch-location :enabled true}))
 
 (defn ignore-exception-location
@@ -338,7 +316,7 @@
    never-break-exceptions set."
   [connection catch-location]
   (logging/trace "Adding %s to never-break-exceptions" catch-location)
-  (swap! connection update-in [:exception-filters] conj
+  (swap! (:debug connection) update-in [:exception-filters] conj
          {:location catch-location :enabled true}))
 
 
@@ -377,12 +355,12 @@
                  (equal-or-matches? catch-location catch-location-name))
              (or (not message)
                  (equal-or-matches? message exception-message))))]
-    (not (some matches? (:exception-filters @connection)))))
+    (not (some matches? (:exception-filters (debug-context connection))))))
 
 (defn break-for-exception?
   "Predicate to check whether we should invoke the debugger for the given
    exception event"
-  [exception-event connection]
+  [^ExceptionEvent exception-event connection]
   (let [catch-location (jdi/catch-location exception-event)
         location (jdi/location exception-event)
         location-name (jdi/location-type-name location)
@@ -391,11 +369,11 @@
         catch-location-name (when catch-location
                               (jdi/location-type-name catch-location))
         exception-msg (jdi-clj/exception-message
-                       @(:vm-context @connection) exception-event)]
+                       (:vm-context connection) exception-event)]
     (logging/trace
      "break-for-exception? %s %s %s"
      catch-location-name location-name exception-msg)
-    (swap! connection assoc :exception-message exception-msg)
+    (swap! (:debug connection) assoc :exception-message exception-msg)
     (or (not catch-location)
         (break-for?
          connection
@@ -403,9 +381,12 @@
          exception-msg))))
 
 
-(defn add-op-location [method {:keys [code-index] :as op}]
+(defn add-op-location
+  [^Method method {:keys [code-index] :as op}]
   (if code-index
-    (merge op (jdi/location-data (.locationOfCodeIndex method code-index)))
+    (merge
+     op
+     (jdi/location-data (.locationOfCodeIndex method (int code-index))))
     op))
 
 (defn format-arg
@@ -455,7 +436,7 @@
 
 (defn disassemble-method
   "Dissasemble a method, adding location info"
-  [const-pool method]
+  [const-pool ^Method method]
   (let [ops (disassemble/disassemble const-pool (.bytecodes method))]
     (format-ops (map #(add-op-location method %) ops))))
 
@@ -473,17 +454,17 @@
   "Dissasemble a symbol var"
   [context ^ThreadReference thread sym-ns sym-name]
   (logging/trace "disassemble-symbol %s %s" sym-ns sym-name)
-  (when-let [[f methods] (jdi-clj/clojure-fn-deref
-                          context thread
-                          jdi/invoke-single-threaded
-                          sym-ns sym-name)]
+  (when-let [[^Value f methods] (jdi-clj/clojure-fn-deref
+                                 context thread
+                                 jdi/invoke-single-threaded
+                                 sym-ns sym-name)]
     (let [const-pool (disassemble/constant-pool
                       (.. f referenceType constantPool))]
       (apply
        concat
-       (for [method methods
+       (for [^Method method methods
              :let [ops (disassemble-method const-pool method)]
-             :let [clinit (first (drop 3 ops))]
+             :let [^String clinit (first (drop 3 ops))]
              :when (not (.contains clinit ":invokevirtual \""))]
          (concat
           [(str sym-ns "/" sym-name

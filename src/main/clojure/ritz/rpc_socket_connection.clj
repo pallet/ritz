@@ -7,6 +7,8 @@
   (:import
    java.io.InputStreamReader
    java.io.OutputStreamWriter
+   java.io.Writer
+   java.net.Socket
    java.net.SocketException))
 
 (def ^{:private true :doc "Translate encoding strings from slime to java"}
@@ -30,12 +32,12 @@
 (defn close
   "Close a connection"
   [connection]
-  (.close (:socket connection)))
+  (.close ^Socket (:socket connection)))
 
 (defn connected?
   "Predicate to test if connection is open"
   [connection]
-  (let [socket (:socket connection)]
+  (let [^Socket socket (:socket connection)]
     (and (not (or (.isClosed socket)
                   (.isInputShutdown socket)
                   (.isOutputShutdown socket)))
@@ -45,15 +47,15 @@
   "Sends a message."
   [connection msg]
   (try
-    (let [writer (:writer connection)]
+    (let [^Writer writer (:writer connection)]
       (locking (:write-monitor connection)
         (rpc/encode-message writer msg)
         (.flush writer))
       (logging/trace "rpc-socket-connection/write-message completed"))
     (catch SocketException e
       (logging/trace "Caught exception while writing %s" (str e))
-      (when (.isOutputShutdown (:socket connection))
-        (.close (:socket connection)))
+      (when (.isOutputShutdown ^Socket (:socket connection))
+        (.close ^Socket (:socket connection)))
       (throw e))))
 
 (defn read-message
@@ -66,16 +68,16 @@
         (rpc/decode-message reader)))
     (catch SocketException e
       (logging/trace "Caught exception while reading %s" (str e))
-      (when (.isInputShutdown (:socket connection))
-        (.close (:socket connection)))
+      (when (.isInputShutdown ^Socket (:socket connection))
+        (.close ^Socket (:socket connection)))
       (throw e))))
 
 (defn local-port
   [connection]
-  (.getLocalPort (:socket connection)))
+  (.getLocalPort ^Socket (:socket connection)))
 
-(defn create [socket {:as options}]
-  (let [encoding (encoding-map (:encoding options) (:encoding options))]
+(defn create [^Socket socket {:as options}]
+  (let [^String encoding (encoding-map (:encoding options) (:encoding options))]
     (merge
      options
      {:socket socket

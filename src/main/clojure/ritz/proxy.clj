@@ -20,7 +20,9 @@
    ;; vm, vs functions defined for jpda/jdi connection
    ritz.commands.inspector
    ritz.commands.debugger
-   ritz.commands.contrib.ritz))
+   ritz.commands.contrib.ritz)
+  (:import
+   com.sun.jdi.VirtualMachine))
 
 (defn forward-commands
   "Alter eval-for-emacs to forward unrecognised commands to proxied connection."
@@ -55,14 +57,14 @@
                    (dissoc :announce)
                    (merge {:port 0 :join true :server-ns 'ritz.repl}))
           vm-context (debug/launch-vm-with-swank options)
-          options (assoc options :vm-context (atom vm-context))]
+          options (assoc options :vm-context vm-context)]
       (logging/trace "proxy/connection-handler: runtime set")
       (logging/trace "proxy/connection-handler: thread-groups")
       (logging/trace (with-out-str
                        (pprint/pprint (jdi/thread-groups (:vm vm-context)))))
 
       (logging/trace "proxy/connection-handler: resume vm")
-      (.resume (:vm vm-context))
+      (.resume ^VirtualMachine (:vm vm-context))
 
       (logging/trace "proxy/connection-handler: thread-groups")
       (logging/trace

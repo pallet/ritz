@@ -25,7 +25,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
 
 (defn- read-form
   "Read a form that conforms to the swank rpc protocol"
-  [^Reader rdr]
+  [^PushbackReader rdr]
   (let [c (.read rdr)]
     (condp = (char c)
         \" (let [sb (StringBuilder.)]
@@ -98,19 +98,19 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
 
 (defmulti print-object (fn [x writer] (type x)))
 
-(defmethod print-object :default [o, ^Writer w]
+(defmethod print-object :default [o ^Writer w]
   (print-method o w))
 
-(defmethod print-object Boolean [o, ^Writer w]
+(defmethod print-object Boolean [o ^Writer w]
   (.write w (if o "t" "nil")))
 
-(defmethod print-object String [^String s, ^Writer w]
+(defmethod print-object String [^String s ^Writer w]
   (let [char-escape-string {\" "\\\""
                             \\  "\\\\"}]
     (do (.append w \")
       (dotimes [n (count s)]
         (let [c (.charAt s n)
-              e (char-escape-string c)]
+              ^String e (char-escape-string c)]
           (if e (.write w e) (.append w c))))
       (.append w \"))
   nil))
@@ -129,7 +129,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
   (print-object message writer))
 
 (defn- write-packet
-  [^Writer writer str]
+  [^Writer writer ^String str]
   (let [len (.length str)]
     (doto writer
       (.write (format "%06x" len))

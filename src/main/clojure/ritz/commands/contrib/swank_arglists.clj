@@ -3,10 +3,10 @@
    [ritz.swank.commands :only [defslimefn]])
   (:require
    [ritz.commands.basic :as basic]
-   [ritz.connection :as connection]
+   [ritz.swank.connection :as connection]
    [ritz.logging :as logging]
    [ritz.repl-utils.arglist :as arglist]
-   [ritz.swank.utils :as utils]
+   [ritz.repl-utils.utils :as utils]
    [ritz.swank.commands :as commands]))
 
 

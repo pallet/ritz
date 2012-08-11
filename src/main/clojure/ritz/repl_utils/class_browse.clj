@@ -119,7 +119,7 @@
 (defn classpath-urls
   "Return the classpath URL's for the current clojure classloader."
   []
-  (.getURLs (.getClassLoader clojure.lang.RT)))
+  (.getURLs ^java.net.URLClassLoader (.getClassLoader clojure.lang.RT)))
 
 (defn classpath
   "Return the classpath File's for the current clojure classloader."

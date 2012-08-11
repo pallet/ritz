@@ -14,7 +14,7 @@
 (def ritz-control-group (delay (ThreadGroup. "ritz-control")))
 
 (defn thread-factory
-  [thread-group prefix]
+  [^ThreadGroup thread-group prefix]
   (proxy [ThreadFactory] []
      (newThread [^Runnable r]
        (let [thread (Thread. thread-group r)]
@@ -39,7 +39,7 @@
   (Executors/newCachedThreadPool
    (thread-factory @ritz-executor-group "ritz")))
 
-(defn execute-request
+(defn ^Future execute-request
   [^Callable f]
   (.submit request-executor f))
 
@@ -63,7 +63,7 @@
       (recur cause)
       cause)))
 
-(defn execute-loop
+(defn ^Future execute-loop
   "Execute a loop continuously. Catch exceptions and return a formatted
   exception message with exception-f."
   [f & {:keys [name exception-f final-fn]

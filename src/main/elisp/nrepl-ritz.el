@@ -37,7 +37,8 @@
 (defun nrepl-ritz-threads ()
   (interactive)
   (nrepl-ritz-send-debug
-   "(ritz.nrepl.commands/threads)" "user"
+   "(ritz.nrepl.debug/threads)"
+   "user"
    (nrepl-handler (current-buffer))))
 
 ;;; javadoc browsing
@@ -45,8 +46,7 @@
   "Require JavaDoc namespace, adding a list of local paths."
   (nrepl-send-string
    (format
-    "(require 'ritz.repl-utils.doc)
-     (ritz.repl-utils.doc/javadoc-local-paths '%S)" local-paths)
+    "(ritz.repl-utils.doc/javadoc-local-paths '%S)" local-paths)
    "user"
    (nrepl-handler (current-buffer))))
 
@@ -55,8 +55,7 @@
   (when (not symbol-name)
     (error "No symbol given"))
   (nrepl-send-string
-   (format "(require 'ritz.repl-utils.doc)
-             (ritz.repl-utils.doc/javadoc-url \"%s\")" symbol-name)
+   (format "(ritz.repl-utils.doc/javadoc-url \"%s\")" symbol-name)
    "user"
    (nrepl-make-response-handler
     (current-buffer)
@@ -94,6 +93,27 @@
 
 (define-key
   nrepl-interaction-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
+
+;;; breakpoints
+(defun nrepl-ritz-break-breakpoint-list ()
+  (interactive)
+  (nrepl-send-debug
+   "(ritz.nrepl.debug/breakpoint-list)"
+   (nrepl-current-ns)
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+
+(defun nrepl-ritz-break-on-exception (flag)
+  (nrepl-send-debug
+   (format "(ritz.nrepl.debug/break-on-exception %s)" (if flag "true" "false"))
+   (nrepl-current-ns)
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+
+(defun nrepl-ritz-continue ()
+  (interactive)
+  (nrepl-send-debug
+   "(ritz.nrepl.debug/continue)"
+   (nrepl-current-ns)
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
 
 (provide 'nrepl-ritz)
 ;;; nrepl-ritz.el ends here

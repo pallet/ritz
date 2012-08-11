@@ -110,7 +110,7 @@ that symbols accessible in the current namespace go first."
 
 (defn javadoc-partial-match [file-path files]
   (let [re (re-pattern (str "HREF=\"(.*/" file-path ")"))
-        finder (fn [classes-file]
+        finder (fn [^File classes-file]
                  (when-let [[s m] (re-find
                                    re
                                    (slurp classes-file))]
@@ -134,15 +134,17 @@ that symbols accessible in the current namespace go first."
                        ".html")
         url-path (.replace classname \. \/)
         files (mapcat
-               (fn [base]
+               (fn [^String base]
                  (filter
-                  #(= "allclasses-noframe.html" (.getName %))
+                  #(= "allclasses-noframe.html" (.getName ^java.io.File %))
                   (file-seq (File. base))))
                @@#'javadoc/*local-javadocs*)]
     (if-let [file ^File (first
                          (filter
                           #(.exists ^File %)
-                          (map #(io/file (.getParent %) file-path) files)))]
+                          (map
+                           #(io/file (.getParent ^File %) file-path)
+                           files)))]
       (let [url (-> file .toURI str)]
         (if field
           (str url "#" field) ; try to treat this as a field

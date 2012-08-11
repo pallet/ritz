@@ -11,7 +11,7 @@
 (ns ritz.commands.contrib.swank-fuzzy
   (:require
    [ritz.repl-utils.fuzzy-completion :as fuzzy-completion]
-   [ritz.swank.utils :as utils]
+   [ritz.repl-utils.utils :as utils]
    [ritz.swank.commands :as commands]))
 
 (defn- call-with-timeout [time-limit-in-msec proc]

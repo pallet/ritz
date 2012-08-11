@@ -1,7 +1,7 @@
 (ns ritz.repl-utils.arglist
   "Arglists for symbols and sexps"
   (:require
-   [ritz.swank.utils :as utils]
+   [ritz.repl-utils.utils :as utils]
    [ritz.logging :as logging]
    [clojure.string :as string]))
 

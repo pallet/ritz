@@ -43,14 +43,14 @@
     (bit-shift-right i 32) (bit-shift-right i 24) (bit-shift-right i 16)
     (bit-shift-right i 8) i]))
 
-(def utf-8-charset (java.nio.charset.Charset/forName "UTF-8"))
-
+(def ^java.nio.charset.Charset utf-8-charset
+  (java.nio.charset.Charset/forName "UTF-8"))
 
 (defn utf8-pool-entry [bytes]
   (let [n-bytes (+ (* 256 (ubyte-value (first bytes)))
                    (ubyte-value (second bytes)))
         bytes (take n-bytes (drop 2 bytes))]
-    [{:value (String. (byte-array bytes) utf-8-charset)
+    [{:value (String. ^bytes (byte-array bytes) utf-8-charset)
       :type :utf8}
      (+ n-bytes 3)
      1]))
@@ -318,7 +318,7 @@
          ops []]
     (let [{:keys [arg-size] :as op} (instruction const-pool bytecode address)]
       (if-let [bytecode (seq (drop (inc arg-size) bytecode))]
-        (recur bytecode (+ address (inc arg-size)) (conj ops op))
+        (recur bytecode (long (+ address (inc arg-size))) (conj ops op))
         ops))))
 
 (def

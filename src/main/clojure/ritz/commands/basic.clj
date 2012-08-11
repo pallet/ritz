@@ -7,7 +7,7 @@
   (:require
    [clojure.java.io :as io]
    [ritz.clj-contrib.macroexpand :as macroexpand]
-   [ritz.connection :as connection]
+   [ritz.swank.connection :as connection]
    [ritz.logging :as logging]
    [ritz.repl-utils.arglist :as arglist]
    [ritz.repl-utils.compile :as compile]
@@ -18,10 +18,10 @@
    [ritz.repl-utils.io :as utils-io]
    [ritz.repl-utils.sys :as sys]
    [ritz.repl-utils.trace :as trace]
+   [ritz.repl-utils.utils :as utils]
    [ritz.swank.core :as core]
    [ritz.swank.indent :as indent]
    [ritz.swank.messages :as messages]
-   [ritz.swank.utils :as utils]
    [clojure.string :as string])
   (:import
    (java.io StringReader File)
@@ -83,10 +83,11 @@
 (defslimefn listener-eval [connection form]
   (logging/trace "listener-eval %s" form)
   (in-ns (connection/current-namespace connection))
-  (let [[result exception] (eval-form
-                            connection
-                            (string/replace
-                             form "#.(swank:" "(ritz.swank.commands/"))]
+  (let [[result ^Exception exception] (eval-form
+                                       connection
+                                       (string/replace
+                                        form "#.(swank:"
+                                        "(ritz.swank.commands/"))]
     (logging/trace "listener-eval: %s %s" result exception)
     (if exception
       (do
@@ -98,7 +99,7 @@
            connection
            (messages/new-package (str (ns-name *ns*)) (str (ns-name *ns*))))
           (connection/set-namespace connection (ns-name *ns*)))
-        ((:send-repl-results-function @connection) connection [result])))))
+        ((:send-repl-results-function connection) connection [result])))))
 
 (defmacro with-out-str-and-value
   [& body]
@@ -174,7 +175,7 @@
 (defn possibly-relative-path
   "If file-path can be expressed relative tot he classloader root, then
    do so"
-  [file-path]
+  [^String file-path]
   (try
     (let [base (File. (System/getProperty "user.dir"))
           file (File. file-path)]
@@ -217,7 +218,7 @@
     (pr-str (clojure.core/load-file file-name))))
 
 (defslimefn compile-string-for-emacs
-  [connection string buffer position buffer-path debug]
+  [connection string buffer position ^String buffer-path debug]
   (let [start (System/nanoTime)
         file (java.io.File. buffer-path)
         line (utils-io/read-position-line file position)
@@ -441,7 +442,7 @@
 ;;; Threads
 (def ^{:private true} thread-list (atom []))
 
-(defn- get-root-group [^java.lang.ThreadGroup tg]
+(defn- ^ThreadGroup get-root-group [^java.lang.ThreadGroup tg]
   (if-let [parent (.getParent tg)]
     (recur parent)
     tg))
@@ -467,7 +468,7 @@ corresponding attribute values per thread."
 ;;; TODO: Find a better way, as Thread.stop is deprecated
 (defslimefn kill-nth-thread [connection index]
   (when index
-    (when-let [thread (nth @thread-list index nil)]
+    (when-let [^Thread thread (nth @thread-list index nil)]
       (println "Thread: " thread)
       (.stop thread))))
 

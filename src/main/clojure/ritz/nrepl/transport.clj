@@ -10,7 +10,7 @@
   (read-sent [_] "Return a sent message, or block"))
 
 
-(defrecord JpdaTransport [queue]
+(defrecord JpdaTransport [^LinkedBlockingQueue queue]
   clojure.tools.nrepl.transport/Transport
   (recv [this] (assert false))
   (recv [this timeout] (assert false))
@@ -23,4 +23,4 @@
 
 (defn make-transport
   [{:keys [queue-size] :or {queue-size 20}}]
-  (JpdaTransport. (LinkedBlockingQueue. queue-size)))
+  (JpdaTransport. (LinkedBlockingQueue. (int queue-size))))

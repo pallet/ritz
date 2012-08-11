@@ -4,7 +4,7 @@
    ritz.swank.commands)
   (:require
    [ritz.repl-utils.find :as find]
-   [ritz.connection :as connection])
+   [ritz.swank.connection :as connection])
   (:import (clojure.lang RT)
            (java.io LineNumberReader InputStreamReader PushbackReader)))
 

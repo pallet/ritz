@@ -1,5 +1,5 @@
-(ns ritz.swank.utils
-  "Utils for swank implementation")
+(ns ritz.repl-utils.utils
+  "Utils")
 
 (defn maybe-ns [package]
   "Try to turn package into a namespace"

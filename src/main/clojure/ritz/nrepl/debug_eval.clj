@@ -3,7 +3,9 @@
   (:require
    [clojure.tools.nrepl.transport :as transport]
    [clojure.main :as main]
-   ritz.nrepl.commands) ;; ensure commands are loaded
+   ritz.nrepl.commands
+   ritz.nrepl.debug
+   ritz.repl-utils.doc) ;; ensure commands are loaded
   (:use
    [clojure.tools.nrepl.misc :only [response-for]]
    [clojure.tools.nrepl.middleware.interruptible-eval :only [*msg*]]

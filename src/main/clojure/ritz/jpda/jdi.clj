@@ -8,6 +8,8 @@
    [ritz.logging :as logging]
    [clojure.string :as string]
    [clojure.java.io :as io])
+  (:use
+   [clojure.stacktrace :only [print-cause-trace]])
   (:import
    (com.sun.jdi
     VirtualMachine PathSearchingVirtualMachine
@@ -15,14 +17,15 @@
     ObjectReference StringReference
     ThreadReference ThreadGroupReference
     ReferenceType Locatable Location StackFrame
-    Field LocalVariable Method ClassType)
+    Field LocalVariable Method ClassType Value)
    (com.sun.jdi.connect
     Connector)
    (com.sun.jdi.event
     VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent VMDeathEvent
     BreakpointEvent Event EventSet EventQueue)
    (com.sun.jdi.request
-    ExceptionRequest EventRequest StepRequest EventRequestManager)))
+    BreakpointRequest ExceptionRequest EventRequest StepRequest
+    EventRequestManager)))
 
 ;;; Connections
 (def connector-names
@@ -37,11 +40,11 @@
   []
   (.. (Bootstrap/virtualMachineManager) allConnectors))
 
-(defn connector
+(defn ^Connector connector
   "Lookup connector based on a keyword in (keys connector-names)"
   [connector-kw]
-  (let [name ^String (connector-names connector-kw)]
-    (some #(and (= (.name %) name) %) (connectors))))
+  (let [^String name (connector-names connector-kw)]
+    (some #(and (= (.name ^Connector %) name) %) (connectors))))
 
 (defn connector-args
   "Returns connector arguments based on name value pairs in arg-map."
@@ -63,7 +66,7 @@
 
    Returns an instance of VirtualMachine."
   ([classpath expr options]
-     (let [launch-connector (connector :command-line)
+     (let [^Connector launch-connector (connector :command-line)
            arguments (.defaultArguments launch-connector)
            main-args (.get arguments "main")
            option-args (.get arguments "options")]
@@ -84,16 +87,15 @@
 (defn shutdown
   "Shut down virtual machine."
   [context]
-  (.exit (:vm context) 0)
+  (.exit ^VirtualMachine (:vm context) 0)
   (interrupt-if-alive (:vm-out-thread context))
   (interrupt-if-alive (:vm-in-thread context))
   (interrupt-if-alive (:vm-err-thread context)))
 
-Thread
 ;;; Streams
 (defn vm-stream-daemons
   "Start threads to copy standard input, output and error streams"
-  [vm {:keys [in out err]}]
+  [^VirtualMachine vm {:keys [in out err]}]
   (let [process (.process vm)]
     (logging/trace "vm-stream-daemons")
     {:vm-in-thread (executor/daemon-thread
@@ -122,7 +124,8 @@ Thread
 
 (defn silent-event?
   [^Event event]
-  (let [event-str (try (.toString event) (catch java.lang.InternalError _))]
+  (let [^String event-str (try (.toString event)
+                               (catch java.lang.InternalError _))]
     (or (.startsWith event-str "ExceptionEvent@java.net.URLClassLoader")
         (.startsWith event-str "ExceptionEvent@java.lang.Class")
         (.startsWith event-str "ExceptionEvent@clojure.lang.RT")
@@ -155,6 +158,14 @@ Thread
             (reset! connected false))
           (catch Throwable e
             (logging/trace "jdi/handle-event-set: Unexpected exeception %s" e)
+            (logging/trace
+             "jdi/handle-event-set:  root exeception %s"
+             (with-out-str
+               (print-cause-trace e)
+               ;; (.printStackTrace (or
+               ;;                    ; (clojure.stacktrace/root-cause e)
+               ;;                    e))
+               ))
             (.printStackTrace e))))
       (finally (when @connected (.resume event-set))))))
 
@@ -188,14 +199,14 @@ Thread
 ;;; low level wrappers
 (defn classes
   "Return the class references for the class name from the vm."
-  [vm class-name]
+  [^VirtualMachine vm ^String class-name]
   (.classesByName vm class-name))
 
 (defn methods
   "Return a class's methods with name from the vm."
-  ([class method-name]
+  ([^ReferenceType class ^String method-name]
      (.methodsByName class method-name))
-  ([class method-name signature]
+  ([^ReferenceType class ^String method-name ^String signature]
      (.methodsByName class method-name signature)))
 
 (defn mirror-of
@@ -214,25 +225,25 @@ Thread
 
 
 (defn save-exception-request-states
-  [vm]
+  [^VirtualMachine vm]
   (reduce
-   (fn [m r] (assoc m r (.isEnabled r)))
+   (fn [m ^ExceptionRequest r] (assoc m r (.isEnabled r)))
    {}
    (.. vm eventRequestManager exceptionRequests)))
 
 (defn disable-exception-request-states
-  [vm]
-  (doseq [r (.. vm eventRequestManager exceptionRequests)]
+  [^VirtualMachine vm]
+  (doseq [^ExceptionRequest r (.. vm eventRequestManager exceptionRequests)]
     (.disable r)))
 
 (defn enable-exception-request-states
-  [vm]
-  (doseq [r (.. vm eventRequestManager exceptionRequests)]
+  [^VirtualMachine vm]
+  (doseq [^ExceptionRequest r (.. vm eventRequestManager exceptionRequests)]
     (.enable r)))
 
 (defn restore-exception-request-states
-  [vm m]
-  (doseq [r (.. vm eventRequestManager exceptionRequests)]
+  [^VirtualMachine vm m]
+  (doseq [^ExceptionRequest r (.. vm eventRequestManager exceptionRequests)]
     (.setEnabled r (m r))))
 
 (defmacro with-disabled-exception-requests [[vm] & body]
@@ -242,7 +253,7 @@ Thread
        (disable-exception-request-states vm#)
        ~@body
        (finally
-        ;; (restore-exception-request-states vm# m#)
+         ;; (restore-exception-request-states vm# m#)
         (enable-exception-request-states vm#)))))
 
 (def invoke-multi-threaded 0)
@@ -252,7 +263,7 @@ Thread
 (defn arg-list [& args]
   (or args []))
 
-(defn invoke-method
+(defn ^Value invoke-method
   "Methods can only be invoked on threads suspended for exceptions.
    `args` is a sequence of remote object references."
   [^ThreadReference thread options class-or-object ^Method method args]
@@ -260,15 +271,15 @@ Thread
   ;;  "jdi/invoke-method %s %s\nargs %s\noptions %s"
   ;;  class-or-object method (pr-str args) options)
   (logging/trace "jdi/invoke-method %s" method)
-  (with-disabled-exception-requests [(.virtualMachine thread)]
-      (let [args (java.util.ArrayList. (or args []))]
-        (cond
-          (instance? com.sun.jdi.ClassType class-or-object)
-          (.invokeMethod
-           ^ClassType class-or-object thread method args (int options))
-          (instance? com.sun.jdi.ObjectReference class-or-object)
-          (.invokeMethod
-           ^ObjectReference class-or-object thread method args (int options))))))
+  (do ;; with-disabled-exception-requests [(.virtualMachine thread)]
+    (let [args (java.util.ArrayList. (or args []))]
+      (cond
+        (instance? com.sun.jdi.ClassType class-or-object)
+        (.invokeMethod
+         ^ClassType class-or-object thread method args (int options))
+        (instance? com.sun.jdi.ObjectReference class-or-object)
+        (.invokeMethod
+         ^ObjectReference class-or-object thread method args (int options))))))
 
 ;;; classpath
 (defn classpath
@@ -292,8 +303,8 @@ Thread
   (->>
    (.entries jar-file)
    enumeration-seq
-   (filter #(not (.isDirectory %)))
-   (map #(.getName %))))
+   (filter #(not (.isDirectory ^java.io.File %)))
+   (map #(.getName ^java.io.File %))))
 
 (defn filepaths
   "Returns a sequence of JarFile objects for the jar files on classpath."
@@ -301,7 +312,7 @@ Thread
   (filter
    identity
    (mapcat
-    (fn [file]
+    (fn [^java.io.File file]
       (if (jar-file? file)
         (try
           (->
@@ -310,7 +321,7 @@ Thread
            filepaths-from-jar)
           (catch Exception _))
         [(str file)]))
-    (map #(java.io.File. %) classpath))))
+    (map #(java.io.File. ^String %) classpath))))
 
 (defn matching-classpath-files
   "Return a sequence of class paths that the specified filepath matches."
@@ -331,7 +342,7 @@ Thread
 
 (defn file-namespace
   "Get the top level namespace for the given file path"
-  [classpath filepath]
+  [classpath ^String filepath]
   (logging/trace "file-namespace %s" filepath)
   (->>
    (string/replace (-> filepath (.split "\\.jar:") last) ".java" ".class")
@@ -346,24 +357,24 @@ Thread
 
 (defn namespace-classes
   "Return all classes for the given namespace"
-  [vm namespace]
+  [^VirtualMachine vm namespace]
   (logging/trace "namespace-classes %s" namespace)
   (when-not (string/blank? namespace)
     (let [re (classname-re namespace)]
       (logging/trace "Looking for re %s" re)
       (filter
-       (fn [class-ref]
+       (fn [^ReferenceType class-ref]
          (re-find re (.name class-ref)))
        (.allClasses vm)))))
 
 (defn file-classes
   "Return all classes for the given path"
-  [vm filename]
+  [^VirtualMachine vm filename]
   (let [file-ns (file-namespace (classpath vm) filename)]
     (logging/trace
        "Looking for %s in %s using %s"
        filename
-       (vec (map #(.name %) (take 50 (.allClasses vm))))
+       (vec (map #(.name ^ReferenceType %) (take 50 (.allClasses vm))))
        (vec file-ns))
     (namespace-classes vm (first file-ns))))
 
@@ -446,7 +457,7 @@ Thread
    :suspend-none EventRequest/SUSPEND_NONE})
 
 (defn discard-event-request
-  [vm event-request]
+  [^VirtualMachine vm ^EventRequest event-request]
   (.disable event-request)
   (.deleteEventRequest (.eventRequestManager vm) event-request))
 
@@ -507,7 +518,7 @@ Thread
     (size step-sizes StepRequest/STEP_LINE)
     (depth step-depths StepRequest/STEP_OVER))))
 
-(defn event-thread
+(defn ^ThreadReference event-thread
   "Return the event's thread - note that there is no common interface for this.
    A BreakpointEvent just has a thread method."
   [^LocatableEvent event]
@@ -582,7 +593,10 @@ Thread
 (defn breakpoint
   "Create a breakpoint"
   [^VirtualMachine vm suspend-policy ^Location location]
-  (logging/trace "Setting breakpoint")
+  (logging/trace "Setting breakpoint %s %s %s"
+                 (location-type-name location)
+                 (location-method-name location)
+                 (location-line-number location))
   (doto (.createBreakpointRequest (.eventRequestManager vm) location)
     (.setSuspendPolicy (suspend-policy event-request-policies))
     (.enable)))
@@ -603,7 +617,7 @@ Thread
    of the frame location's source name, or for the presence of well know clojure
    field prefixes."
   [^StackFrame frame fields]
-  (let [source-path (location-source-path (.location frame))]
+  (let [^String source-path (location-source-path (.location frame))]
     (or (and source-path (.endsWith source-path ".clj"))
         (and
          (some #{"__meta"} (map #(.name ^Field %) fields))
@@ -689,7 +703,7 @@ Thread
 
 (defn breakpoint-data
   "Returns breakpoint data"
-  [^BreakpointEvent breakpoint]
+  [^BreakpointRequest breakpoint]
   (let [location (.location breakpoint)]
     {:file (str (.sourcePath location))
      :line (.lineNumber location)
@@ -700,14 +714,19 @@ Thread
   [^VirtualMachine vm]
   (.. vm (eventRequestManager) (breakpointRequests)))
 
+(defn exception-requests
+  "List exception requests"
+  [^VirtualMachine vm]
+  (.. vm (eventRequestManager) (exceptionRequests)))
+
 (defn location-data
   "Take a location, and extract function source and line."
   [^Location location]
   (let [declaring-type (location-type-name location)
         method (location-method-name location)
         line (location-line-number location)
-        source-name (or (location-source-name location) "UNKNOWN")
-        source-path (or (location-source-path location) "UNKNOWN")]
+        ^String source-name (or (location-source-name location) "UNKNOWN")
+        ^String source-path (or (location-source-path location) "UNKNOWN")]
     (if (and (= method "invoke") source-name
              (or (.endsWith source-name ".clj")
                  (.startsWith source-name "SOURCE_FORM_")))

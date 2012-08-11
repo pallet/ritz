@@ -1,7 +1,7 @@
 (ns ritz.swank
   "Swank protocol"
   (:require
-   [ritz.connection :as connection]
+   [ritz.swank.connection :as connection]
    [ritz.jpda.debug :as debug]
    [ritz.executor :as executor]
    [ritz.hooks :as hooks]
@@ -9,7 +9,6 @@
    [ritz.repl-utils.helpers :as helpers]
    [ritz.swank.core :as core]
    [ritz.swank.commands :as commands]
-   [ritz.swank.indent :as indent]
    [ritz.swank.messages :as messages])
   (:use
    [ritz.jpda.swell :only [with-swell]])
@@ -28,8 +27,8 @@
 (defn eval-for-emacs [connection form buffer-package id]
   (logging/trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
   (try
-    (connection/request! connection buffer-package id)
-    (let [f (commands/slime-fn (first form))
+    (let [connection (connection/request connection buffer-package id)
+          f (commands/slime-fn (first form))
           handler (or (connection/swank-handler connection) default-pipeline)
           result (handler connection form buffer-package id f)]
       (cond
@@ -76,7 +75,7 @@
   (logging/trace "swank/interrupt: %s %s" thread-id args)
   (if forward-rpc
     (forward-rpc connection `(:emacs-interrupt ~thread-id ~@args)))
-  (doseq [future @repl-futures]
+  (doseq [^Future future @repl-futures]
     (.cancel future true)))
 
 (defn emacs-return-string [connection thread-id tag value]
@@ -97,17 +96,17 @@
         (logging/trace
          "swank/dispatch-event: :emacs-rex %s %s %s %s"
          form-string package thread id)
-        (let [last-values (:result-history @connection)]
+        (let [last-values (:result-history connection)]
           (try
             (clojure.main/with-bindings
               (with-swell
                 (binding [*1 (first last-values)
                           *2 (fnext last-values)
                           *3 (first (nnext last-values))
-                          *e (:last-exception @connection)
-                          *out* (:writer-redir @connection)
-                          *in* (:input-redir @connection)
-                          *ns* (:namespace @connection)]
+                          *e (:last-exception connection)
+                          *out* (:writer-redir connection)
+                          *in* (:input-redir connection)
+                          *ns* (:namespace connection)]
                   (try
                     (logging/trace "calling eval-for-emacs")
                     (eval-for-emacs connection form-string package id)
@@ -160,7 +159,7 @@
   "Respond and act as watchdog"
   [^Future future form connection]
   (try
-    (let [timeout (:timeout @connection)
+    (let [timeout (:timeout connection)
           result (if timeout
                    (.get future timeout TimeUnit/MILLISECONDS)
                    (.get future))])
@@ -186,9 +185,7 @@
 
 (defn setup-connection
   [connection]
-  (swap! connection
-         assoc :send-repl-results-function send-repl-results-to-emacs)
-  connection)
+  (assoc connection :send-repl-results-function send-repl-results-to-emacs))
 
 (defn handle-message
   "Handle a message on a connection."
@@ -196,5 +193,5 @@
   (logging/trace "swank/handle-message %s" message)
   (let [future (executor/execute-request #(dispatch-event message connection))]
     (swap! repl-futures (fn [futures]
-                          (conj (remove #(.isDone %) futures) future)))
+                          (conj (remove #(.isDone ^Future %) futures) future)))
     (executor/execute-request #(response future message connection))))

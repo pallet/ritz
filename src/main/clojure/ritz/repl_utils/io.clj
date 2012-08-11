@@ -16,7 +16,7 @@
       (.getLineNumber f))
     (catch Exception e 1)))
 
-(defn read-position-line [file position]
+(defn read-position-line [^java.io.File file position]
   (if (number? position)
     (if (.isFile file)
       (line-at-position file  position)

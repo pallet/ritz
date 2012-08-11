@@ -1,6 +1,7 @@
 (ns ritz.commands.contrib.ritz
   "Contrib for providing ritz specific functions"
   (:use
+   [ritz.connection :only [debug-context vm-context]]
    [ritz.swank.commands :only [defslimefn]])
   (:require
    [clojure.string :as string]
@@ -18,15 +19,15 @@
   "Set a breakpoint at the specified line. Updates the vm-context in the
    connection."
   [connection namespace filename line]
-  (let [context (:vm-context @connection)
-        n (count (:breakpoints @context))
+  (let [debug-context (debug-context connection)
         filename (when filename
                    (string/replace filename #" \(.*jar\)" ""))
+        breakpoints (debug/line-breakpoint
+                     (vm-context connection) namespace filename line)
         new-context (swap!
-                     context debug/line-breakpoint namespace filename line)]
-    (format
-     "Set %d breakpoints"
-     (- (count (:breakpoints new-context)) n))))
+                     (:debug connection)
+                     update-in [:breakpoints] concat breakpoints)]
+    (format "Set %d breakpoints" (count breakpoints))))
 
 ;; (defslimefn break-on-exceptions
 ;;   "Control which expressions are trapped in the debugger"
@@ -48,28 +49,26 @@
 LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
   [connection]
-  (let [context (swap! (:vm-context @connection) debug/breakpoint-list)
-        breakpoints (:breakpoints context)
+  (let [breakpoints (debug/breakpoint-list (vm-context connection))
+        context (swap! (:debug connection) assoc :breakpoints breakpoints)
         labels '(:id :file :line :enabled)]
     (cons labels (map breakpoint-data-fn breakpoints))))
 
 (defslimefn breakpoint-kill
   [connection breakpoint-id]
-  (debug/breakpoint-kill (connection/vm-context connection) breakpoint-id))
+  (debug/breakpoint-kill connection breakpoint-id))
 
 (defslimefn breakpoint-enable
   [connection breakpoint-id]
-  (debug/breakpoint-enable (connection/vm-context connection) breakpoint-id))
+  (debug/breakpoint-enable connection breakpoint-id))
 
 (defslimefn breakpoint-disable
   [connection breakpoint-id]
-  (debug/breakpoint-disable (connection/vm-context connection) breakpoint-id))
+  (debug/breakpoint-disable connection breakpoint-id))
 
 (defslimefn breakpoint-location
   [connection breakpoint-id]
-  (messages/location
-   (debug/breakpoint-location
-    (connection/vm-context connection) breakpoint-id)))
+  (messages/location (debug/breakpoint-location connection breakpoint-id)))
 
 ;;; Exception Filters
 (defslimefn quit-exception-filter-browser [connection])
@@ -84,7 +83,7 @@ corresponding attribute values per thread."
 LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
   [connection]
-  (let [filters (debug/exception-filter-list @connection)
+  (let [filters (debug/exception-filter-list connection)
         labels '(:id :type :location :catch-location :message :enabled)]
     (cons labels (map exception-filter-data-fn (range) filters))))
 

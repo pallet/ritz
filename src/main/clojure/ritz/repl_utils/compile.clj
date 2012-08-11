@@ -9,7 +9,7 @@
 
 (def compile-path (atom nil))
 
-(defn- reader
+(defn- ^LineNumberingPushbackReader reader
   "This is a hack to get a line numbering pushback reader that
    doesn't start at line 1"
   [string line]
@@ -19,13 +19,13 @@
 
 (defn compile-region
   "Compile region."
-  [string file line]
+  [string ^String file line]
   (with-open [rdr (reader string line)]
     (clojure.lang.Compiler/load rdr file (.getName (File. file)))))
 
 (defn eval-region
   "Evaluate string, and return the results of the last form and the last form."
-  [string file line]
+  [string ^String file line]
   ;; We can't use load, since that binds current namespace, so we would lose
   ;; namespace tracking. This is essentially clojure.lang.Compiler/load without
   ;; that namespace binding.
@@ -38,8 +38,8 @@
                   (set (Integer. (.getLineNumber rdr)))))]
       ;; since these vars aren't named, we can not use `binding`
       (push-thread-bindings
-       {clojure.lang.Compiler/LINE_BEFORE (Integer. line)
-        clojure.lang.Compiler/LINE_AFTER (Integer. line)})
+       {clojure.lang.Compiler/LINE_BEFORE (Integer. (int line))
+        clojure.lang.Compiler/LINE_AFTER (Integer. (int line))})
       (try
         (binding [*file* file *source-path* (.getName (File. file))]
           (loop [form (read rdr false ::eof)

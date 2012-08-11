@@ -3,7 +3,7 @@
   (:require
    [ritz.executor :as executor]
    [ritz.logging :as logging]
-   [ritz.connection :as connection]
+   [ritz.swank.connection :as connection]
    [ritz.swank :as swank]))
 
 (defn- dispatch-message

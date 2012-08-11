@@ -1,7 +1,7 @@
 (ns ritz.main
   (:gen-class))
 
-(def *default-port* 4005)
+(def ^{:dynamic true} *default-port* 4005)
 
 (defn main
   "Main for launching a socket server."
