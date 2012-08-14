@@ -51,7 +51,10 @@
   (nrepl-ritz-send-debug
    "(ritz.nrepl.debug/threads)"
    "user"
-   (nrepl-handler (current-buffer))))
+   (nrepl-make-response-handler
+    (nrepl-popup-buffer "*nREPL threads*" t)
+    nil
+    'nrepl-emit-into-popup-buffer nil nil)))
 
 ;;; javadoc browsing
 (defun nrepl-ritz-javadoc-local-paths (local-paths)
