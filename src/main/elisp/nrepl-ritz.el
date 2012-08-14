@@ -29,6 +29,10 @@
      (append (list (caar alist) (cdar alist)) (flatten-alist (cdr alist)))
    (list (caar alist) (cdar alist))))
 
+(defun alist-from-list (l)
+  (if l
+      (append (list (cons (car l) (cadr l))) (alist-from-list (cddr l)))))
+
 (defun nrepl-ritz-send-op (op callback attributes)
   (lexical-let ((request (append
                           (list "op" op "session" (nrepl-current-session))
@@ -122,8 +126,22 @@
   (nrepl-ritz-send-op
    "break-on-exception"
    (nrepl-make-response-handler
-    (current-buffer)
-    (lambda (buffer value) (message value)) nil nil nil)
+    (nrepl-popup-buffer "*nREPL debugger*" nil)
+    (lambda (buffer value)
+      (lexical-let ((v (alist-from-list value)))
+        (nrepl-emit-into-popup-buffer
+         buffer
+         (format "%s\n%s\nThread %s\n\n"
+                 (cdr (assoc "message" v))
+                 (cdr (assoc "exception-type" v))
+                 (cdr (assoc "thread-id" v))))
+        (mapc
+         (lambda (row)
+           (nrepl-emit-into-popup-buffer
+            buffer
+            (format "%s %s %s\n" (car row) (cadr row) (caddr row))))
+         (cdr (assoc "stacktrace" v)))))
+    nil nil nil)
    `(("enable" . ,(if flag "true" "false")))))
 
 (defun nrepl-ritz-continue (thread-id)

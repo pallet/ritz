@@ -6,7 +6,7 @@
    [ritz.jpda.debug
     :only [break-for-exception? add-exception-event-request event-break-info
            display-break-level dismiss-break-level
-           invoke-named-restart]]
+           invoke-named-restart build-backtrace]]
    [ritz.jpda.jdi :only [discard-event-request handle-event silent-event?]]
    [ritz.logging :only [trace trace-str]]
    [ritz.nrepl.connections :only [all-connections]])
@@ -86,6 +86,15 @@ the events can be delivered back."
   [connection]
   (vec (ritz.jpda.debug/breakpoints (vm-context connection))))
 
+(defn stacktrace-frames
+  [frames start]
+  (map
+   #(list
+     %1
+     (format "%s (%s:%s)" (:function %2) (:source %2) (:line %2)))
+   (iterate inc start)
+   frames))
+
 (defmethod display-break-level :nrepl
   [{:keys [transport] :as connection}
    {:keys [thread thread-id condition event restarts] :as level-info}
@@ -97,7 +106,11 @@ the events can be delivered back."
      transport
      (response-for
       msg
-      :value (format "Exception %s in thread %s" condition thread-id)))
+      :value
+      `("message" ~(:exception-message condition)
+        "thread-id" ~thread-id
+        "exception-type" ~(:type condition)
+        "stacktrace" ~(stacktrace-frames (build-backtrace thread) 0))))
     (trace "display-break-level: sent message")))
 
 (defmethod dismiss-break-level :nrepl
