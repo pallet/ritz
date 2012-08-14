@@ -219,7 +219,6 @@ generate a name for the thread."
 
 (defn start-jpda-server
   [host port ack-port repl-port-path classpath]
-  (println "start-jpda-server")
   (let [server (start-server
                 :bind "localhost" :port 0 :ack-port ack-port
                 :handler (debug-handler host port))
