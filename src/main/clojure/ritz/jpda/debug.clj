@@ -920,8 +920,7 @@
   [context]
   (trace "add-exception-event-request")
   (doto (jdi/exception-request (:vm context) nil true true)
-    (jdi/suspend-policy exception-suspend-policy)
-    (.enable)))
+    (jdi/suspend-policy exception-suspend-policy)))
 
 ;;; VM events
 

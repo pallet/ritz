@@ -6,6 +6,7 @@
    [clojure.string :as string]
    [ritz.break :as break]
    [ritz.jpda.debug :as jpda-debug]
+   [ritz.jpda.jdi :as jdi]
    [ritz.logging :as logging]
    [ritz.swank.connection :as connection]
    [ritz.swank.debug :as debug]
@@ -22,6 +23,10 @@
 
 ;; (defn invoke-restart [restart]
 ;;   ((nth restart 2)))
+(defslimefn break-on-exception [connection flag]
+  (if flag
+    (jdi/enable-exception-request-states (:vm (vm-context connection)))
+    (jdi/disable-exception-request-states (:vm (vm-context connection)))))
 
 (defslimefn backtrace [connection start end]
   (messages/stacktrace-frames

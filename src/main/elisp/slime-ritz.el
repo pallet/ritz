@@ -13,8 +13,16 @@
   (:authors "Hugo Duncan <hugo_duncan@yahoo.com>")
   (:license "EPL")
   (:on-load
+   (define-key slime-mode-map "\C-c\C-x\b" 'slime-break-on-exception)
+   (define-key slime-repl-mode-map "\C-c\C-x\b" 'slime-break-on-exception)
    (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)
    (define-key java-mode-map "\C-c\C-x\C-b" 'slime-java-line-breakpoint)))
+
+(defun slime-break-on-exception (flag)
+  "Set a breakpoint at the current line"
+  (interactive "p")
+  (slime-eval-with-transcript
+   `(swank:break-on-exception ,(if flag "true" "false"))))
 
 (defun slime-line-breakpoint ()
   "Set a breakpoint at the current line"
@@ -402,12 +410,14 @@
 
 ;;;###autoload
 (defun slime-ritz-bind-keys ()
+  (define-key slime-mode-map "\C-c\C-x\b" 'slime-break-on-exception)
   (define-key slime-mode-map "\C-c\C-x\C-b" 'slime-line-breakpoint)
   (define-key slime-mode-map (kbd "C-c b") 'slime-javadoc))
 
 ;;;###autoload
 (defun slime-ritz-bind-repl-keys ()
-  (define-key slime-repl-mode-map (kbd "C-c b") 'slime-javadoc))
+  (define-key slime-repl-mode-map (kbd "C-c b") 'slime-javadoc)
+  (define-key slime-repl-mode-map "\C-c\C-xb" 'slime-break-on-exception))
 
 ;;;###autoload
 (eval-after-load "slime" '(slime-ritz-init))
