@@ -39,9 +39,14 @@
   "Return the primary connection. This can be used to obtain a connection to use
 for event notifications in the absence of a client message."
   []
-  (val (first @connections)))
+  (when-let [c (first @connections)]
+    (val c)))
 
 (defn all-connections
   "Return all connections."
   []
   (vals @connections))
+
+(defn connection-for-event
+  [_]
+  (primary-connection))

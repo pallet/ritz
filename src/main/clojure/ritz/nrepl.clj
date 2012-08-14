@@ -14,7 +14,11 @@ processes."
    [clojure.tools.nrepl.middleware.session :only [add-stdin session]]
    [clojure.tools.nrepl.misc :only [response-for returning]]
    [leiningen.core.eval :only [eval-in-project]]
-   [ritz.connection :only [read-exception-filters default-exception-filters]]
+   [ritz.connection
+    :only [bindings bindings-merge! connection-close default-connection]]
+   [ritz.exception-filters
+    :only [exception-filters-set!
+           read-exception-filters default-exception-filters]]
    [ritz.jpda.debug :only [add-exception-event-request]]
    [ritz.jpda.jdi :only [connector connector-args invoke-single-threaded]]
    [ritz.jpda.jdi-clj :only [control-eval]]
@@ -34,28 +38,7 @@ processes."
    [ritz.jpda.jdi-clj :as jdi-clj]
    [ritz.nrepl.pr-values :as pr-values]))
 
-(set-level :trace)
-
-(def
-  ^{:doc "The initial connection information"}
-  default-connection
-  {:sldb-levels []
-   :pending #{}
-   :timeout nil
-   ;; :writer-redir (make-output-redirection
-   ;;                io-connection)
-   :inspector (atom {})
-   :result-history nil
-   :last-exception nil
-   :indent-cache-hash (atom nil)
-   :indent-cache (ref {})
-   :send-repl-results-function nil
-   :exception-filters (or (read-exception-filters)
-                          default-exception-filters)
-   :namespace 'user
-   :bindings (atom {})
-   :breakpoint (atom {})})
-
+;; (set-level :trace)
 
 (defonce vm (atom nil))
 
@@ -66,10 +49,17 @@ processes."
   "Return a new connection map, saving the message's transport for later
 reference."
   [msg]
-  (->
-   default-connection
-   (assoc :vm-context @vm)
-   (merge (select-keys msg [:transport]))))
+  (let [connection (->
+                    default-connection
+                    (assoc :vm-context @vm :type :nrepl)
+                    (merge (select-keys msg [:transport])))]
+    (exception-filters-set!
+     connection (or (read-exception-filters) default-exception-filters))
+    connection))
+
+(defmethod connection-close :nrepl
+  [connection]
+  (.close (:transport connection)))
 
 ;;; # nREPL handler and middleware
 
@@ -179,13 +169,13 @@ connection is found in the connections map based on the session id."
       ;; a refactored create-session could simplify this
       (let [s @(#'clojure.tools.nrepl.middleware.session/create-session
                 (:transport connection)
-                @(:bindings connection))
+                (bindings connection))
             out (#'clojure.tools.nrepl.middleware.session/session-out
                  :out new-session (:transport connection))
             err (#'clojure.tools.nrepl.middleware.session/session-out
                  :err new-session (:transport connection))]
         (trace "jpda session %s" s)
-        (swap! (:bindings connection) merge s {#'*out* out #'*err* err})))
+        (bindings-merge! connection s {#'*out* out #'*err* err})))
     (let [transport (:transport connection)]
       (assert transport)
       (transport/send transport msg)))
@@ -237,7 +227,7 @@ generate a name for the thread."
         msg-thread (start-remote-thread vm "msg-pump")
         vm (assoc vm :msg-pump-thread msg-thread)
         _ (set-vm vm)
-        port (-> server deref ^java.net.Socket (:ss) .getLocalPort)]
+        port (-> server deref ^java.net.ServerSocket (:ss) .getLocalPort)]
     (add-exception-event-request vm)
     (vm-resume vm)
     (start-reply-pump server vm)

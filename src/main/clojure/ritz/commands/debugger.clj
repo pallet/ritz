@@ -4,18 +4,24 @@
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as string]
-   [ritz.swank.connection :as connection]
-   [ritz.inspect :as inspect]
+   [ritz.break :as break]
+   [ritz.jpda.debug :as jpda-debug]
    [ritz.logging :as logging]
+   [ritz.swank.connection :as connection]
    [ritz.swank.debug :as debug]
+   [ritz.swank.inspect :as inspect]
    [ritz.swank.messages :as messages]
    [ritz.commands.contrib.ritz])
   (:use
    [ritz.connection :only [vm-context]]
+   [ritz.inspect :only [reset-inspector]]
+   [ritz.jpda.debug
+    :only [invoke-restart invoke-named-restart
+           frame-locals-with-string-values nth-frame-var]]
    [ritz.swank.commands :only [defslimefn]]))
 
-(defn invoke-restart [restart]
-  ((nth restart 2)))
+;; (defn invoke-restart [restart]
+;;   ((nth restart 2)))
 
 (defslimefn backtrace [connection start end]
   (messages/stacktrace-frames
@@ -25,28 +31,25 @@
   (debug/debugger-info-for-emacs connection start end))
 
 (defslimefn invoke-nth-restart-for-emacs [connection level n]
-  (debug/invoke-restart connection level n))
-
-(defn invoke-named-restart
-  [connection kw]
-  (debug/invoke-named-restart connection kw))
+  (jpda-debug/invoke-restart connection (:request-thread connection) level n))
 
 (defslimefn throw-to-toplevel [connection]
-  (invoke-named-restart connection :quit))
+  (invoke-named-restart connection (:request-thread connection) :quit))
 
 (defslimefn sldb-continue [connection]
-  (invoke-named-restart connection :continue))
+  (invoke-named-restart connection (:request-thread connection) :continue))
 
 (defslimefn sldb-abort [connection]
-  (invoke-named-restart connection :abort))
+  (invoke-named-restart connection (:request-thread connection) :abort))
 
 (defslimefn frame-catch-tags-for-emacs [connection n]
   nil)
 
 (defslimefn frame-locals-for-emacs [connection n]
-  (let [[level-info level] (connection/current-sldb-level-info connection)]
+  (let [[level-info level] (break/break-level-info
+                            connection (:request-thread connection))]
     (messages/frame-locals
-     (debug/frame-locals-with-string-values
+     (frame-locals-with-string-values
        (:vm-context connection)
        (:thread level-info) n))))
 
@@ -55,18 +58,20 @@
         (frame-catch-tags-for-emacs connection n)))
 
 (defslimefn frame-source-location [connection frame-number]
-  (let [[level-info level] (connection/current-sldb-level-info connection)]
+  (let [[level-info level] (break/break-level-info
+                            connection (:request-thread connection))]
     (messages/location
      (debug/frame-source-location (:thread level-info) frame-number))))
 
 (defslimefn inspect-frame-var [connection frame index]
   (let [inspector (connection/inspector connection)
-        [level-info level] (connection/current-sldb-level-info connection)
+        [level-info level] (break/break-level-info
+                            connection (:request-thread connection))
         vm-context (vm-context connection)
         thread (:thread level-info)
-        object (debug/nth-frame-var vm-context thread frame index)]
+        object (nth-frame-var vm-context thread frame index)]
     (when object
-      (inspect/reset-inspector inspector)
+      (reset-inspector connection)
       (inspect/inspect-object inspector object)
       (messages/inspector
        (inspect/display-values
@@ -74,7 +79,8 @@
 
 (defslimefn inspect-nth-part [connection index]
   (let [inspector (connection/inspector connection)
-        [level-info level] (connection/current-sldb-level-info connection)
+        [level-info level] (break/break-level-info
+                            connection (:request-thread connection))
         vm-context (vm-context connection)
         thread (or (:thread level-info) (:control-thread vm-context))
         vm-context (assoc vm-context :current-thread thread)]
@@ -120,20 +126,23 @@ corresponding attribute values per thread."
 
 ;; eval
 (defslimefn eval-string-in-frame [connection expr n]
-  (let [[level-info level] (connection/current-sldb-level-info connection)
+  (let [[level-info level] (break/break-level-info
+                            connection (:request-thread connection))
         thread (:thread level-info)]
-    (debug/eval-string-in-frame
+    (jpda-debug/eval-string-in-frame
      connection (vm-context connection) thread expr n)))
 
 (defslimefn pprint-eval-string-in-frame [connection expr n]
-  (let [[level-info level] (connection/current-sldb-level-info connection)
+  (let [[level-info level] (break/break-level-info
+                            connection (:request-thread connection))
         thread (:thread level-info)]
-    (debug/pprint-eval-string-in-frame
+    (jpda-debug/pprint-eval-string-in-frame
      connection (vm-context connection) thread expr n)))
 
 ;; disassemble
 (defslimefn sldb-disassemble [connection frame-index]
-  (let [[level-info level] (connection/current-sldb-level-info connection)
+  (let [[level-info level] (break/break-level-info
+                            connection (:request-thread connection))
         thread (:thread level-info)]
     (string/join \newline
      (debug/disassemble-frame

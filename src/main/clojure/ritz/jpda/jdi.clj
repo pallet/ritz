@@ -266,20 +266,30 @@
 (defn ^Value invoke-method
   "Methods can only be invoked on threads suspended for exceptions.
    `args` is a sequence of remote object references."
-  [^ThreadReference thread options class-or-object ^Method method args]
+  [^ThreadReference thread
+   {:keys [threading disable-exception-requests]
+    :or {threading invoke-single-threaded disable-exception-requests false}
+    :as options}
+   class-or-object ^Method method args]
   ;; (logging/trace
   ;;  "jdi/invoke-method %s %s\nargs %s\noptions %s"
   ;;  class-or-object method (pr-str args) options)
-  (logging/trace "jdi/invoke-method %s" method)
-  (do ;; with-disabled-exception-requests [(.virtualMachine thread)]
-    (let [args (java.util.ArrayList. (or args []))]
-      (cond
-        (instance? com.sun.jdi.ClassType class-or-object)
-        (.invokeMethod
-         ^ClassType class-or-object thread method args (int options))
-        (instance? com.sun.jdi.ObjectReference class-or-object)
-        (.invokeMethod
-         ^ObjectReference class-or-object thread method args (int options))))))
+  (logging/trace "jdi/invoke-method %s %s" method options)
+  (letfn [(invoke []
+            (let [args (java.util.ArrayList. (or args []))]
+                    (cond
+                      (instance? com.sun.jdi.ClassType class-or-object)
+                      (.invokeMethod
+                       ^ClassType class-or-object thread
+                       method args (int threading))
+                      (instance? com.sun.jdi.ObjectReference class-or-object)
+                      (.invokeMethod
+                       ^ObjectReference class-or-object thread
+                       method args (int threading)))))]
+    (if disable-exception-requests
+      (with-disabled-exception-requests [(.virtualMachine thread)]
+        (invoke))
+      (invoke))))
 
 ;;; classpath
 (defn classpath
@@ -745,7 +755,7 @@
   (with-disabled-exception-requests [(:vm context)]
     (when-let [msg (invoke-method
                     (event-thread event)
-                    invoke-single-threaded
+                    {:disable-exception-requests true}
                     (.exception event)
                     (:exception-message context) [])]
       (string-value msg))))

@@ -8,7 +8,7 @@
 ;; Version: 0.3.2
 ;; License: EPL
 
-(require 'nrepl-mode)
+(require 'nrepl)
 
 ;;; overwrite nrepl.el functions to allow easy development of ritz.
 ;;; Maybe these could be put back into nrepl.el
@@ -23,6 +23,18 @@
                             "ns" ns
                             "code" input)
                       callback))
+
+(defun flatten-alist (alist)
+ (if (cdr alist)
+     (append (list (caar alist) (cdar alist)) (flatten-alist (cdr alist)))
+   (list (caar alist) (cdar alist))))
+
+(defun nrepl-ritz-send-op (op callback attributes)
+  (lexical-let ((request (append
+                          (list "op" op "session" (nrepl-current-session))
+                          (flatten-alist attributes))))
+
+    (nrepl-send-request request callback)))
 
 ;;; send function for a jpda op
 (defun nrepl-ritz-send-debug (input ns callback)
@@ -103,17 +115,34 @@
    (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
 
 (defun nrepl-ritz-break-on-exception (flag)
-  (nrepl-send-debug
-   (format "(ritz.nrepl.debug/break-on-exception %s)" (if flag "true" "false"))
-   (nrepl-current-ns)
-   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+  (interactive "p")
+  (nrepl-ritz-send-op
+   "break-on-exception"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer value) (message value)) nil nil nil)
+   `(("enable" . ,(if flag "true" "false")))))
 
-(defun nrepl-ritz-continue ()
-  (interactive)
-  (nrepl-send-debug
-   "(ritz.nrepl.debug/continue)"
-   (nrepl-current-ns)
-   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+(defun nrepl-ritz-continue (thread-id)
+  (interactive "nthread-id: ")
+  (nrepl-ritz-send-op
+   "continue"
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   `(("thread-id" . ,(prin1-to-string thread-id)))))
+
+(defun nrepl-ritz-abort (thread-id)
+  (interactive "nthread-id: ")
+  (nrepl-ritz-send-op
+   "abort-level"
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   `(("thread-id" . ,(prin1-to-string thread-id)))))
+
+(defun nrepl-ritz-quit-to-top-level (thread-id)
+  (interactive "nthread-id: ")
+  (nrepl-ritz-send-op
+   "quit-to-top-level"
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   `(("thread-id" . ,(prin1-to-string thread-id)))))
 
 (provide 'nrepl-ritz)
 ;;; nrepl-ritz.el ends here

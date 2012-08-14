@@ -7,12 +7,13 @@
   (:use
    [clojure.tools.nrepl.misc :only [response-for]]
    [clojure.tools.nrepl.middleware.interruptible-eval :only [*msg*]]
+   [ritz.connection :only [bindings bindings-assoc!]]
    [ritz.logging :only [trace]]))
 
 (defn evaluate
   [{:keys [code ns transport] :as msg}]
   (let [connection (:ritz.nrepl/connection msg)
-        bindings (merge @(:bindings connection)
+        bindings (merge (bindings connection)
                         (when ns {#'*ns* (-> ns symbol find-ns)}))
         out (get bindings #'*out*)
         err (get bindings #'*err*)]
@@ -33,9 +34,9 @@
             (transport/send transport (response-for msg :status :done))
             (trace "Evaluation complete %s" value)
             (when-not (or (= *1 value) (#{'*1 '*2 '*3 '*e} form))
-              (swap! (:bindings connection) assoc #'*3 *2 #'*2 *1 #'*1 value)))
+              (bindings-assoc! connection #'*3 *2 #'*2 *1 #'*1 value)))
           (catch Exception e
-            (swap! (:bindings connection) assoc #'*e e)
+            (bindings-assoc! connection #'*e e)
             (main/repl-caught e)
             (transport/send
              transport

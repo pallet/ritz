@@ -8,7 +8,9 @@
    [ritz.swank.commands :as commands]
    [ritz.swank.messages :as messages]
    [ritz.repl-utils.utils :as utils]
-   [clojure.string :as string]))
+   [clojure.string :as string])
+  (:use
+   [ritz.connection :only [bindings-assoc!]]))
 
 ;; Protocol version
 (defonce protocol-version "20101113")
@@ -96,15 +98,12 @@
 
 (defn update-history
   [connection last-form value exception]
-  (when (and last-form (not (#{'*1 '*2 '*3 '*e} last-form)))
-    (let [history (drop
-                   1 (connection/add-result-to-history connection value))]
-      (set! *3 (fnext history))
-      (set! *2 (first history))
-      (set! *1 value)))
+  (when (and last-form
+             (not (#{'*1 '*2 '*3 '*e} last-form))
+             (not= *1 value))
+    (bindings-assoc! connection #'*3 *2 #'*2 *1 #'*1 value))
   (when exception
-    (connection/set-last-exception connection exception)
-    (set! *e exception)))
+    (bindings-assoc! connection #'*e exception)))
 
 (defn lines
   "Split a string in"

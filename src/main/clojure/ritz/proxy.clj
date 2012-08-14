@@ -21,6 +21,8 @@
    ritz.commands.inspector
    ritz.commands.debugger
    ritz.commands.contrib.ritz)
+  (:use
+   [ritz.swank.connections :only [add-connection]])
   (:import
    com.sun.jdi.VirtualMachine))
 
@@ -92,7 +94,7 @@
             (logging/trace "proxy/connection-handler reply-pump running")
             (hooks/run core/new-connection-hook connection)
             (logging/trace "proxy/connection-handler new-connection-hook ran")
-            (debug/add-connection connection proxied-connection)
+            (add-connection connection proxied-connection)
             (logging/trace "proxy/connection-handler connection added")
             (debug/add-exception-event-request vm-context)
             (logging/trace

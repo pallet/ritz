@@ -22,9 +22,12 @@
 (defn available-restarts
   [context thread]
   (when-let [s (jdi-clj/eval-to-string
-                context thread jdi/invoke-single-threaded
-                `(when-let [v# (ns-resolve
-                                'ritz.jpda.swell.impl '~'*available-restarts*)]
+                context thread {:disable-exception-requests true}
+                `(when-let [v# (and
+                                (find-ns 'ritz.jpda.swell.impl)
+                                (ns-resolve
+                                 'ritz.jpda.swell.impl
+                                 '~'*available-restarts*))]
                    (string/join "---" (map pr-str (var-get v#)))))]
     (->>
      (string/split s #"---")
@@ -34,7 +37,7 @@
 (defn select-restart
   [context thread restart]
   (jdi-clj/eval-to-string
-   context thread jdi/invoke-single-threaded
+   context thread {}
    `(try
       (when-let [v# (ns-resolve
                      'ritz.jpda.swell.impl '~'*selected-restart*)]

@@ -70,7 +70,8 @@
   {:pre [(map? context) (:control-thread context)]}
   (let [thread (:control-thread context)]
     (locking thread
-      (eval-to-value context thread jdi/invoke-single-threaded form))))
+      (eval-to-value
+       context thread {} form))))
 
 (defn control-eval
   "Eval an expression on the control thread. This uses single-threaded
@@ -79,7 +80,7 @@
   {:pre [(map? context) (:control-thread context)]}
   (let [thread (:control-thread context)]
     (locking thread
-      (eval context thread jdi/invoke-single-threaded form))))
+      (eval context thread {} form))))
 
 (defmacro with-caught-jdi-exceptions
   [& body]
@@ -104,7 +105,7 @@
   "Protocol for obtaining a remote object reference"
   (remote-object [value context thread]))
 
-(let [st jdi/invoke-single-threaded]
+(let [st {}]
   (extend-protocol RemoteObject
     ObjectReference (remote-object [o _ _] o)
     BooleanValue (remote-object
@@ -244,10 +245,8 @@
 (defn read-arg
   "Read the value of the given arg"
   [context thread arg]
-  (-> (pr-str-arg context thread jdi/invoke-single-threaded arg)
-      read-string))
+  (-> (pr-str-arg context thread {} arg) read-string))
 
 (defn clojure-version
   [context thread]
-  (eval context thread jdi/invoke-single-threaded
-        `(clojure.core/clojure-version)))
+  (eval context thread {} `(clojure.core/clojure-version)))

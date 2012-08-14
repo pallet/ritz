@@ -2,39 +2,33 @@
   "Contrib for providing ritz specific functions"
   (:use
    [ritz.connection :only [debug-context vm-context]]
+   [ritz.exception-filters
+    :only [spit-exception-filters exception-filters exception-filter-kill!
+           exception-filter-enable! exception-filter-disable!]]
    [ritz.swank.commands :only [defslimefn]])
   (:require
    [clojure.string :as string]
    [clojure.java.javadoc :as javadoc]
    [ritz.connection :as connection]
-   [ritz.jpda.debug :as debug]
+   [ritz.swank.debug :as debug]
    [ritz.logging :as logging]
    [ritz.repl-utils.doc :as doc]
    [ritz.repl-utils.find :as find]
    [ritz.swank.messages :as messages]))
 
 ;;; Breakpoints
-
 (defslimefn line-breakpoint
   "Set a breakpoint at the specified line. Updates the vm-context in the
    connection."
   [connection namespace filename line]
-  (let [debug-context (debug-context connection)
-        filename (when filename
-                   (string/replace filename #" \(.*jar\)" ""))
-        breakpoints (debug/line-breakpoint
-                     (vm-context connection) namespace filename line)
-        new-context (swap!
-                     (:debug connection)
-                     update-in [:breakpoints] concat breakpoints)]
-    (format "Set %d breakpoints" (count breakpoints))))
+  (let [n (debug/line-breakpoint connection namespace filename line)]
+    (format "Set %d breakpoints" n)))
 
 ;; (defslimefn break-on-exceptions
 ;;   "Control which expressions are trapped in the debugger"
 ;;   [connection filter-caught? class-exclusions])
 
 (defslimefn quit-breakpoint-browser [connection])
-
 
 (def ^{:private true} breakpoint-data-fn
   (comp
@@ -49,8 +43,7 @@
 LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
   [connection]
-  (let [breakpoints (debug/breakpoint-list (vm-context connection))
-        context (swap! (:debug connection) assoc :breakpoints breakpoints)
+  (let [breakpoints (debug/breakpoint-list connection)
         labels '(:id :file :line :enabled)]
     (cons labels (map breakpoint-data-fn breakpoints))))
 
@@ -77,33 +70,48 @@ corresponding attribute values per thread."
   [i {:keys [type location catch-location message enabled]}]
   (list i type location catch-location message enabled))
 
+
+(defn exception-filter-list
+  "Return a sequence of exception filters, ensuring that expressions are strings
+   and not regexes."
+  [filters]
+  (map
+   (fn [filter]
+     (->
+      filter
+      (update-in [:location] str)
+      (update-in [:catch-location] str)
+      (update-in [:message] str)))
+   filters))
+
+
 (defslimefn list-exception-filters [connection]
   "Return a list
   (LABELS (ID TYPE LOCATION CATCH-LOCATION ENABLED ATTRS ...) ...).
 LABELS is a list of attribute names and the remaining lists are the
 corresponding attribute values per thread."
   [connection]
-  (let [filters (debug/exception-filter-list connection)
+  (let [filters (exception-filter-list (exception-filters connection))
         labels '(:id :type :location :catch-location :message :enabled)]
     (cons labels (map exception-filter-data-fn (range) filters))))
 
 (defslimefn exception-filter-kill
   [connection exception-filter-id]
-  (debug/exception-filter-kill connection exception-filter-id)
+  (exception-filter-kill! connection exception-filter-id)
   nil)
 
 (defslimefn exception-filter-enable
   [connection exception-filter-id]
-  (debug/exception-filter-enable connection exception-filter-id)
+  (exception-filter-enable! connection exception-filter-id)
   nil)
 
 (defslimefn exception-filter-disable
   [connection exception-filter-id]
-  (debug/exception-filter-disable connection exception-filter-id)
+  (exception-filter-disable! connection exception-filter-id)
   nil)
 
 (defslimefn save-exception-filters [connection]
-  (connection/spit-exception-filters connection))
+  (spit-exception-filters connection))
 
 ;;; javadoc
 (defslimefn javadoc-local-paths

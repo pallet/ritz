@@ -6,6 +6,9 @@
    [clojure.java.io :as java-io])
   (:use
    ritz.connection
+   [ritz.exception-filters
+    :only [exception-filters-set!
+           read-exception-filters default-exception-filters]]
    [ritz.logging :only [trace]])
   (:import
    java.io.BufferedReader
@@ -20,8 +23,7 @@
   [connection]
   ((:connected? connection) connection))
 
-(defn close
-  "Close a connection"
+(defmethod connection-close :swank
   [connection]
   ((:close-connection connection) connection))
 
@@ -118,33 +120,31 @@
   (let [connection (merge
                     options
                     io-connection
-                    {:debug (atom {:sldb-levels []
-                                   :exception-filters
-                                   (or (read-exception-filters)
-                                       default-exception-filters)})
+                    default-connection
+                    {:type :swank
                      :pending (atom #{})
                      :timeout nil
                      :writer-redir (make-output-redirection
                                     io-connection)
-                     :inspector (atom {})
                      :result-history nil
-                     :last-exception nil
-                     :indent (atom {:indent-cache-hash nil
-                                    :indent-cache {}})
                      :send-repl-results-function nil
                      :namespace 'user})]
-    (merge connection
-           (zipmap
-            [:input-redir :input-source :input-tag]
-            (make-repl-input-stream connection)))))
+    (exception-filters-set!
+     connection (or (read-exception-filters) default-exception-filters))
+    (merge
+     connection
+     (zipmap
+      [:input-redir :input-source :input-tag]
+      (make-repl-input-stream connection)))))
 
 (defn request
   "Set the request details on the connection"
-  [connection buffer-ns id]
+  [connection buffer-ns thread id]
   (swap! (:pending connection) conj id)
   (->
    connection
    (assoc-in [:request-id] id)
+   (assoc-in [:request-thread] thread)
    (assoc-in [:buffer-ns-name] buffer-ns)
    (assoc-in [:request-ns] (utils/maybe-ns buffer-ns))))
 
@@ -211,75 +211,6 @@
   [io-connection options]
   (authenticate (initialise io-connection options)))
 
-(defn next-sldb-level
-  [connection level-info]
-  (trace "next-sldb-level: level-info %s" level-info)
-  (let [debug (swap!
-               (:debug connection)
-               (fn [current]
-                 (->
-                  current
-                  (update-in [:sldb-levels]
-                             (fn [levels]
-                               (trace
-                                "next-sldb-level %s" (count levels))
-                               (conj (or levels []) level-info)))
-                  (dissoc :abort-to-level))))]
-    (-> debug :sldb-levels count)))
-
-(defn sldb-level
-  [connection]
-  (count (-> connection :debug deref :sldb-levels)))
-
-(defn sldb-drop-level
-  ([connection]
-     (trace
-      "sldb-drop-level: :levels %s"
-      (sldb-level connection))
-     (swap! (:debug connection) update-in
-            [:sldb-levels] subvec 0 (dec (count (:sldb-levels connection)))))
-  ([connection n]
-     (trace
-      "sldb-drop-level: :levels %s :level %s" (sldb-level connection) n)
-     (swap! (:debug connection) update-in [:sldb-levels] subvec 0 n)))
-
-(defn current-sldb-level-info
-  "Obtain the current level. Returns [level-info level-number]"
-  [connection]
-  (when-let [levels (seq (-> connection :debug deref :sldb-levels))]
-    [(last levels) (count levels)]))
-
-(defn sldb-level-info
-  "Obtain the specified level"
-  [connection level]
-  (let [levels (-> connection :debug deref :sldb-levels)]
-    (trace "sldb-level-info: :levels %s :level %s" (count levels) level)
-    (nth levels (dec level) nil)))
-
-(defn resume-sldb-level-infos
-  [connection]
-  (-> connection :debug deref :resume-sldb-levels))
-
-(defn clear-abort-for-current-level
-  "Clear any abort for the current level"
-  [connection]
-  (swap!
-   (:debug connection)
-   (fn [c]
-     (trace
-      "clear-abort-for-current-level %s %s"
-      (count (:sldb-levels c)) (:abort-to-level c))
-     (if (and (:abort-to-level c)
-              (= (count (:sldb-levels c)) (:abort-to-level c)))
-       (dissoc c :abort-to-level)
-       c))))
-
-(defn aborting-level?
-  "Aborting predicate."
-  [connection]
-  (let [debug @(:debug connection)]
-    (if-let [abort-to-level (:abort-to-level debug)]
-      (>= (count (:sldb-levels debug)) abort-to-level))))
 
 (defn inspector
   "Return the connection's inspector information."
@@ -289,23 +220,6 @@
 (defn swank-handler
   [connection]
   (:swank-handler connection))
-
-
-;; FIXME
-(defn add-result-to-history
-  "Add result to history, returning a history vector"
-  [connection result]
-  (->
-   (update-in connection [:result-history]
-          (fn [history]
-            (take 3 (conj history result))))
-   :result-history))
-
-(defn set-last-exception
-  "Add an exception"
-  [connection e]
-  (assoc connection :last-exception e)
-  nil)
 
 (defn connection-type
   [connection]

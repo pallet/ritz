@@ -11,6 +11,9 @@
    [ritz.swank.commands :as commands]
    [ritz.swank.messages :as messages])
   (:use
+   [ritz.connection
+    :only [bindings bindings-assoc!]
+    :rename {bindings connection-bindings}]
    [ritz.jpda.swell :only [with-swell]])
   (:import
    java.io.InputStreamReader
@@ -24,10 +27,10 @@
 (def default-pipeline
   (core/execute-slime-fn core/command-not-found))
 
-(defn eval-for-emacs [connection form buffer-package id]
+(defn eval-for-emacs [connection form buffer-package thread id]
   (logging/trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
   (try
-    (let [connection (connection/request connection buffer-package id)
+    (let [connection (connection/request connection buffer-package thread id)
           f (commands/slime-fn (first form))
           handler (or (connection/swank-handler connection) default-pipeline)
           result (handler connection form buffer-package id f)]
@@ -60,12 +63,8 @@
        (pr-str t)
        (helpers/stack-trace-string t))
       (.printStackTrace t) (flush)
-      ;;(Thread/interrupted)
-      (connection/set-last-exception connection t)
-      (connection/send-to-emacs connection (messages/abort id t))
-      ;; (finally
-      ;;  (connection/remove-pending-id connection id))
-      )))
+      (bindings-assoc! connection #'*e t)
+      (connection/send-to-emacs connection (messages/abort id t)))))
 
 (def repl-futures (atom []))
 
@@ -96,22 +95,17 @@
         (logging/trace
          "swank/dispatch-event: :emacs-rex %s %s %s %s"
          form-string package thread id)
-        (let [last-values (:result-history connection)]
-          (try
-            (clojure.main/with-bindings
-              (with-swell
-                (binding [*1 (first last-values)
-                          *2 (fnext last-values)
-                          *3 (first (nnext last-values))
-                          *e (:last-exception connection)
-                          *out* (:writer-redir connection)
+        (try
+          (with-bindings (connection-bindings connection)
+            (with-swell
+                (binding [*out* (:writer-redir connection)
                           *in* (:input-redir connection)
                           *ns* (:namespace connection)]
                   (try
                     (logging/trace "calling eval-for-emacs")
-                    (eval-for-emacs connection form-string package id)
+                    (eval-for-emacs connection form-string package thread id)
                     (finally (flush))))))
-            (finally (flush)))))
+          (finally (flush))))
 
       :emacs-return-string
       (let [[thread tag value] args]

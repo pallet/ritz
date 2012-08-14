@@ -1,9 +1,9 @@
 (ns ritz.swank.messages
   "Swank messages"
   (:require
-   [ritz.inspect :as inspect]
+   [clojure.string :as string]
    [ritz.logging :as logging]
-   [clojure.string :as string]))
+   [ritz.swank.inspect :as inspect]))
 
 (defn abort
   "Command aborted message."
@@ -53,11 +53,9 @@
   "Message to return frame locals for slime."
   [locals-map]
   (seq
-   (sort-by
-    second
-    (map
-     #(list :name (:unmangled-name %) :id 0 :value (:string-value %))
-     locals-map))))
+   (map
+    #(list :name (:unmangled-name %) :id 0 :value (:string-value %))
+    locals-map)))
 
 (defn location
   "A source location. Only one key can be specifed for each map.
