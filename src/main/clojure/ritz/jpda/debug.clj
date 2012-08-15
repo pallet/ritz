@@ -1082,7 +1082,7 @@
   (if code-index
     (merge
      op
-     (jdi/location-data (.locationOfCodeIndex method (int code-index))))
+     (jdi/location-data (.locationOfCodeIndex method (long code-index))))
     op))
 
 (defn format-arg
