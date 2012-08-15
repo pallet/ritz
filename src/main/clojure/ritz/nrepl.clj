@@ -14,6 +14,7 @@ processes."
    [clojure.tools.nrepl.middleware.session :only [add-stdin session]]
    [clojure.tools.nrepl.misc :only [response-for returning]]
    [leiningen.core.eval :only [eval-in-project]]
+   [ritz.break :only [clear-abort-for-current-level clear-aborts]]
    [ritz.connection
     :only [bindings bindings-merge! connection-close default-connection]]
    [ritz.exception-filters
@@ -121,6 +122,7 @@ reference."
   [host port {:keys [op transport] :as msg}]
   (trace "execute-jpda %s" op)
   (let [connection (::connection msg)]
+    (clear-aborts connection)
     (rexec (:vm-context connection) msg)))
 
 (defn return-execute-eval
@@ -143,10 +145,9 @@ reference."
   "nrepl handler with debug support"
   [host port]
   (let [rexec (rexec-handler host port)
-        ;; jpda (jpda-middleware host port)
         jpda-eval (jpda-eval-middleware)
         pr-values (pr-values/pr-values #{"jpda"})]
-    (-> unknown-op rexec jpda-eval debug-eval ;; session ;; add-stdin session
+    (-> unknown-op rexec jpda-eval debug-eval
         pr-values connection log-message)))
 
 ;;; # Reply pump

@@ -3,7 +3,8 @@
 each thread a stack of break level-info's is maintained (since a thread may
 have multiple breaks pending)."
   (:use
-   [ritz.connection :only [break-context break-assoc-in! break-update-in!]]
+   [ritz.connection
+    :only [break-context break-assoc-in! break-update! break-update-in!]]
    [ritz.logging :only [trace]]))
 
 (defn break-level-add!
@@ -34,24 +35,6 @@ the break stack."
   "Obtain the all level-infos."
   [connection thread-id]
   (-> connection break-context (get thread-id) :break-levels))
-
-;; (defn break-level
-;;   "Return the current break level"
-;;   [connection thread]
-;;   (-> connection break-context (get thread) :break-levels count))
-
-;; (defn break-drop-level
-;;   "Drop a break level, or drop to the specified number of break leves"
-;;   ([connection]
-;;      (trace "break-drop-level: :levels %s" (break-level connection))
-;;      (break-update-in!
-;;       connection [:break-levels]
-;;       (fn [break-levels]
-;;         (subvec break-levels 0 (dec (count break-levels))))))
-;;   ([connection n]
-;;      (trace
-;;       "break-drop-level: :levels %s :level %s" (break-level connection) n)
-;;      (swap! (:debug connection) update-in [:break-levels] subvec 0 n)))
 
 (defn break-drop-level!
   "Drop a break level."
@@ -90,6 +73,19 @@ the break stack."
        (dissoc c :abort-to-level)
        c))))
 
+(defn clear-aborts
+  "Clear any abort"
+  [connection]
+  (break-update!
+   connection
+   (fn [break-context]
+     (into {}
+           (map
+            (fn [[thread-id c]]
+              (trace "clear aborts %s %s" thread-id c)
+              [thread-id (dissoc c :abort-to-level)])
+            break-context)))))
+
 (defn aborting-level?
   "Predicate to check if the current break-level is being aborted."
   [connection thread-id]
@@ -112,14 +108,3 @@ the break stack."
   (let [context (get (break-context connection) thread-id)]
     (when (= event (:exception-event context))
       (:exception-message context))))
-
-;; (defn break-level-info
-;;   "Obtain the specified level"
-;;   [connection level]
-;;   (let [levels (-> connection break-context :break-levels)]
-;;     (trace "break-level-info: :levels %s :level %s" (count levels) level)
-;;     (nth levels (dec level) nil)))
-
-;; (defn resume-break-level-infos
-;;   [connection]
-;;   (-> connection break-context :resume-break-levels))

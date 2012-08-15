@@ -17,7 +17,7 @@
 ;;; Default connection
 (def default-connection
   {:debug (atom {})
-   :break (atom {:break-levels []})
+   :break (atom {:break-levels {}})
    :inspector (atom {})
    :bindings (atom (dissoc (get-thread-bindings) #'*agent*))
    :indent (atom {:indent-cache-hash nil
@@ -80,10 +80,10 @@
    (fn [break-context]
      (assoc-in break-context keys arg))))
 
-;; (defn break-update!
-;;   "Apply a function on the break-context"
-;;   [connection f & args]
-;;   (swap! (:break connection) f args))
+(defn break-update!
+  "Apply a function on the break-context"
+  [connection f & args]
+  (apply swap! (:break connection) f args))
 
 ;;; # Bindings
 (defn bindings
