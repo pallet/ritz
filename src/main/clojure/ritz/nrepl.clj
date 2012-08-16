@@ -42,7 +42,7 @@ processes."
    [ritz.jpda.jdi-clj :as jdi-clj]
    [ritz.nrepl.pr-values :as pr-values]))
 
-(set-level :trace)
+;; (set-level :trace)
 
 (defonce vm (atom nil))
 
