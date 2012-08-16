@@ -14,14 +14,17 @@ processes."
    [clojure.tools.nrepl.middleware.session :only [add-stdin session]]
    [clojure.tools.nrepl.misc :only [response-for returning]]
    [leiningen.core.eval :only [eval-in-project]]
-   [ritz.break :only [clear-abort-for-current-level clear-aborts]]
+   [ritz.break
+    :only [break-threads clear-abort-for-current-level clear-aborts
+           remove-threads]]
    [ritz.connection
     :only [bindings bindings-merge! connection-close default-connection]]
    [ritz.exception-filters
     :only [exception-filters-set!
            read-exception-filters default-exception-filters]]
    [ritz.jpda.debug :only [add-exception-event-request]]
-   [ritz.jpda.jdi :only [connector connector-args invoke-single-threaded]]
+   [ritz.jpda.jdi
+    :only [connector connector-args invoke-single-threaded collected?]]
    [ritz.jpda.jdi-clj :only [control-eval]]
    [ritz.jpda.jdi-vm
     :only [acquire-thread launch-vm start-control-thread-body vm-resume]]
@@ -39,7 +42,7 @@ processes."
    [ritz.jpda.jdi-clj :as jdi-clj]
    [ritz.nrepl.pr-values :as pr-values]))
 
-;; (set-level :trace)
+(set-level :trace)
 
 (defonce vm (atom nil))
 
@@ -122,6 +125,7 @@ reference."
   [host port {:keys [op transport] :as msg}]
   (trace "execute-jpda %s" op)
   (let [connection (::connection msg)]
+    (remove-threads connection (filter collected? (break-threads connection)))
     (clear-aborts connection)
     (rexec (:vm-context connection) msg)))
 

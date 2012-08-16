@@ -776,3 +776,7 @@
          (str i " " (:function l) " " (:source l) " " (:line l))))
      (iterate inc 0)
      (.. (event-thread event) (frames))))))
+
+(defn collected?
+  [^ObjectReference obj]
+  (.isCollected obj))

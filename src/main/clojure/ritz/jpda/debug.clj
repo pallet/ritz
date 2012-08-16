@@ -894,6 +894,16 @@
           (println e)
           (.printStackTrace e))))))
 
+;;; Source location
+(defn frame-source-location
+  "Return a source location vector [buffer position] for the specified
+   frame number."
+  [^ThreadReference thread frame-number]
+  (when-let [^StackFrame frame (nth (.frames thread) frame-number nil)]
+    (let [location (.location frame)]
+      [(find/find-source-path (jdi/location-source-path location))
+       {:line (jdi/location-line-number location)}])))
+
 ;;; Inspection
 (defmethod value-as-string com.sun.jdi.PrimitiveValue
   [context obj]

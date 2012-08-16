@@ -3,6 +3,8 @@
   (:require
    [clojure.tools.nrepl.transport :as transport]
    [clojure.main :as main]
+   [ritz.jpda.debug :as debug]
+   [ritz.nrepl.debug :as nrepl-debug]
    ritz.nrepl.commands
    ritz.nrepl.debug
    ritz.repl-utils.doc) ;; ensure commands are loaded
@@ -51,6 +53,24 @@
               :ex (-> e class str)
               :root-ex (-> (#'clojure.main/root-cause e) class str)))))))))
 
+(defmulti transform-value "Transform a value for output" type)
+
+(defmethod transform-value :default [v] v)
+
+(defmethod transform-value clojure.lang.PersistentVector
+  [v]
+  (list* v))
+
+(defn args-for-map
+  "Return a value list based on a map. The keys are converted to strings."
+  [m]
+  (trace "args-for-map %s" m)
+  (list* (mapcat #(vector (name (key %)) (transform-value (val %))) m)))
+
+(defn read-when
+  "Read from the string passed if it is not nil"
+  [s]
+  (when s (read-string s)))
 
 (defn debug-eval*
   [handler {:keys [code op transport] :as msg}]
@@ -65,21 +85,62 @@
       (= "break-on-exception" op)
       (ritz.nrepl.debug/break-on-exception connection (or (:enable msg) true))
 
-      (= "continue" op)
+      (= "debugger-info" op)
       (do
-        (ritz.nrepl.debug/continue connection (read-string (:thread-id msg)))
+        (ritz.nrepl.debug/invoke-restart
+         connection (read-string (:thread-id msg))
+         (read-when (:restart-number msg))
+         (read-when (:restart-name msg)))
         (transport/send transport (response-for msg :status :done)))
 
-      (= "abort-level" op)
+      (= "invoke-restart" op)
       (do
-        (ritz.nrepl.debug/abort-level connection (read-string (:thread-id msg)))
+        (ritz.nrepl.debug/invoke-restart
+         connection (read-string (:thread-id msg))
+         (read-when (:restart-number msg))
+         (read-when (:restart-name msg)))
         (transport/send transport (response-for msg :status :done)))
 
-      (= "quit-to-top-level" op)
-      (do
-        (ritz.nrepl.debug/quit-to-top-level
-         connection (read-string (:thread-id msg)))
+      (= "frame-eval" op)
+      (let [v (nrepl-debug/frame-eval
+               connection
+               (read-string (:thread-id msg))
+               (read-string (:frame-number msg))
+               (read-string (:code msg))
+               (read-when (:pprint msg)))]
+        (transport/send transport (response-for msg :value (args-for-map v)))
         (transport/send transport (response-for msg :status :done)))
+
+      (= "frame-source" op)
+      (let [v (nrepl-debug/frame-source
+               connection
+               (read-string (:thread-id msg))
+               (read-string (:frame-number msg)))]
+        (transport/send
+         transport
+         (response-for
+          msg :value
+          (if v
+            (args-for-map v)
+            (list :error "Could not find source location"))))
+        (transport/send transport (response-for msg :status :done)))
+
+      (= "frame-locals" op)
+      (let [v (nrepl-debug/frame-locals
+               connection
+               (read-string (:thread-id msg))
+               (read-string (:frame-number msg)))]
+        (transport/send transport (response-for msg :value (args-for-map v)))
+        (transport/send transport (response-for msg :status :done)))
+
+      (= "disassemble-frame" op)
+      (let [v (nrepl-debug/disassemble-frame
+               connection
+               (read-string (:thread-id msg))
+               (read-string (:frame-number msg)))]
+        (transport/send transport (response-for msg :value (args-for-map v)))
+        (transport/send transport (response-for msg :status :done)))
+
 
       :else (handler msg))))
 

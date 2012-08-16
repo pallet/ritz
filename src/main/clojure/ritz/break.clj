@@ -82,9 +82,25 @@ the break stack."
      (into {}
            (map
             (fn [[thread-id c]]
-              (trace "clear aborts %s %s" thread-id c)
+              (trace "clear aborts %s" thread-id)
               [thread-id (dissoc c :abort-to-level)])
             break-context)))))
+
+(defn break-threads
+  "Return threads referenced by context"
+  [connection]
+  (distinct
+   (mapcat
+    #(map :thread (:break-levels %))
+    (vals (break-context connection)))))
+
+(defn remove-threads
+  "Remove threads from context"
+  [connection thread-ids]
+  (break-update!
+   connection
+   (fn [break-context]
+     (apply dissoc break-context thread-ids))))
 
 (defn aborting-level?
   "Predicate to check if the current break-level is being aborted."

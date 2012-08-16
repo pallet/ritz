@@ -66,7 +66,7 @@
   (let [[level-info level] (break/break-level-info
                             connection (:request-thread connection))]
     (messages/location
-     (debug/frame-source-location (:thread level-info) frame-number))))
+     (jpda-debug/frame-source-location (:thread level-info) frame-number))))
 
 (defslimefn inspect-frame-var [connection frame index]
   (let [inspector (connection/inspector connection)

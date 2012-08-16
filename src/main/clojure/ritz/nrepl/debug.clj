@@ -6,17 +6,22 @@
    [ritz.jpda.debug
     :only [break-for-exception? add-exception-event-request event-break-info
            display-break-level dismiss-break-level
-           invoke-named-restart build-backtrace]]
+           invoke-named-restart build-backtrace frame-source-location
+           frame-locals-with-string-values
+           eval-string-in-frame pprint-eval-string-in-frame]]
    [ritz.jpda.jdi :only [discard-event-request handle-event silent-event?]]
    [ritz.logging :only [trace trace-str]]
    [ritz.nrepl.connections :only [all-connections]])
   (:require
    clojure.pprint
+   [clojure.string :as string]
    [clojure.tools.nrepl.transport :as transport]
+   [ritz.break :as break]
    [ritz.connection :as connection]
    [ritz.jpda.jdi :as jdi]
    [ritz.jpda.jdi-clj :as jdi-clj]
-   [ritz.jpda.jdi-vm :as jdi-vm])
+   [ritz.jpda.jdi-vm :as jdi-vm]
+   [ritz.swank.messages :as messages])
   (:import
    com.sun.jdi.event.BreakpointEvent
    com.sun.jdi.event.ExceptionEvent
@@ -43,21 +48,12 @@
          threads)
         (clojure.pprint/pprint threads)))))
 
-;;; restarts
-(defn continue
-  [connection thread-id]
-  (trace "continue %s" thread-id)
-  (invoke-named-restart connection thread-id :continue))
-
-(defn abort-level
-  [connection thread-id]
-  (trace "quit-level %s" thread-id)
-  (invoke-named-restart connection thread-id :abort))
-
-(defn quit-to-top-level
-  [connection thread-id]
-  (trace "quit-to-top-level %s" thread-id)
-  (invoke-named-restart connection thread-id :quit))
+(defn invoke-restart
+  [connection thread-id restart-number restart-name]
+  (trace "invoke-restart %s" thread-id)
+  (if restart-name
+    (invoke-named-restart connection thread-id (keyword restart-name))
+    (ritz.jpda.debug/invoke-restart connection thread-id nil restart-number)))
 
 ;;; debugger
 
@@ -107,10 +103,14 @@ the events can be delivered back."
      (response-for
       msg
       :value
-      `("message" ~(:exception-message condition)
+      `("exception" ~(list (:exception-message condition)
+                           (:type condition))
         "thread-id" ~thread-id
-        "exception-type" ~(:type condition)
-        "stacktrace" ~(stacktrace-frames (build-backtrace thread) 0))))
+        "frames" ~(stacktrace-frames (build-backtrace thread) 0)
+        "restarts" ~(map
+                     (fn [{:keys [name description]}] (list name description))
+                     restarts)
+        "level" ~level)))
     (trace "display-break-level: sent message")))
 
 (defmethod dismiss-break-level :nrepl
@@ -118,3 +118,36 @@ the events can be delivered back."
    {:keys [thread thread-id condition event restarts] :as level-info}
    level]
   (trace "dismiss-break-level: :nrepl"))
+
+(defn frame-eval
+  [connection thread-id frame-number code pprint]
+  (trace "invoke-restart %s" thread-id)
+  (let [[level-info level] (break/break-level-info connection thread-id)
+        thread (:thread level-info)]
+    {:result (if pprint
+               (pprint-eval-string-in-frame
+                connection (vm-context connection) thread code frame-number)
+               (eval-string-in-frame
+                connection (vm-context connection) thread code frame-number))}))
+
+(defn frame-source
+  [connection thread-id frame]
+  (let [[level-info level] (break/break-level-info connection thread-id)
+        [buffer position] (frame-source-location (:thread level-info) frame)]
+    (when buffer (merge buffer position))))
+
+(defn frame-locals
+  [connection thread-id frame]
+  (let [[level-info level] (break/break-level-info connection thread-id)]
+    {:locals (or (messages/frame-locals
+                  (frame-locals-with-string-values
+                    (:vm-context connection) (:thread level-info) frame))
+                 '())}))
+
+(defn disassemble-frame
+  [connection thread-id frame-number]
+  (let [[level-info level] (break/break-level-info connection thread-id)
+        thread (:thread level-info)]
+    {:result (string/join \newline
+                          (ritz.jpda.debug/disassemble-frame
+                           (vm-context connection) thread frame-number))}))

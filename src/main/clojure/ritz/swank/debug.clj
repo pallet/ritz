@@ -299,15 +299,6 @@ otherwise pass it on."
     (when-let [[level-info level] (break/break-level-info connection thread-id)]
       (build-backtrace (:thread level-info) start end))))
 
-;;; Source location
-(defn frame-source-location
-  "Return a source location vector [buffer position] for the specified
-   frame number."
-  [^ThreadReference thread frame-number]
-  (when-let [^StackFrame frame (nth (.frames thread) frame-number nil)]
-    (let [location (.location frame)]
-      [(find/find-source-path (jdi/location-source-path location))
-       {:line (jdi/location-line-number location)}])))
 
 ;;; Threads
 (defn format-thread
