@@ -6,6 +6,7 @@
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
 ;; Version: 0.3.2
+;; Package-Requires: ((nrepl "0.1.3"))
 ;; License: EPL
 
 (require 'nrepl)
