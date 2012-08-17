@@ -21,5 +21,5 @@
                   :repositories
                   {"sonatype"
                    "https://oss.sonatype.org/content/repositories/releases/"}}
-             :dev {:dependencies [[leiningen "2.0.0-SNAPSHOT"]]}}
+             :dev {:dependencies [[leiningen "2.0.0-preview8"]]}}
   :jvm-opts ["-Djava.awt.headless=true"])
