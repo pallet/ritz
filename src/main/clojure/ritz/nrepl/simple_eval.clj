@@ -6,6 +6,7 @@
    [clojure.main :as main])
   (:use
    [clojure.tools.nrepl.misc :only [response-for]]
+   [clojure.tools.nrepl.middleware :only [set-descriptor!]]
    [clojure.tools.nrepl.middleware.interruptible-eval :only [*msg*]]
    [ritz.connection :only [bindings bindings-assoc!]]
    [ritz.logging :only [trace]]))
@@ -55,3 +56,13 @@
         (transport/send transport (response-for msg :status #{:error :no-code}))
         (evaluate msg))
       (handler msg))))
+
+(set-descriptor!
+ #'simple-eval
+ {:handles
+  {"jpda-eval"
+   {:doc
+    (str "Evaluate code in the debugger's own VM.")
+    :requires
+    {"code" "A boolean true or false"}
+    :returns {"status" "ok"}}}})

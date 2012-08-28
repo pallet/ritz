@@ -1,6 +1,9 @@
 (ns ^{:author "Chas Emerick"}
      ritz.nrepl.pr-values
-  (:require [clojure.tools.nrepl.transport :as t])
+  (:require
+   [clojure.tools.nrepl.transport :as t])
+  (:use
+   [clojure.tools.nrepl.middleware :only [set-descriptor!]])
   (:import clojure.tools.nrepl.transport.Transport))
 
 (defn pr-values
@@ -25,3 +28,12 @@
                                         resp))))))
            (h msg)))))
   ([] (pr-values #{"eval"})))
+
+(set-descriptor! #'pr-values
+  {:doc
+   (str
+    "Modifies the transport to modify the value in the :value key with its "
+    "printed representaton.")
+   :requires #{}
+   :expects #{}
+   :handles {}})

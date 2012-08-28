@@ -10,6 +10,7 @@
    ritz.repl-utils.doc) ;; ensure commands are loaded
   (:use
    [clojure.tools.nrepl.misc :only [response-for]]
+   [clojure.tools.nrepl.middleware :only [set-descriptor!]]
    [clojure.tools.nrepl.middleware.interruptible-eval :only [*msg*]]
    [ritz.connection :only [bindings bindings-assoc!]]
    [ritz.logging :only [trace]]))
@@ -149,3 +150,61 @@
   [handler]
   (fn [msg]
     (debug-eval* handler msg)))
+
+(set-descriptor!
+ #'debug-eval
+ {:handles
+  {"break-on-exception"
+   {:doc
+    (str "Flag to control whether exceptions break into the debugger.")
+    :requires
+    {"flag" "A boolean true or false"}
+    :returns {"status" "done"}}
+   "invoke-restart"
+   {:doc
+    (str "Invoke the specified restart number or name for the specified "
+         "thread.")
+    :requires
+    {"thread-id" "The thread executing the code to disassemble."
+     "restart-number" "The (ordinal) number of the restart to invoke"
+     "restart-name" "The name of the restart to invoke."}
+    :returns {"status" "done"}}
+   "frame-eval"
+   {:doc
+    (str "Evaluate code with in the locals environment of the specified frame.")
+    :requires
+    {"thread-id" "The thread executing the code to disassemble."
+     "frame-number" "The stack frame to return locals for."
+     "code" "The expression to evaluate"}
+    :returns {"status" "done"}
+    :optional {"pprint" "Flag to specify pretty-printing of the result"}}
+   "frame-source"
+   {:doc
+    (str "Locate the source code for the specified frame. The location is "
+         "passed back in a name value list specifying file, zip, and line "
+         "number.")
+    :requires
+    {"thread-id" "The thread executing the code to disassemble."
+     "frame-number" "The stack frame to return locals for."}
+    :returns {"status" "done"}}
+   "frame-locals"
+   {:doc
+    (str "List the local variables visible in the specified frame.  "
+         "Each local is presented in a list with name and value "
+         "components.")
+    :requires
+    {"thread-id" "The thread executing the code to disassemble."
+     "frame-number" "The stack frame to return locals for."}
+    :returns {"status" "done"}}
+   "disassemble-frame"
+   {:doc "Disassemble the code associated with the specified frame."
+    :requires
+    {"thread-id" "The thread executing the code to disassemble."
+     "frame-number" "The stack frame to disassemble."}
+    :returns {"status" "done"}}
+   "jpda"
+   {:doc
+    (str "Evaluate code in the debugger's own VM.")
+    :requires
+    {"code" "A boolean true or false"}
+    :returns {"status" "done"}}}})

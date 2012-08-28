@@ -124,8 +124,8 @@
 
 (defn silent-event?
   [^Event event]
-  (let [^String event-str (try (.toString event)
-                               (catch java.lang.InternalError _))]
+  (if-let [^String event-str (try (.toString event)
+                                  (catch java.lang.InternalError _))]
     (or (.startsWith event-str "ExceptionEvent@java.net.URLClassLoader")
         (.startsWith event-str "ExceptionEvent@java.lang.Class")
         (.startsWith event-str "ExceptionEvent@clojure.lang.RT")
@@ -135,7 +135,8 @@
         (.startsWith
          event-str "ExceptionEvent@com.sun.org.apache.xerces.internal")
         (.startsWith
-         event-str "ExceptionEvent@com.google.inject.spi.InjectionPoint"))))
+         event-str "ExceptionEvent@com.google.inject.spi.InjectionPoint"))
+    false))
 
 (defn handle-event-set
   "NB, this resumes the event-set, so you will need to suspend within

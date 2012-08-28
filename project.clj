@@ -5,7 +5,7 @@
   :test-paths ["src/test/clojure"]
   :dependencies [[org.clojure/clojure "1.3.0"]
                  [org.clojure/data.codec "0.1.0"]
-                 [org.clojure/tools.nrepl "0.2.0-beta8"]]
+                 [org.clojure/tools.nrepl "0.2.0-beta9"]]
   :profiles {:it {:source-paths ["src/main/clojure" "src/it/clojure"]
                   :dependencies [[org.palletops/clojure "1.3.0-p1"]
                                  [org.cloudhoist/pallet "0.6.7"]
