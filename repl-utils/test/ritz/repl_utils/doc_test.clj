@@ -2,7 +2,9 @@
   (:use
    clojure.test)
   (:require
-   [ritz.repl-utils.doc :as doc]))
+   [ritz.repl-utils.doc :as doc])
+  (:import
+   java.io.File))
 
 (deftest describe-test
   (is (= {:symbol-name "clojure.core/shutdown-agents"
@@ -45,7 +47,15 @@
               "is-annotation?" false true (the-ns 'clojure.core))))))
 
 (deftest javadoc-url-test
-  (is (= "http://java.sun.com/javase/6/docs/api/java/io/File.html"
-         (doc/javadoc-url "java.io.File")))
-  (is (= "http://java.sun.com/javase/6/docs/api/java/io/File.html"
-         (doc/javadoc-url "java.io.File."))))
+  (is (re-matches
+       #"http://java.sun.com/javase/[678]/docs/api/java/io/File.html"
+       (doc/javadoc-url "java.io.File" "")))
+  (is (re-matches
+       #"http://java.sun.com/javase/[678]/docs/api/java/io/File.html"
+       (doc/javadoc-url "java.io.File." "")))
+  (is (re-matches
+       #"http://java.sun.com/javase/[678]/docs/api/java/io/File.html"
+       (doc/javadoc-url "File" "ritz.repl-utils.doc-test")))
+    (is (=
+         "http://www.google.com/search?q=%2Bjavadoc+NoSuchClassName"
+         (doc/javadoc-url "NoSuchClassName" "ritz.repl-utils.doc-test"))))

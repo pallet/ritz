@@ -5,7 +5,8 @@
    [ritz.debugger.exception-filters
     :only [spit-exception-filters exception-filters exception-filter-kill!
            exception-filter-enable! exception-filter-disable!]]
-   [ritz.swank.commands :only [defslimefn]])
+   [ritz.swank.commands :only [defslimefn]]
+   [ritz.swank.connection :only [current-namespace]])
   (:require
    [clojure.java.javadoc :as javadoc]
    [clojure.string :as string]
@@ -121,7 +122,7 @@ corresponding attribute values per thread."
 
 (defslimefn javadoc-url
   [connection symbol-name]
-  (doc/javadoc-url symbol-name))
+  (doc/javadoc-url symbol-name (current-namespace connection)))
 
 ;;; list repl source forms
 (defslimefn list-repl-source-forms

@@ -117,17 +117,26 @@ that symbols accessible in the current namespace go first."
                    (str (.toURI (io/file (.getParent classes-file) m)))))]
     (first (filter identity (map finder files)))))
 
+(defn resolve-classname
+  [classname namespace]
+  (if-let [ns (and namespace (find-ns (symbol (name namespace))))]
+    (if-let [sym (get (ns-imports (ns-name ns)) (symbol classname))]
+      (.getName sym)
+      classname)
+    classname))
+
 (defn javadoc-url
   "Searches for a URL for the given class name.  Tries
   *local-javadocs* first, then *remote-javadocs*.  Returns a string."
   {:tag String
    :added "1.2"}
-  [^String classname]
+  [^String classname ns]
   (let [field (second (re-find #".+/(.*)$" classname))
         classname (-> classname
                       (string/replace #"\.$" "")
                       (string/replace #"^/" "")
                       (string/replace #".+/.*$" ""))
+        classname (resolve-classname classname ns)
         file-path (str (-> classname
                            (.replace  \. java.io.File/separatorChar)
                            (.replace \$ \.))
