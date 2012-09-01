@@ -119,7 +119,6 @@
                                    '~'acceptor-port)]
                       (when-let [a# (var-get v#)]
                         (when (instance? clojure.lang.Atom a#)
-                          (.. System/out (println (pr-str a#)))
                           (deref a#)))))
                   (catch Exception _#)))
               (catch Exception _)))]
