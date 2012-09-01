@@ -13,7 +13,8 @@
    [clojure.tools.nrepl.middleware :only [set-descriptor!]]
    [clojure.tools.nrepl.middleware.interruptible-eval :only [*msg*]]
    [ritz.debugger.connection :only [bindings bindings-assoc!]]
-   [ritz.logging :only [trace]]))
+   [ritz.logging :only [trace]]
+   [ritz.nrepl.middleware :only [args-for-map read-when]]))
 
 (defn evaluate
   [{:keys [op code ns session transport] :as msg}]
@@ -54,24 +55,6 @@
               :ex (-> e class str)
               :root-ex (-> (#'clojure.main/root-cause e) class str)))))))))
 
-(defmulti transform-value "Transform a value for output" type)
-
-(defmethod transform-value :default [v] v)
-
-(defmethod transform-value clojure.lang.PersistentVector
-  [v]
-  (list* v))
-
-(defn args-for-map
-  "Return a value list based on a map. The keys are converted to strings."
-  [m]
-  (trace "args-for-map %s" m)
-  (list* (mapcat #(vector (name (key %)) (transform-value (val %))) m)))
-
-(defn read-when
-  "Read from the string passed if it is not nil"
-  [s]
-  (when s (read-string s)))
 
 (defn debug-eval*
   [handler {:keys [code op transport] :as msg}]
