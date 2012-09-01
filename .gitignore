@@ -5,3 +5,4 @@ classes
 *.tar
 marmalade
 target
+.lein-*
