@@ -5,11 +5,15 @@
    [ritz.nrepl.transport :only [make-transport read-sent]]))
 
 (defonce transport (make-transport {}))
-(defonce handler (default-handler))
+(defonce handler (atom (default-handler)))
+
+(defn set-handler!
+  [handler-fn]
+  (reset! handler handler-fn))
 
 (defn exec
   [msg]
-  (handle* msg handler transport))
+  (handle* msg @handler transport))
 
 (defn read-msg
   []

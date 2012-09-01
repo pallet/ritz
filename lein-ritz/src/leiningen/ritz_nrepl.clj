@@ -39,11 +39,11 @@
 ;;   "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n")
 ;;(update-in [:jvm-opts] conj jvm-jdwp-opts)
 
-
 (defn- start-jpda-server
   "Start the JPDA nrepl server. The JPDA nrepl server will start the user
 project server."
-  [project host port ack-port {:keys [headless? debug?]}]
+  [{{:keys [nrepl-middleware]} :repl-options :as project}
+   host port ack-port {:keys [headless? debug?]}]
   {:pre [project]}
   (let [jpda-project (->
                       project
@@ -60,7 +60,8 @@ project server."
         `(ritz.nrepl/start-jpda-server
           ~host ~port ~ack-port
           ~(str (io/file (:target-path project) "repl-port"))
-          ~(string/join ":" user-classpath))]
+          ~(string/join ":" user-classpath)
+          ~nrepl-middleware)]
     (eval/eval-in-project
      jpda-project
      server-starting-form

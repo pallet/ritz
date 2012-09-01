@@ -94,6 +94,12 @@
                           (mapcar 'prin1-to-string attributes))))
     (nrepl-send-request request callback)))
 
+(defun nrepl-ritz-send-op-strings (op callback attributes)
+  (lexical-let ((request (append
+                          (list "op" op "session" (nrepl-current-session))
+                          attributes)))
+    (nrepl-send-request request callback)))
+
 (defun nrepl-ritz-send-dbg-op (op on-value &rest attributes)
   "If ON-VALUE is supplied, then it is called when a value is
 returned otherwise an on-done callback is created to close the
@@ -290,30 +296,23 @@ are supported:
     'nrepl-emit-into-popup-buffer nil nil)))
 
 ;;; javadoc browsing
-(defun nrepl-ritz-javadoc-local-paths (local-paths)
-  "Require JavaDoc namespace, adding a list of local paths."
-  (nrepl-send-string
-   (format
-    "(ritz.repl-utils.doc/javadoc-local-paths '%S)" local-paths)
-   "user"
-   (nrepl-handler (current-buffer))))
+(defvar nrepl-ritz-javadoc-local-paths nil)
 
 (defun nrepl-ritz-javadoc-input-handler (symbol-name)
   "Browse javadoc on the Java class at point."
   (when (not symbol-name)
     (error "No symbol given"))
-  (nrepl-send-string
-   (format "(ritz.repl-utils.doc/javadoc-url \"%s\")" symbol-name)
-   "user"
+  (nrepl-ritz-send-op-strings
+   "javadoc"
    (nrepl-make-response-handler
     (current-buffer)
-    (lambda (buffer value)
-      (lexical-let ((v (car (read-from-string value))))
-        (lexical-let ((url (and (stringp v) v)))
-          (if url
-              (browse-url url)
-            (error "No javadoc url for %s" symbol-name)))))
-    nil nil nil)))
+    (lambda (buffer url)
+      (if url
+          (browse-url url)
+        (error "No javadoc url for %s" symbol-name)))
+    nil nil nil)
+   `("symbol" ,symbol-name "ns" ,nrepl-buffer-ns
+     "local-paths" ,(mapconcat #'identity nrepl-ritz-javadoc-local-paths " "))))
 
 (defun nrepl-ritz-javadoc (query)
   "Browse javadoc on the Java class at point."
@@ -322,6 +321,7 @@ are supported:
    "Javadoc for: " 'nrepl-ritz-javadoc-input-handler query))
 
 (define-key nrepl-interaction-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
+(define-key nrepl-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
 
 ;;; undefine symbol
 (defun nrepl-ritz-undefine-symbol-handler (symbol-name)

@@ -148,9 +148,7 @@ reference."
   [host port]
   (fn [handler]
     (fn [{:keys [op transport] :as msg}]
-      (if (#{"eval" "clone" "stdin" "interrupt"} op)
-        (return-execute-eval host port msg)
-        (handler msg)))))
+      (return-execute-eval host port msg))))
 
 ;;; ## The overall nREPL handler for the jpda process
 (defn debug-handler
@@ -159,8 +157,8 @@ reference."
   (let [rexec (rexec-handler host port)
         jpda-eval (jpda-eval-middleware)
         pr-values (pr-values/pr-values #{"jpda"})]
-    (-> unknown-op rexec jpda-eval debug-eval
-        pr-values connection log-message)))
+    (-> unknown-op
+        rexec jpda-eval debug-eval pr-values connection log-message)))
 
 ;;; # Reply pump
 ;;; The reply pump takes all nREPL replies sent from the user process, and
@@ -236,7 +234,7 @@ generate a name for the thread."
         context (start-control-thread-body msg-thread-name))))))
 
 (defn start-jpda-server
-  [host port ack-port repl-port-path classpath]
+  [host port ack-port repl-port-path classpath middleware]
   (let [server (start-server
                 :bind "localhost" :port 0 :ack-port ack-port
                 :handler (debug-handler host port))
@@ -248,5 +246,16 @@ generate a name for the thread."
     (add-exception-event-request vm)
     (vm-resume vm)
     (start-reply-pump server vm)
+    (ritz.jpda.jdi-clj/control-eval
+     vm
+     `(do
+        (require
+         'ritz.nrepl.handler 'ritz.nrepl.exec 'clojure.tools.nrepl.server)
+        (ritz.nrepl.exec/set-handler!
+         (apply clojure.tools.nrepl.server/default-handler
+                ~@middleware
+                (var-get
+                 (ns-resolve '~'ritz.nrepl.handler '~'ritz-middlewares))))
+        nil))
     (println "nREPL server started on port" port)
     (spit repl-port-path port)))
