@@ -65,4 +65,4 @@
     (str "Evaluate code in the debugger's own VM.")
     :requires
     {"code" "A boolean true or false"}
-    :returns {"status" "ok"}}}})
+    :returns {"status" "done"}}}})
