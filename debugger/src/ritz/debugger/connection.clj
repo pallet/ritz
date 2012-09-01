@@ -1,27 +1,17 @@
-(ns ritz.connection
+(ns ritz.debugger.connection
   "A connection is a map that maintains state for a client."
   (:require
-   [ritz.logging :as logging]
-   [ritz.repl-utils.helpers :as helpers]
-   [ritz.repl-utils.utils :as utils]
-   [clojure.java.io :as java-io])
-  (:import
-   java.io.BufferedReader
-   java.io.FileReader
-   java.io.InputStreamReader
-   java.io.OutputStreamWriter
-   java.io.PrintWriter
-   java.io.StringWriter))
-
+   [ritz.logging :as logging]))
 
 ;;; Default connection
 (def default-connection
-  {:debug (atom {})
+  {:debug (atom {:breakpoints nil})
    :break (atom {:break-levels {}})
    :inspector (atom {})
    :bindings (atom (dissoc (get-thread-bindings) #'*agent*))
    :indent (atom {:indent-cache-hash nil
-                  :indent-cache {}})})
+                  :indent-cache {}})
+   :exception-filters (atom nil)})
 
 ;;; # Query
 (defn vm-context
@@ -106,3 +96,6 @@
    (:bindings connection)
    (fn [bindings]
      (apply merge bindings maps))))
+
+;;; Operations
+(defmulti connection-close "Close a connection" :type)

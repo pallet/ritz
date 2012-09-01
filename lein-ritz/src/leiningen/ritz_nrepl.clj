@@ -16,22 +16,21 @@
   (:use
    [leiningen.core.classpath :only [get-classpath]]))
 
-(def profile {:dependencies '[[org.clojure/tools.nrepl "0.2.0-beta8"
+(def nrepl-version "0.2.0-beta9")
+
+(def profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
                                :exclusions [org.clojure/clojure]]
                               [clojure-complete "0.2.1"
                                :exclusions [org.clojure/clojure]]]})
 
-(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.0-beta8"
+(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
                                      :exclusions [org.clojure/clojure]]]})
 
 (def ritz-profile {:dependencies '[[org.clojure/clojure "1.4.0"]
-                                   [ritz "0.3.3-SNAPSHOT"
+                                   [ritz/ritz-nrepl "0.4.0-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
-(def lein-project-profile {:dependencies '[[leiningen "2.0.0-SNAPSHOT"]
-                                           ;; [ordered "1.3.1"
-                                           ;;  :exclusions [org.clojure/clojure]]
-                                           ]})
+(def lein-project-profile {:dependencies '[[leiningen "2.0.0-SNAPSHOT"]]})
 
 (def trampoline-profile {:dependencies '[[reply "0.1.0-beta9"
                                          :exclusions [org.clojure/clojure]]]})
