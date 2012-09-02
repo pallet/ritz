@@ -43,7 +43,7 @@ processes."
    [ritz.jpda.jdi-clj :as jdi-clj]
    [ritz.nrepl.pr-values :as pr-values]))
 
-;; (set-level :trace)
+(set-level :trace)
 
 (add-connection-for-event-fn!
  ritz.nrepl.connections/connection-for-event)

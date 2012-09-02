@@ -7,12 +7,24 @@
 
 (defmethod transform-value clojure.lang.PersistentVector
   [v]
-  (list* v))
+  (list* (map transform-value v)))
+
+(defmethod transform-value clojure.lang.LazySeq
+  [v]
+  (list* (map transform-value v)))
+
+(defmethod transform-value clojure.lang.PersistentHashMap
+  [m]
+  (list* (mapcat #(vector (name (key %)) (transform-value (val %))) m)))
+
+(defmethod transform-value clojure.lang.PersistentArrayMap
+  [m]
+  (list* (mapcat #(vector (name (key %)) (transform-value (val %))) m)))
 
 (defn args-for-map
   "Return a value list based on a map. The keys are converted to strings."
   [m]
-  (list* (mapcat #(vector (name (key %)) (transform-value (val %))) m)))
+  (transform-value m))
 
 (defn read-when
   "Read from the string passed if it is not nil"

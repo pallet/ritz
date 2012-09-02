@@ -30,5 +30,6 @@ Accepts local-paths, a space separated list of local paths to local javadoc."
  {:handles
   {"javadoc"
    {:doc "Return url of javadoc for specified symbol."
-    :requires {"symbol" "The symbol to lookup"}
+    :requires {"symbol" "The symbol to lookup"
+               "ns" "The current namespace"}
     :returns {"status" "done"}}}})

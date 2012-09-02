@@ -93,8 +93,19 @@ that symbols accessible in the current namespace go first."
    prefering symbols accessible from prefer-ns."
   [ns name public-only? case-sensitive? prefer-ns]
   (sort
-   #(present-symbol-before prefer-ns %1 %2)
+   #(present-symbol-before (or prefer-ns ns) %1 %2)
    (apropos-symbols name ns public-only? case-sensitive?)))
+
+(defn apropos-doc
+  "Return a list of docs for matching symbols for name, restricted to ns if
+   non-nil prefering symbols accessible from prefer-ns."
+  [ns name public-only? case-sensitive? prefer-ns]
+  (map
+   #(update-in (describe %) [:doc]
+              (fn [doc]
+                (when doc
+                  (first (string/split-lines doc)))))
+   (apropos-list ns name public-only? case-sensitive? prefer-ns)))
 
 ;;; javadoc
 (alter-var-root

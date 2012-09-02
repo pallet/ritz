@@ -14,6 +14,16 @@ lein2 ritz-nrepl :headless
 
 Then in emacs, `M-x nrepl` and enter the port printed by the previous command.
 
+# Provided nREPL ops
+
+"javadoc" Returns a url of the javadoc for the specified symbol
+
+"apropos" Returns a description of each function matching a partial symbol
+
+"doc" Returns the doc string for the specified symbol
+
+"describe-symbol" Returns a description of the specified symbol
+
 ## License
 
 Copyright © 2012 Hugo Duncan

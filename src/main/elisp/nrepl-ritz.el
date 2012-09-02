@@ -295,6 +295,128 @@ are supported:
     nil
     'nrepl-emit-into-popup-buffer nil nil)))
 
+;;; describe
+(defun nrepl-ritz-describe-symbol-input-handler (symbol-name)
+  "Describe symbol."
+  (when (not symbol-name)
+    (error "No symbol given"))
+  (nrepl-ritz-send-op-strings
+   "describe-symbol"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer description)
+      (with-current-buffer (nrepl-popup-buffer "*nREPL apropos*" t)
+        (let ((inhibit-read-only t)
+              (buffer-undo-list t)
+              (standard-output (current-buffer)))
+          (destructuring-bind (&key symbol-name type arglists doc)
+              (nrepl-keywordise description)
+            (nrepl-ritz-print-apropos
+             :symbol-name symbol-name
+             :type type
+             :arglists arglists
+             :doc (concat "\n\n" doc))))))
+    nil nil nil)
+   `("symbol" ,symbol-name "ns" ,nrepl-buffer-ns)))
+
+(defun nrepl-ritz-describe-symbol (query)
+  "Browse describe-symbol on the Java class at point."
+  (interactive "P")
+  (nrepl-read-symbol-name
+   "Describe symbol: " 'nrepl-ritz-describe-symbol-input-handler query))
+
+;;; apropos
+(defun nrepl-ritz-call-describe (arg)
+  (let* ((pos (if (markerp arg) arg (point)))
+         (item (get-text-property pos 'item)))
+    (nrepl-ritz-describe-symbol item)))
+
+(defvar nrepl-ritz-apropos-label-properties
+  (progn
+    (require 'apropos)
+    (cond ((and (boundp 'apropos-label-properties)
+                (symbol-value 'apropos-label-properties)))
+          ((boundp 'apropos-label-face)
+           (etypecase (symbol-value 'apropos-label-face)
+             (symbol `(face ,(or (symbol-value 'apropos-label-face)
+                                 'italic)
+                            mouse-face highlight))
+             (list (symbol-value 'apropos-label-face)))))))
+
+(defun nrepl-ritz-print-apropos-property (symbol-name property value label)
+  (let ((start (point)))
+    (princ "  ")
+    (nrepl-ritz-insert-propertized nrepl-ritz-apropos-label-properties label)
+    (princ ": ")
+    (princ (etypecase value
+             (string value)
+             ((member :not-documented) "(not documented)")))
+    (add-text-properties
+     start (point)
+     (list 'type property
+           'action 'nrepl-ritz-call-describe
+           'button t
+           'apropos-label label
+           'item symbol-name
+           'help-echo (format "Describe %s" symbol-name)))
+    (terpri)))
+
+(defun nrepl-ritz-print-apropos (&rest args)
+  (destructuring-bind (&key symbol-name type arglists doc) args
+    (assert symbol-name)
+    (nrepl-ritz-insert-propertized `(face ,apropos-symbol-face) symbol-name)
+    (terpri)
+    (let ((apropos-label-properties slime-apropos-label-properties))
+      (cond
+       ((string= type "variable")
+        (nrepl-ritz-print-apropos-property symbol-name type doc "Variable"))
+       ((string= type "function")
+        (nrepl-ritz-print-apropos-property
+         symbol-name type (concat (format "%s" arglists) "  " doc) "Function"))
+       ((string= type "macro")
+        (nrepl-ritz-print-apropos-property
+         symbol-name type (concat (format "%s" arglists) "  " doc) "Macro"))))))
+
+(defun nrepl-ritz-apropos-handler (args)
+  "Send apropos request and show response"
+  (nrepl-ritz-send-op-strings
+   "apropos"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer apropos)
+      (with-current-buffer (nrepl-popup-buffer "*nREPL apropos*" t)
+        (let ((inhibit-read-only t)
+              (buffer-undo-list t)
+              (standard-output (current-buffer)))
+          (set (make-local-variable 'truncate-lines) t)
+          (dolist (a apropos)
+            (apply 'nrepl-ritz-print-apropos (nrepl-keywordise a))))))
+    nil nil nil)
+   args))
+
+(defun nrepl-ritz-apropos (symbol-name &optional public-only-p ns
+                                       case-sensitive-p)
+  "Show apropos at point."
+  (interactive
+   (if current-prefix-arg
+       (list (read-string "Clojure apropos: ")
+             (y-or-n-p "Public symbols only? ")
+             (let ((ns (read-string "Namespace: ")))
+               (if (string= ns "") nil ns))
+             (y-or-n-p "Case-sensitive? "))
+     (list (read-string "Clojure apropos: ") t nil nil)))
+  (nrepl-ritz-apropos-handler
+   `("symbol" ,symbol-name
+     ,@(when ns `("ns" ,ns))
+     "prefer-ns" ,nrepl-buffer-ns
+     ,@(when public-only-p `("public-only?" "true"))
+     ,@(when case-sensitive-p `("case-sensitive?" "true")))))
+
+(defun nrepl-ritz-apropos-all (symbol-name)
+  "Show apropos at point."
+  (interactive)
+  (nrepl-ritz-apropos (read-string "Clojure apropos: ") nil nil))
+
 ;;; javadoc browsing
 (defvar nrepl-ritz-javadoc-local-paths nil)
 
