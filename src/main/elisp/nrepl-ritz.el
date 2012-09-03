@@ -325,6 +325,25 @@ are supported:
   (nrepl-read-symbol-name
    "Describe symbol: " 'nrepl-ritz-describe-symbol-input-handler query))
 
+;;; compeletion
+(defun nrepl-completion-complete-op-fn (str)
+  "Return a list of completions using the nREPL \"complete\" op."
+  (lexical-let ((strlst (plist-get
+                         (nrepl-send-request-sync
+                          (list "op" "complete"
+                                "session" (nrepl-current-session)
+                                "ns" nrepl-buffer-ns
+                                "symbol" str))
+                         :value)))
+    (message "strlist is %s" strlst)
+    (when strlst
+      ;(message "strlist read is %s" (read-from-string strlst))
+      (car strlst ;; (read-from-string strlst)
+           ))))
+
+;; If the version of nrepl.el has nrepl-completion-fn, enable this using:
+;; (setq nrepl-completion-fn 'nrepl-completion-complete-op-fn)
+
 ;;; apropos
 (defun nrepl-ritz-call-describe (arg)
   (let* ((pos (if (markerp arg) arg (point)))

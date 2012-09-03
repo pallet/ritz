@@ -42,6 +42,9 @@ to `:nrepl-middleware` under `:repl-options` in `project.clj.
 ["describe-symbol"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.describe-symbol.html)
 : Returns a description of the specified symbol
 
+[complete"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.simple-complete.html)
+: Simple completion
+
 [API Docs](http://palletops.com/ritz/0.4/nrepl/api/)
 
 ## License
