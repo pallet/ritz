@@ -1,0 +1,242 @@
+<html lang="en">
+  <head>
+    <title>Ritz-repl-utils 0.4.0-SNAPSHOT API documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-repl-utils 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.logging.html">ritz.logging</a></li><li class="ns-link"><a href="ritz.repl-utils.arglist.html">ritz.repl-utils.arglist</a></li><li class="ns-link"><a href="ritz.repl-utils.class-browse.html">ritz.repl-utils.class-browse</a></li><li class="ns-link"><a href="ritz.repl-utils.clojure.html">ritz.repl-utils.clojure</a></li><li class="ns-link"><a href="ritz.repl-utils.compile.html">ritz.repl-utils.compile</a></li><li class="ns-link"><a href="ritz.repl-utils.completion.html">ritz.repl-utils.completion</a></li><li class="ns-link"><a href="ritz.repl-utils.doc.html">ritz.repl-utils.doc</a></li><li class="ns-link"><a href="ritz.repl-utils.find.html">ritz.repl-utils.find</a></li><li class="ns-link"><a href="ritz.repl-utils.format.html">ritz.repl-utils.format</a></li><li class="ns-link"><a href="ritz.repl-utils.fuzzy-completion.html">ritz.repl-utils.fuzzy-completion</a></li><li class="ns-link"><a href="ritz.repl-utils.helpers.html">ritz.repl-utils.helpers</a></li><li class="ns-link"><a href="ritz.repl-utils.indent.html">ritz.repl-utils.indent</a></li><li class="ns-link"><a href="ritz.repl-utils.io.html">ritz.repl-utils.io</a></li><li class="ns-link"><a href="ritz.repl-utils.java.html">ritz.repl-utils.java</a></li><li class="ns-link"><a href="ritz.repl-utils.macroexpand.html">ritz.repl-utils.macroexpand</a></li><li class="ns-link"><a href="ritz.repl-utils.mangle.html">ritz.repl-utils.mangle</a></li><li class="ns-link"><a href="ritz.repl-utils.namespaces.html">ritz.repl-utils.namespaces</a></li><li class="ns-link"><a href="ritz.repl-utils.sys.html">ritz.repl-utils.sys</a></li><li class="ns-link"><a href="ritz.repl-utils.trace.html">ritz.repl-utils.trace</a></li><li class="ns-link"><a href="ritz.repl-utils.utils.html">ritz.repl-utils.utils</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-index">
+        <h2 class="project-title">Ritz-repl-utils 0.4.0-SNAPSHOT API documentation</h2>
+        <div class="doc"><p>Library of functions useful in clojure development environments</p>
+</div>
+        <div class="project-namespaces">
+          <div class="namespace">
+            <h3 class="ns-link"><a href="ritz.logging.html">ritz.logging</a></h3>
+            <div class="doc"><p>Logging for swank. Rudimentary for now</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.logging.html#var-log-str">log-str</a></li><li class="ns-var-link"><a href="ritz.logging.html#var-set-level">set-level</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.arglist.html">ritz.repl-utils.arglist</a></h3>
+            <div class="doc"><p>Arglists for symbols and sexps</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.arglist.html#var-arglist">arglist</a></li><li class="ns-var-link"><a href="ritz.repl-utils.arglist.html#var-arglist-at-terminal">arglist-at-terminal</a></li><li class="ns-var-link"><a href="ritz.repl-utils.arglist.html#var-branch-for-terminal">branch-for-terminal</a></li><li class="ns-var-link"><a href="ritz.repl-utils.arglist.html#var-indexed-sexps">indexed-sexps</a></li><li class="ns-var-link"><a href="ritz.repl-utils.arglist.html#var-paths">paths</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.class-browse.html">ritz.repl-utils.class-browse</a></h3>
+            <div class="doc"><p>Provides Java classpath and (compiled) Clojure namespace browsing.
+Scans the classpath for all class files, and provides functions for
+categorizing them. Classes are resolved on the start-up classpath only.
+Calls to 'add-classpath', etc are not considered.</p>
+
+<p>Class information is built as a list of maps of the following keys:
+  :name  Java class or Clojure namespace name
+  :loc   Classpath entry (directory or jar) on which the class is located
+  :file  Path of the class file, relative to :loc</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-class-or-ns-name">class-or-ns-name</a></li><li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-classpath">classpath</a></li><li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-classpath-urls">classpath-urls</a></li><li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-file-for-url">file-for-url</a></li><li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-path-class-files">path-class-files</a></li><li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-scan-paths">scan-paths</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.clojure.html">ritz.repl-utils.clojure</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.clojure.html#var-ns-path">ns-path</a></li><li class="ns-var-link"><a href="ritz.repl-utils.clojure.html#var-symbol-name-parts">symbol-name-parts</a></li><li class="ns-var-link"><a href="ritz.repl-utils.clojure.html#var-unmunge">unmunge</a></li><li class="ns-var-link"><a href="ritz.repl-utils.clojure.html#var-with-redefs">with-redefs</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.compile.html">ritz.repl-utils.compile</a></h3>
+            <div class="doc"><p>Util functions for compilation and evaluation.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.compile.html#var-compile-region">compile-region</a></li><li class="ns-var-link"><a href="ritz.repl-utils.compile.html#var-eval-region">eval-region</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.completion.html">ritz.repl-utils.completion</a></h3>
+            <div class="doc"><p>Completion functions</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-class-name-list">class-name-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-classes-on-path">classes-on-path</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-largest-common-prefix">largest-common-prefix</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-method-name-list">method-name-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-ns-name-list">ns-name-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-public-var-name-list">public-var-name-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-resolve-class">resolve-class</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-static-member-name-list">static-member-name-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-var-name-list">var-name-list</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.doc.html">ritz.repl-utils.doc</a></h3>
+            <div class="doc"><p>Documentation utils</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.doc.html#var-apropos-doc">apropos-doc</a></li><li class="ns-var-link"><a href="ritz.repl-utils.doc.html#var-apropos-list">apropos-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.doc.html#var-describe">describe</a></li><li class="ns-var-link"><a href="ritz.repl-utils.doc.html#var-doc-string">doc-string</a></li><li class="ns-var-link"><a href="ritz.repl-utils.doc.html#var-javadoc-local-paths">javadoc-local-paths</a></li><li class="ns-var-link"><a href="ritz.repl-utils.doc.html#var-javadoc-url">javadoc-url</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.find.html">ritz.repl-utils.find</a></h3>
+            <div class="doc"><p>Find source for a given path.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.find.html#var-clojure-source-path">clojure-source-path</a></li><li class="ns-var-link"><a href="ritz.repl-utils.find.html#var-find-compiler-exception-location">find-compiler-exception-location</a></li><li class="ns-var-link"><a href="ritz.repl-utils.find.html#var-find-source-path">find-source-path</a></li><li class="ns-var-link"><a href="ritz.repl-utils.find.html#var-java-source-path">java-source-path</a></li><li class="ns-var-link"><a href="ritz.repl-utils.find.html#var-source-forms">source-forms</a></li><li class="ns-var-link"><a href="ritz.repl-utils.find.html#var-source-location-for-class">source-location-for-class</a></li><li class="ns-var-link"><a href="ritz.repl-utils.find.html#var-source-location-for-namespace-sym">source-location-for-namespace-sym</a></li><li class="ns-var-link"><a href="ritz.repl-utils.find.html#var-source-location-for-var">source-location-for-var</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.format.html">ritz.repl-utils.format</a></h3>
+            <div class="doc"><p>Formatting utils</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.fuzzy-completion.html">ritz.repl-utils.fuzzy-completion</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.helpers.html">ritz.repl-utils.helpers</a></h3>
+            <div class="doc"><p>Some helpers</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.helpers.html#var-exception-causes">exception-causes</a></li><li class="ns-var-link"><a href="ritz.repl-utils.helpers.html#var-symbol-name-for-var">symbol-name-for-var</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.indent.html">ritz.repl-utils.indent</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.indent.html#var-indentation-hash">indentation-hash</a></li><li class="ns-var-link"><a href="ritz.repl-utils.indent.html#var-indentation-update">indentation-update</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.io.html">ritz.repl-utils.io</a></h3>
+            <div class="doc"><p>io for reading clojure files</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.io.html#var-read-ns">read-ns</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.java.html">ritz.repl-utils.java</a></h3>
+            <div class="doc"><p>Java introspection</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.macroexpand.html">ritz.repl-utils.macroexpand</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.mangle.html">ritz.repl-utils.mangle</a></h3>
+            <div class="doc"><p>Mangling, unmangling, etc</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.mangle.html#var-clojure-%3Ejava">clojure-&gt;java</a></li><li class="ns-var-link"><a href="ritz.repl-utils.mangle.html#var-clojure-class-name-%3Enamespace-name">clojure-class-name-&gt;namespace-name</a></li><li class="ns-var-link"><a href="ritz.repl-utils.mangle.html#var-java-%3Eclojure">java-&gt;clojure</a></li><li class="ns-var-link"><a href="ritz.repl-utils.mangle.html#var-namespace-name-%3Epath">namespace-name-&gt;path</a></li><li class="ns-var-link"><a href="ritz.repl-utils.mangle.html#var-path-%3Enamespace-name">path-&gt;namespace-name</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.namespaces.html">ritz.repl-utils.namespaces</a></h3>
+            <div class="doc"><p>Namespace functions</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.namespaces.html#var-with-var-clearing">with-var-clearing</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.sys.html">ritz.repl-utils.sys</a></h3>
+            <div class="doc"><p>Utils for system introspection</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.sys.html#var-get-pid">get-pid</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.trace.html">ritz.repl-utils.trace</a></h3>
+            <div class="doc"><p>Provide function tracing</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.trace.html#var-toggle-trace%21">toggle-trace!</a></li><li class="ns-var-link"><a href="ritz.repl-utils.trace.html#var-trace%21">trace!</a></li><li class="ns-var-link"><a href="ritz.repl-utils.trace.html#var-traced">traced</a></li><li class="ns-var-link"><a href="ritz.repl-utils.trace.html#var-untrace%21">untrace!</a></li><li class="ns-var-link"><a href="ritz.repl-utils.trace.html#var-untrace-all%21">untrace-all!</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.repl-utils.utils.html">ritz.repl-utils.utils</a></h3>
+            <div class="doc"><p>Utils</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.repl-utils.utils.html#var-position">position</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

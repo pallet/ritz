@@ -1,0 +1,450 @@
+<html lang="en">
+  <head>
+    <title>ritz.jpda.jdi documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-debugger 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.debugger.break.html">ritz.debugger.break</a></li><li class="ns-link"><a href="ritz.debugger.connection.html">ritz.debugger.connection</a></li><li class="ns-link"><a href="ritz.debugger.exception-filters.html">ritz.debugger.exception-filters</a></li><li class="ns-link"><a href="ritz.debugger.executor.html">ritz.debugger.executor</a></li><li class="ns-link"><a href="ritz.debugger.inspect.html">ritz.debugger.inspect</a></li><li class="ns-link"><a href="ritz.jpda.debug.html">ritz.jpda.debug</a></li><li class="ns-link"><a href="ritz.jpda.disassemble.html">ritz.jpda.disassemble</a></li><li class="ns-link"><a href="ritz.jpda.jdi.html">ritz.jpda.jdi</a></li><li class="ns-link"><a href="ritz.jpda.jdi-clj.html">ritz.jpda.jdi-clj</a></li><li class="ns-link"><a href="ritz.jpda.jdi-vm.html">ritz.jpda.jdi-vm</a></li><li class="ns-link"><a href="ritz.jpda.swell.html">ritz.jpda.swell</a></li><li class="ns-link"><a href="ritz.jpda.swell.impl.html">ritz.jpda.swell.impl</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-breakpoint">breakpoint</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-breakpoint-data">breakpoint-data</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-breakpoints">breakpoints</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-class-line-locations">class-line-locations</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-classes">classes</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-classname-re">classname-re</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-clojure-frame%3F">clojure-frame?</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-connector">connector</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-connector-args">connector-args</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-connectors">connectors</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-event-request-policies">event-request-policies</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-event-suspend-policy">event-suspend-policy</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-event-thread">event-thread</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-exception-event-string">exception-event-string</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-exception-message">exception-message</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-exception-request">exception-request</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-exception-requests">exception-requests</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-field-maps">field-maps</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-file-classes">file-classes</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-file-namespace">file-namespace</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-filepaths">filepaths</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-filepaths-from-jar">filepaths-from-jar</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-frame-field-values">frame-field-values</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-frame-fields">frame-fields</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-frame-locals">frame-locals</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-handle-event">handle-event</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-handle-event-set">handle-event-set</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-invoke-method">invoke-method</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-jar-file%3F">jar-file?</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-launch">launch</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-line-breakpoints">line-breakpoints</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-local-maps">local-maps</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-location-data">location-data</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-matching-classpath-files">matching-classpath-files</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-method-line-locations">method-line-locations</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-methods">methods</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-mirror-of">mirror-of</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-namespace-classes">namespace-classes</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-namespace-for-path">namespace-for-path</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-resume-thread">resume-thread</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-resume-threads">resume-threads</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-run-events">run-events</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-shutdown">shutdown</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-step-request">step-request</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-suspend-policy">suspend-policy</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-suspend-thread">suspend-thread</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-suspend-threads">suspend-threads</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-thread-data">thread-data</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-thread-groups">thread-groups</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-threads-in-group">threads-in-group</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-unmangled-frame-locals">unmangled-frame-locals</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-unmunge-clojure">unmunge-clojure</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-visible-clojure-fields">visible-clojure-fields</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-vm-event-daemon">vm-event-daemon</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-vm-stream-daemons">vm-stream-daemons</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.jpda.jdi documentation</h2>
+        <div class="doc"><p>JDI wrapper.
+The aim here is to work towards a clojure interface for JDI
+but is currently mainly a set of light wrapper functions.</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-breakpoint">breakpoint</h3>
+            <div class="usage">[vm suspend-policy location]</div>
+            
+            
+            <div class="doc"><p>Create a breakpoint</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-breakpoint-data">breakpoint-data</h3>
+            <div class="usage">[breakpoint]</div>
+            
+            
+            <div class="doc"><p>Returns breakpoint data</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-breakpoints">breakpoints</h3>
+            <div class="usage">[vm]</div>
+            
+            
+            <div class="doc"><p>List breakpoints</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-class-line-locations">class-line-locations</h3>
+            <div class="usage">[class line]</div>
+            
+            
+            <div class="doc"><p>Return all locations at the given line for the given class.
+If the line doesn't exist for the given class, returns nil.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-classes">classes</h3>
+            <div class="usage">[vm class-name]</div>
+            
+            
+            <div class="doc"><p>Return the class references for the class name from the vm.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-classname-re">classname-re</h3>
+            <div class="usage">[ns]</div>
+            
+            
+            <div class="doc"><p>Return a regular expression pattern for matching all classes in the
+given namespace name</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-clojure-frame%3F">clojure-frame?</h3>
+            <div class="usage">[frame fields]</div>
+            
+            
+            <div class="doc"><p>Predicate to test if a frame is a clojure frame. Checks the for the extension
+of the frame location's source name, or for the presence of well know clojure
+field prefixes.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-connector">connector</h3>
+            <div class="usage">[connector-kw]</div>
+            
+            
+            <div class="doc"><p>Lookup connector based on a keyword in (keys connector-names)</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-connector-args">connector-args</h3>
+            <div class="usage">[connector arg-map]</div>
+            
+            
+            <div class="doc"><p>Returns connector arguments based on name value pairs in arg-map.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-connectors">connectors</h3>
+            <div class="usage">[]</div>
+            
+            
+            <div class="doc"><p>List known connectors.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-event-request-policies">event-request-policies</h3>
+            
+            
+            
+            <div class="doc"><p>Keyword to event request suspend policy value. Allows specification
+of suspend policy by keyword.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-event-suspend-policy">event-suspend-policy</h3>
+            <div class="usage">[event]</div>
+            
+            
+            <div class="doc"><p>Returns the suspend policy for an event</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-event-thread">event-thread</h3>
+            <div class="usage">[event]</div>
+            
+            
+            <div class="doc"><p>Return the event's thread - note that there is no common interface for this.
+A BreakpointEvent just has a thread method.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-exception-event-string">exception-event-string</h3>
+            <div class="usage">[context event]</div>
+            
+            
+            <div class="doc"><p>Provide a string with the details of the exception</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-exception-message">exception-message</h3>
+            <div class="usage">[context event]</div>
+            
+            
+            <div class="doc"><p>Provide a string with the details of the exception</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-exception-request">exception-request</h3>
+            <div class="usage">[vm ref-type notify-caught notify-uncaught]</div>
+            
+            
+            <div class="doc"><p>Create an exception request</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-exception-requests">exception-requests</h3>
+            <div class="usage">[vm]</div>
+            
+            
+            <div class="doc"><p>List exception requests</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-field-maps">field-maps</h3>
+            <div class="usage">[fields]</div>
+            
+            
+            <div class="doc"><p>Returns a sequence of maps representing unmangled clojure fields.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-file-classes">file-classes</h3>
+            <div class="usage">[vm filename]</div>
+            
+            
+            <div class="doc"><p>Return all classes for the given path</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-file-namespace">file-namespace</h3>
+            <div class="usage">[classpath filepath]</div>
+            
+            
+            <div class="doc"><p>Get the top level namespace for the given file path</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-filepaths">filepaths</h3>
+            <div class="usage">[classpath]</div>
+            
+            
+            <div class="doc"><p>Returns a sequence of JarFile objects for the jar files on classpath.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-filepaths-from-jar">filepaths-from-jar</h3>
+            <div class="usage">[jar-file]</div>
+            
+            
+            <div class="doc"><p>Returns a sequence of Strings naming the non-directory entries in jar-file.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-frame-field-values">frame-field-values</h3>
+            <div class="usage">[frame fields]</div>
+            
+            
+            <div class="doc"><p>Fields for the frame's this object.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-frame-fields">frame-fields</h3>
+            <div class="usage">[frame]</div>
+            
+            
+            <div class="doc"><p>Fields for the frame's this object.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-frame-locals">frame-locals</h3>
+            <div class="usage">[frame]</div>
+            
+            
+            <div class="doc"><p>Returns a map from LocalVariable to Value</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-handle-event">handle-event</h3>
+            
+            
+            
+            <div class="doc"><p>Client code should implement this for event tyoes that it is interested
+in receiving.
+By default, events are ignored.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-handle-event-set">handle-event-set</h3>
+            <div class="usage">[queue connected context f]</div>
+            
+            
+            <div class="doc"><p>NB, this resumes the event-set, so you will need to suspend within
+the handlers if required.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-invoke-method">invoke-method</h3>
+            <div class="usage">[thread {:keys [threading disable-exception-requests], :or {threading invoke-single-threaded, disable-exception-requests false}, :as options} class-or-object method args]</div>
+            
+            
+            <div class="doc"><p>Methods can only be invoked on threads suspended for exceptions.
+<code>args</code> is a sequence of remote object references.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-jar-file%3F">jar-file?</h3>
+            <div class="usage">[file]</div>
+            
+            
+            <div class="doc"><p>Returns true if file is a normal file with a .jar or .JAR extension.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-launch">launch</h3>
+            <div class="usage">[classpath expr options]</div><div class="usage">[classpath expr]</div>
+            
+            
+            <div class="doc"><p>Launch a vm.
+<code>classpath</code> is a string to pass as the classpath, and <code>expr</code> is an
+sexp that will be passed to clojure.main.</p>
+
+<p>Returns an instance of VirtualMachine.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-line-breakpoints">line-breakpoints</h3>
+            <div class="usage">[vm suspend-policy namespace filename line]</div>
+            
+            
+            <div class="doc"><p>Create breakpoints at the given location</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-local-maps">local-maps</h3>
+            <div class="usage">[locals unmangle?]</div>
+            
+            
+            <div class="doc"><p>Returns a sequence of maps representing unmangled clojure locals.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-location-data">location-data</h3>
+            <div class="usage">[location]</div>
+            
+            
+            <div class="doc"><p>Take a location, and extract function source and line.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-matching-classpath-files">matching-classpath-files</h3>
+            <div class="usage">[classpath filepath]</div>
+            
+            
+            <div class="doc"><p>Return a sequence of class paths that the specified filepath matches.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-method-line-locations">method-line-locations</h3>
+            <div class="usage">[method line]</div>
+            
+            
+            <div class="doc"><p>Return all locations at the given line for the given method.
+If the line doesn't exist for the given class, returns nil.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-methods">methods</h3>
+            <div class="usage">[class method-name]</div><div class="usage">[class method-name signature]</div>
+            
+            
+            <div class="doc"><p>Return a class's methods with name from the vm.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-mirror-of">mirror-of</h3>
+            <div class="usage">[vm value]</div>
+            
+            
+            <div class="doc"><p>Mirror a primitive value or string into the given vm.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-namespace-classes">namespace-classes</h3>
+            <div class="usage">[vm namespace]</div>
+            
+            
+            <div class="doc"><p>Return all classes for the given namespace</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-namespace-for-path">namespace-for-path</h3>
+            <div class="usage">[path]</div>
+            
+            
+            <div class="doc"><p>Takes a path and builds a namespace string from it</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-resume-thread">resume-thread</h3>
+            <div class="usage">[thread]</div>
+            
+            
+            <div class="doc"><p>Resume a thread reference</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-resume-threads">resume-threads</h3>
+            <div class="usage">[threads]</div>
+            
+            
+            <div class="doc"><p>Suspend a thread reference</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-run-events">run-events</h3>
+            <div class="usage">[vm connected context]</div><div class="usage">[vm connected context f]</div>
+            
+            
+            <div class="doc"><p>Run the event loop for the specified vm. <code>connected</code> should be an atom
+that can be set to false to cleanly shut down the event loop.
+context is passed opaquely to the event handlers.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-shutdown">shutdown</h3>
+            <div class="usage">[context]</div>
+            
+            
+            <div class="doc"><p>Shut down virtual machine.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-step-request">step-request</h3>
+            <div class="usage">[thread size depth]</div>
+            
+            
+            <div class="doc"><p>Create an step request
+<code>size</code> is one of :min or :line
+<code>depth</code> is one of :into, :over or :out</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-suspend-policy">suspend-policy</h3>
+            <div class="usage">[request policy]</div>
+            
+            
+            <div class="doc"><p>Set the suspend policy for an exeception request.
+policy is one of :suspend-all, :suspend-event-thread, or :suspend-none</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-suspend-thread">suspend-thread</h3>
+            <div class="usage">[thread]</div>
+            
+            
+            <div class="doc"><p>Suspend a thread reference</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-suspend-threads">suspend-threads</h3>
+            <div class="usage">[threads]</div>
+            
+            
+            <div class="doc"><p>Suspend a thread reference</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-thread-data">thread-data</h3>
+            <div class="usage">[thread]</div>
+            
+            
+            <div class="doc"><p>Returns thread data</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-thread-groups">thread-groups</h3>
+            <div class="usage">[vm]</div>
+            
+            
+            <div class="doc"><p>Build a thread group tree</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-threads-in-group">threads-in-group</h3>
+            <div class="usage">[vm group-name]</div>
+            
+            
+            <div class="doc"><p>Returns all threads under a named group</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-unmangled-frame-locals">unmangled-frame-locals</h3>
+            <div class="usage">[frame]</div>
+            
+            
+            <div class="doc"><p>Return a sequence of maps, representing the fields and locals in a frame.
+Each map has :name, :unmangled-name and :value keys, and either a :field
+or a :local key.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-unmunge-clojure">unmunge-clojure</h3>
+            <div class="usage">[munged-name]</div>
+            
+            
+            <div class="doc"><p>unmunge a clojure name</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-visible-clojure-fields">visible-clojure-fields</h3>
+            <div class="usage">[fields]</div>
+            
+            
+            <div class="doc"><p>Return the subset of fields that should be visible.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-vm-event-daemon">vm-event-daemon</h3>
+            <div class="usage">[vm connected context]</div>
+            
+            
+            <div class="doc"><p>Runs a thread to dispatch the vm events
+<code>connected</code> is an atom to to allow clean loop shutdown</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-vm-stream-daemons">vm-stream-daemons</h3>
+            <div class="usage">[vm {:keys [in out err]}]</div>
+            
+            
+            <div class="doc"><p>Start threads to copy standard input, output and error streams</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

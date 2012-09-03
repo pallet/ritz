@@ -1,0 +1,161 @@
+<html lang="en">
+  <head>
+    <title>ritz.jpda.jdi-clj documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-debugger 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.debugger.break.html">ritz.debugger.break</a></li><li class="ns-link"><a href="ritz.debugger.connection.html">ritz.debugger.connection</a></li><li class="ns-link"><a href="ritz.debugger.exception-filters.html">ritz.debugger.exception-filters</a></li><li class="ns-link"><a href="ritz.debugger.executor.html">ritz.debugger.executor</a></li><li class="ns-link"><a href="ritz.debugger.inspect.html">ritz.debugger.inspect</a></li><li class="ns-link"><a href="ritz.jpda.debug.html">ritz.jpda.debug</a></li><li class="ns-link"><a href="ritz.jpda.disassemble.html">ritz.jpda.disassemble</a></li><li class="ns-link"><a href="ritz.jpda.jdi.html">ritz.jpda.jdi</a></li><li class="ns-link"><a href="ritz.jpda.jdi-clj.html">ritz.jpda.jdi-clj</a></li><li class="ns-link"><a href="ritz.jpda.jdi-vm.html">ritz.jpda.jdi-vm</a></li><li class="ns-link"><a href="ritz.jpda.swell.html">ritz.jpda.swell</a></li><li class="ns-link"><a href="ritz.jpda.swell.impl.html">ritz.jpda.swell.impl</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-RemoteObject">RemoteObject</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-clojure-fn">clojure-fn</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-clojure-fn-deref">clojure-fn-deref</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-control-eval">control-eval</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-eval">eval</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-eval-to-string">eval-to-string</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-eval-to-value">eval-to-value</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-exception-message">exception-message</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-invoke-clojure-fn">invoke-clojure-fn</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-invoke-signature">invoke-signature</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-pr-str-arg">pr-str-arg</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-read-arg">read-arg</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-remote-call">remote-call</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-remote-str">remote-str</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-remote-thread">remote-thread</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-remote-thread-form">remote-thread-form</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.jpda.jdi-clj documentation</h2>
+        <div class="doc"><p>Clojure execution over jdi. Uses a context map to to represent the vm.</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-RemoteObject">RemoteObject</h3>
+            
+            
+            
+            <div class="doc"><p>Protocol for obtaining a remote object reference</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-clojure-fn">clojure-fn</h3>
+            <div class="usage">[context thread options ns name n]</div>
+            
+            
+            <div class="doc"><p>Resolve a clojure function in the remote vm. Returns an ObjectReference and
+a Method for n arguments.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-clojure-fn-deref">clojure-fn-deref</h3>
+            <div class="usage">[context thread options ns name n]</div><div class="usage">[context thread options ns name]</div>
+            
+            
+            <div class="doc"><p>Resolve a clojure function in the remote vm. Returns an ObjectReference and
+a Method for n arguments.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-control-eval">control-eval</h3>
+            <div class="usage">[context form]</div>
+            
+            
+            <div class="doc"><p>Eval an expression on the control thread. This uses single-threaded
+invocation, since the control thread is suspended in isolation.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-eval">eval</h3>
+            <div class="usage">[context thread options form]</div>
+            
+            
+            <div class="doc"><p>eval a form on the remote machine and return a local value.  Relies on the
+value being readable. If it is unreadable, then a string as output by pr-str
+on the remote machine is returned.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-eval-to-string">eval-to-string</h3>
+            <div class="usage">[context thread options form]</div>
+            
+            
+            <div class="doc"><p>Evaluate a form, which must result in a string value. The string
+is return as a local value.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-eval-to-value">eval-to-value</h3>
+            <div class="usage">[context thread options form]</div>
+            
+            
+            <div class="doc"><p>Evaluate the specified form on the given thread. Returns a Value.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-exception-message">exception-message</h3>
+            <div class="usage">[context event]</div>
+            
+            
+            <div class="doc"><p>Returns a local string containing the remote exception's message.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-invoke-clojure-fn">invoke-clojure-fn</h3>
+            <div class="usage">[context thread options ns name &amp; args]</div>
+            
+            
+            <div class="doc"><p>Invoke a clojure function on the specified thread with the given remote
+arguments.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-invoke-signature">invoke-signature</h3>
+            <div class="usage">[n]</div>
+            
+            
+            <div class="doc"><p>Clojure invoke signature for the specified number of arguments</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-pr-str-arg">pr-str-arg</h3>
+            <div class="usage">[context thread options arg]</div>
+            
+            
+            <div class="doc"><p>Read the value of the given arg</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-read-arg">read-arg</h3>
+            <div class="usage">[context thread arg]</div>
+            
+            
+            <div class="doc"><p>Read the value of the given arg</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-remote-call">remote-call</h3>
+            <div class="usage">[context thread options sym &amp; args]</div>
+            
+            
+            <div class="doc"><p>Call a function using thread with the given remote arguments.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-remote-str">remote-str</h3>
+            <div class="usage">[context s]</div>
+            
+            
+            <div class="doc"><p>Create a remote string</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-remote-thread">remote-thread</h3>
+            <div class="usage">[context thread options form thread-options]</div>
+            
+            
+            <div class="doc"><p>Start a remote thread. `thread-options are:
+- :name    set the name of the thread
+- :daemon  daemonise the thread</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-remote-thread-form">remote-thread-form</h3>
+            <div class="usage">[form thread-options]</div>
+            
+            
+            <div class="doc"><p>Returns a form to start a thread to execute the specified form.</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

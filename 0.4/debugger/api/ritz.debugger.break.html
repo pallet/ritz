@@ -1,0 +1,134 @@
+<html lang="en">
+  <head>
+    <title>ritz.debugger.break documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-debugger 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.debugger.break.html">ritz.debugger.break</a></li><li class="ns-link"><a href="ritz.debugger.connection.html">ritz.debugger.connection</a></li><li class="ns-link"><a href="ritz.debugger.exception-filters.html">ritz.debugger.exception-filters</a></li><li class="ns-link"><a href="ritz.debugger.executor.html">ritz.debugger.executor</a></li><li class="ns-link"><a href="ritz.debugger.inspect.html">ritz.debugger.inspect</a></li><li class="ns-link"><a href="ritz.jpda.debug.html">ritz.jpda.debug</a></li><li class="ns-link"><a href="ritz.jpda.disassemble.html">ritz.jpda.disassemble</a></li><li class="ns-link"><a href="ritz.jpda.jdi.html">ritz.jpda.jdi</a></li><li class="ns-link"><a href="ritz.jpda.jdi-clj.html">ritz.jpda.jdi-clj</a></li><li class="ns-link"><a href="ritz.jpda.jdi-vm.html">ritz.jpda.jdi-vm</a></li><li class="ns-link"><a href="ritz.jpda.swell.html">ritz.jpda.swell</a></li><li class="ns-link"><a href="ritz.jpda.swell.impl.html">ritz.jpda.swell.impl</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.debugger.break.html#var-aborting-level%3F">aborting-level?</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-abort-to-level%21">break-abort-to-level!</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-drop-level%21">break-drop-level!</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-drop-levels%21">break-drop-levels!</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-exception-message">break-exception-message</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-exception-message%21">break-exception-message!</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-level-add%21">break-level-add!</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-level-info">break-level-info</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-level-infos">break-level-infos</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-threads">break-threads</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-clear-abort-for-current-level">clear-abort-for-current-level</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-clear-aborts">clear-aborts</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-remove-threads">remove-threads</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.debugger.break documentation</h2>
+        <div class="doc"><p>Break information. Break information is maintained based on thread id. For
+each thread a stack of break level-info's is maintained (since a thread may
+have multiple breaks pending).</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-aborting-level%3F">aborting-level?</h3>
+            <div class="usage">[connection thread-id]</div>
+            
+            
+            <div class="doc"><p>Predicate to check if the current break-level is being aborted.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-abort-to-level%21">break-abort-to-level!</h3>
+            <div class="usage">[connection thread-id level]</div>
+            
+            
+            <div class="doc"><p>Set abort to level.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-drop-level%21">break-drop-level!</h3>
+            <div class="usage">[connection thread-id]</div>
+            
+            
+            <div class="doc"><p>Drop a break level.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-drop-levels%21">break-drop-levels!</h3>
+            <div class="usage">[connection thread-id]</div>
+            
+            
+            <div class="doc"><p>Drop a break level.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-exception-message">break-exception-message</h3>
+            <div class="usage">[connection thread-id event]</div>
+            
+            
+            <div class="doc"><p>Set abort to level.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-exception-message%21">break-exception-message!</h3>
+            <div class="usage">[connection thread-id event exception-message]</div>
+            
+            
+            <div class="doc"><p>Set abort to level.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-level-add%21">break-level-add!</h3>
+            <div class="usage">[connection thread-id level-info]</div>
+            
+            
+            <div class="doc"><p>Add a new break level. This clears :abort-to-level to ensure consistency of
+the break stack.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-level-info">break-level-info</h3>
+            <div class="usage">[connection thread-id]</div>
+            
+            
+            <div class="doc"><p>Obtain the current level. Returns [level-info level-number]</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-level-infos">break-level-infos</h3>
+            <div class="usage">[connection thread-id]</div>
+            
+            
+            <div class="doc"><p>Obtain the all level-infos.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-threads">break-threads</h3>
+            <div class="usage">[connection]</div>
+            
+            
+            <div class="doc"><p>Return threads referenced by context</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-clear-abort-for-current-level">clear-abort-for-current-level</h3>
+            <div class="usage">[connection thread-id]</div>
+            
+            
+            <div class="doc"><p>Clear any abort for the current level</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-clear-aborts">clear-aborts</h3>
+            <div class="usage">[connection]</div>
+            
+            
+            <div class="doc"><p>Clear any abort</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-remove-threads">remove-threads</h3>
+            <div class="usage">[connection thread-ids]</div>
+            
+            
+            <div class="doc"><p>Remove threads from context</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

@@ -1,0 +1,63 @@
+<html lang="en">
+  <head>
+    <title>ritz.nrepl.debug documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-nrepl 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.nrepl.html">ritz.nrepl</a></li><li class="ns-link"><a href="ritz.nrepl.add-thread-id.html">ritz.nrepl.add-thread-id</a></li><li class="ns-link"><a href="ritz.nrepl.commands.html">ritz.nrepl.commands</a></li><li class="ns-link"><a href="ritz.nrepl.connections.html">ritz.nrepl.connections</a></li><li class="ns-link"><a href="ritz.nrepl.debug.html">ritz.nrepl.debug</a></li><li class="ns-link"><a href="ritz.nrepl.debug-eval.html">ritz.nrepl.debug-eval</a></li><li class="ns-link"><a href="ritz.nrepl.exec.html">ritz.nrepl.exec</a></li><li class="ns-link"><a href="ritz.nrepl.handler.html">ritz.nrepl.handler</a></li><li class="ns-link"><a href="ritz.nrepl.middleware.html">ritz.nrepl.middleware</a></li><li class="ns-link"><a href="ritz.nrepl.middleware.apropos.html">ritz.nrepl.middleware.apropos</a></li><li class="ns-link"><a href="ritz.nrepl.middleware.describe-symbol.html">ritz.nrepl.middleware.describe-symbol</a></li><li class="ns-link"><a href="ritz.nrepl.middleware.doc.html">ritz.nrepl.middleware.doc</a></li><li class="ns-link"><a href="ritz.nrepl.middleware.javadoc.html">ritz.nrepl.middleware.javadoc</a></li><li class="ns-link"><a href="ritz.nrepl.pr-values.html">ritz.nrepl.pr-values</a></li><li class="ns-link"><a href="ritz.nrepl.rexec.html">ritz.nrepl.rexec</a></li><li class="ns-link"><a href="ritz.nrepl.simple-eval.html">ritz.nrepl.simple-eval</a></li><li class="ns-link"><a href="ritz.nrepl.transport.html">ritz.nrepl.transport</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.nrepl.debug.html#var-break-on-exception">break-on-exception</a></li><li class="ns-var-link"><a href="ritz.nrepl.debug.html#var-frame-locals-msg">frame-locals-msg</a></li><li class="ns-var-link"><a href="ritz.nrepl.debug.html#var-threads">threads</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.nrepl.debug documentation</h2>
+        <div class="doc"><p>Debugger implementation for nREPL</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-break-on-exception">break-on-exception</h3>
+            <div class="usage">[{:keys [transport], :as connection} flag]</div>
+            
+            
+            <div class="doc"><p>Enable or disable break-on-exception. This captures the message id, so that
+the events can be delivered back.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-frame-locals-msg">frame-locals-msg</h3>
+            <div class="usage">[locals-map]</div>
+            
+            
+            <div class="doc"><p>Message to return frame locals for slime.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-threads">threads</h3>
+            <div class="usage">[context &amp; {:keys [no-format]}]</div>
+            
+            
+            <div class="doc"><p>Provide a list of threads. The list is cached in the context
+to allow it to be retrieved by index.</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

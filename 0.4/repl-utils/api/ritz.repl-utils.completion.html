@@ -1,0 +1,106 @@
+<html lang="en">
+  <head>
+    <title>ritz.repl-utils.completion documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-repl-utils 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.logging.html">ritz.logging</a></li><li class="ns-link"><a href="ritz.repl-utils.arglist.html">ritz.repl-utils.arglist</a></li><li class="ns-link"><a href="ritz.repl-utils.class-browse.html">ritz.repl-utils.class-browse</a></li><li class="ns-link"><a href="ritz.repl-utils.clojure.html">ritz.repl-utils.clojure</a></li><li class="ns-link"><a href="ritz.repl-utils.compile.html">ritz.repl-utils.compile</a></li><li class="ns-link"><a href="ritz.repl-utils.completion.html">ritz.repl-utils.completion</a></li><li class="ns-link"><a href="ritz.repl-utils.doc.html">ritz.repl-utils.doc</a></li><li class="ns-link"><a href="ritz.repl-utils.find.html">ritz.repl-utils.find</a></li><li class="ns-link"><a href="ritz.repl-utils.format.html">ritz.repl-utils.format</a></li><li class="ns-link"><a href="ritz.repl-utils.fuzzy-completion.html">ritz.repl-utils.fuzzy-completion</a></li><li class="ns-link"><a href="ritz.repl-utils.helpers.html">ritz.repl-utils.helpers</a></li><li class="ns-link"><a href="ritz.repl-utils.indent.html">ritz.repl-utils.indent</a></li><li class="ns-link"><a href="ritz.repl-utils.io.html">ritz.repl-utils.io</a></li><li class="ns-link"><a href="ritz.repl-utils.java.html">ritz.repl-utils.java</a></li><li class="ns-link"><a href="ritz.repl-utils.macroexpand.html">ritz.repl-utils.macroexpand</a></li><li class="ns-link"><a href="ritz.repl-utils.mangle.html">ritz.repl-utils.mangle</a></li><li class="ns-link"><a href="ritz.repl-utils.namespaces.html">ritz.repl-utils.namespaces</a></li><li class="ns-link"><a href="ritz.repl-utils.sys.html">ritz.repl-utils.sys</a></li><li class="ns-link"><a href="ritz.repl-utils.trace.html">ritz.repl-utils.trace</a></li><li class="ns-link"><a href="ritz.repl-utils.utils.html">ritz.repl-utils.utils</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-class-name-list">class-name-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-classes-on-path">classes-on-path</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-largest-common-prefix">largest-common-prefix</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-method-name-list">method-name-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-ns-name-list">ns-name-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-public-var-name-list">public-var-name-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-resolve-class">resolve-class</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-static-member-name-list">static-member-name-list</a></li><li class="ns-var-link"><a href="ritz.repl-utils.completion.html#var-var-name-list">var-name-list</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.repl-utils.completion documentation</h2>
+        <div class="doc"><p>Completion functions</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-class-name-list">class-name-list</h3>
+            <div class="usage">[ns]</div>
+            
+            
+            <div class="doc"><p>Returns a list of class names for a given namespace</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-classes-on-path">classes-on-path</h3>
+            <div class="usage">[symbol-string]</div>
+            
+            
+            <div class="doc"><p>Returns a list of Java class and Clojure package names found on the current
+classpath. To minimize noise, list is nil unless a '.' is present in the
+search string, and nested classes are only shown if a '$' is present.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-largest-common-prefix">largest-common-prefix</h3>
+            <div class="usage">[a b]</div>
+            
+            
+            <div class="doc"><p>Returns the largest common prefix of two strings.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-method-name-list">method-name-list</h3>
+            <div class="usage">[ns]</div>
+            
+            
+            <div class="doc"><p>Returns a list of method names (with leading dot) for a given namespace</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-ns-name-list">ns-name-list</h3>
+            <div class="usage">[ns]</div>
+            
+            
+            <div class="doc"><p>Returns a list of potential namespaces for a given namespace</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-public-var-name-list">public-var-name-list</h3>
+            <div class="usage">[ns]</div>
+            
+            
+            <div class="doc"><p>Returns a list of public var names for a given namespace</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-resolve-class">resolve-class</h3>
+            <div class="usage">[sym]</div>
+            
+            
+            <div class="doc"><p>Attempts to resolve a symbol into a java Class. Returns nil on failure.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-static-member-name-list">static-member-name-list</h3>
+            <div class="usage">[class]</div>
+            
+            
+            <div class="doc"><p>Returns a list of static members for a given class</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-var-name-list">var-name-list</h3>
+            <div class="usage">[ns]</div>
+            
+            
+            <div class="doc"><p>Returns a list of all var names for a given
+namespace</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

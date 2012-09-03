@@ -1,0 +1,162 @@
+<html lang="en">
+  <head>
+    <title>Ritz-debugger 0.4.0-SNAPSHOT API documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-debugger 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.debugger.break.html">ritz.debugger.break</a></li><li class="ns-link"><a href="ritz.debugger.connection.html">ritz.debugger.connection</a></li><li class="ns-link"><a href="ritz.debugger.exception-filters.html">ritz.debugger.exception-filters</a></li><li class="ns-link"><a href="ritz.debugger.executor.html">ritz.debugger.executor</a></li><li class="ns-link"><a href="ritz.debugger.inspect.html">ritz.debugger.inspect</a></li><li class="ns-link"><a href="ritz.jpda.debug.html">ritz.jpda.debug</a></li><li class="ns-link"><a href="ritz.jpda.disassemble.html">ritz.jpda.disassemble</a></li><li class="ns-link"><a href="ritz.jpda.jdi.html">ritz.jpda.jdi</a></li><li class="ns-link"><a href="ritz.jpda.jdi-clj.html">ritz.jpda.jdi-clj</a></li><li class="ns-link"><a href="ritz.jpda.jdi-vm.html">ritz.jpda.jdi-vm</a></li><li class="ns-link"><a href="ritz.jpda.swell.html">ritz.jpda.swell</a></li><li class="ns-link"><a href="ritz.jpda.swell.impl.html">ritz.jpda.swell.impl</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-index">
+        <h2 class="project-title">Ritz-debugger 0.4.0-SNAPSHOT API documentation</h2>
+        <div class="doc"><p>Ritz debugger</p>
+</div>
+        <div class="project-namespaces">
+          <div class="namespace">
+            <h3 class="ns-link"><a href="ritz.debugger.break.html">ritz.debugger.break</a></h3>
+            <div class="doc"><p>Break information. Break information is maintained based on thread id. For
+each thread a stack of break level-info's is maintained (since a thread may
+have multiple breaks pending).</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.debugger.break.html#var-aborting-level%3F">aborting-level?</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-abort-to-level%21">break-abort-to-level!</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-drop-level%21">break-drop-level!</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-drop-levels%21">break-drop-levels!</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-exception-message">break-exception-message</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-exception-message%21">break-exception-message!</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-level-add%21">break-level-add!</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-level-info">break-level-info</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-level-infos">break-level-infos</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-break-threads">break-threads</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-clear-abort-for-current-level">clear-abort-for-current-level</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-clear-aborts">clear-aborts</a></li><li class="ns-var-link"><a href="ritz.debugger.break.html#var-remove-threads">remove-threads</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.debugger.connection.html">ritz.debugger.connection</a></h3>
+            <div class="doc"><p>A connection is a map that maintains state for a client.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.debugger.connection.html#var-bindings">bindings</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-bindings-assoc%21">bindings-assoc!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-bindings-merge%21">bindings-merge!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-break-assoc%21">break-assoc!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-break-assoc-in%21">break-assoc-in!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-break-context">break-context</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-break-update%21">break-update!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-break-update-in%21">break-update-in!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-connection-close">connection-close</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-debug-assoc%21">debug-assoc!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-debug-context">debug-context</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-debug-update-in%21">debug-update-in!</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.debugger.exception-filters.html">ritz.debugger.exception-filters</a></h3>
+            <div class="doc"><p>Exception filter relation.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.debugger.exception-filters.html#var-exception-filter-kill%21">exception-filter-kill!</a></li><li class="ns-var-link"><a href="ritz.debugger.exception-filters.html#var-exception-filters">exception-filters</a></li><li class="ns-var-link"><a href="ritz.debugger.exception-filters.html#var-exception-filters-set%21">exception-filters-set!</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.debugger.executor.html">ritz.debugger.executor</a></h3>
+            <div class="doc"><p>Executor for ritz debugger</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.debugger.executor.html#var-execute-loop">execute-loop</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.debugger.inspect.html">ritz.debugger.inspect</a></h3>
+            <div class="doc"><p>Inspection of values</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.debugger.inspect.html#var-value-as-string">value-as-string</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.jpda.debug.html">ritz.jpda.debug</a></h3>
+            <div class="doc"><p>Debug functions using jpda/jdi, used to implement debugger commands via jpda.
+The aim is to move all return messaging back up into ritz.commands.*
+and to accept only vm-context aguments, rather than a connection</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.jpda.debug.html#var-assoc-local">assoc-local</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-break-for-exception%3F">break-for-exception?</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-breakpoints">breakpoints</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-continue-level">continue-level</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-debugger-event-info">debugger-event-info</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-disassemble-method">disassemble-method</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-disassemble-symbol">disassemble-symbol</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-dismiss-break-level">dismiss-break-level</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-display-break-level">display-break-level</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-eval-string-in-frame">eval-string-in-frame</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-event-break-info">event-break-info</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-frame-locals-with-string-values">frame-locals-with-string-values</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-frame-source-location">frame-source-location</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-ignore-exception-catch-location">ignore-exception-catch-location</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-ignore-exception-location">ignore-exception-location</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-ignore-exception-message">ignore-exception-message</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-ignore-exception-type">ignore-exception-type</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-invoke-debugger">invoke-debugger</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-launch-vm">launch-vm</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-line-breakpoint">line-breakpoint</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-local-bindings">local-bindings</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-make-restart">make-restart</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-nth-frame-var">nth-frame-var</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-pprint-eval-string-in-frame">pprint-eval-string-in-frame</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-quit-level">quit-level</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-remote-condition-printer">remote-condition-printer</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-remote-empty-map">remote-empty-map</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-remote-map-sym">remote-map-sym</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-remove-breakpoint">remove-breakpoint</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-resume-break-level">resume-break-level</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-set-remote-values">set-remote-values</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-thread-list">thread-list</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-threads">threads</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-user-threads">user-threads</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-with-local-bindings-form">with-local-bindings-form</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.jpda.disassemble.html">ritz.jpda.disassemble</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-byte-for-uvalue">byte-for-uvalue</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-class-pool-entry">class-pool-entry</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-implicit-arg-values">implicit-arg-values</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-index-consts">index-consts</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-instruction">instruction</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-lookupswitch-size">lookupswitch-size</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-opcodes">opcodes</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-resolve-pool-index-values">resolve-pool-index-values</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-ubyte-value">ubyte-value</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.jpda.jdi.html">ritz.jpda.jdi</a></h3>
+            <div class="doc"><p>JDI wrapper.
+The aim here is to work towards a clojure interface for JDI
+but is currently mainly a set of light wrapper functions.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-breakpoint">breakpoint</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-breakpoint-data">breakpoint-data</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-breakpoints">breakpoints</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-class-line-locations">class-line-locations</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-classes">classes</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-classname-re">classname-re</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-clojure-frame%3F">clojure-frame?</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-connector">connector</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-connector-args">connector-args</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-connectors">connectors</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-event-request-policies">event-request-policies</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-event-suspend-policy">event-suspend-policy</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-event-thread">event-thread</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-exception-event-string">exception-event-string</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-exception-message">exception-message</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-exception-request">exception-request</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-exception-requests">exception-requests</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-field-maps">field-maps</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-file-classes">file-classes</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-file-namespace">file-namespace</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-filepaths">filepaths</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-filepaths-from-jar">filepaths-from-jar</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-frame-field-values">frame-field-values</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-frame-fields">frame-fields</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-frame-locals">frame-locals</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-handle-event">handle-event</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-handle-event-set">handle-event-set</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-invoke-method">invoke-method</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-jar-file%3F">jar-file?</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-launch">launch</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-line-breakpoints">line-breakpoints</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-local-maps">local-maps</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-location-data">location-data</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-matching-classpath-files">matching-classpath-files</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-method-line-locations">method-line-locations</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-methods">methods</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-mirror-of">mirror-of</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-namespace-classes">namespace-classes</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-namespace-for-path">namespace-for-path</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-resume-thread">resume-thread</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-resume-threads">resume-threads</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-run-events">run-events</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-shutdown">shutdown</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-step-request">step-request</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-suspend-policy">suspend-policy</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-suspend-thread">suspend-thread</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-suspend-threads">suspend-threads</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-thread-data">thread-data</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-thread-groups">thread-groups</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-threads-in-group">threads-in-group</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-unmangled-frame-locals">unmangled-frame-locals</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-unmunge-clojure">unmunge-clojure</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-visible-clojure-fields">visible-clojure-fields</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-vm-event-daemon">vm-event-daemon</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi.html#var-vm-stream-daemons">vm-stream-daemons</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.jpda.jdi-clj.html">ritz.jpda.jdi-clj</a></h3>
+            <div class="doc"><p>Clojure execution over jdi. Uses a context map to to represent the vm.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-RemoteObject">RemoteObject</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-clojure-fn">clojure-fn</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-clojure-fn-deref">clojure-fn-deref</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-control-eval">control-eval</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-eval">eval</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-eval-to-string">eval-to-string</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-eval-to-value">eval-to-value</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-exception-message">exception-message</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-invoke-clojure-fn">invoke-clojure-fn</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-invoke-signature">invoke-signature</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-pr-str-arg">pr-str-arg</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-read-arg">read-arg</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-remote-call">remote-call</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-remote-str">remote-str</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-remote-thread">remote-thread</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-clj.html#var-remote-thread-form">remote-thread-form</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.jpda.jdi-vm.html">ritz.jpda.jdi-vm</a></h3>
+            <div class="doc"><p>Virtual machine launch and event handling.</p>
+
+<p>Provides a context for a VM with a :control-thread</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.jpda.jdi-vm.html#var-launch-vm">launch-vm</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-vm.html#var-start-control-thread-body">start-control-thread-body</a></li><li class="ns-var-link"><a href="ritz.jpda.jdi-vm.html#var-vm-rt">vm-rt</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.jpda.swell.html">ritz.jpda.swell</a></h3>
+            <div class="doc"><p>Support for swell restarts</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.jpda.swell.html#var-with-swell">with-swell</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.jpda.swell.impl.html">ritz.jpda.swell.impl</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

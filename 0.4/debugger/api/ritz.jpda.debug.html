@@ -1,0 +1,297 @@
+<html lang="en">
+  <head>
+    <title>ritz.jpda.debug documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-debugger 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.debugger.break.html">ritz.debugger.break</a></li><li class="ns-link"><a href="ritz.debugger.connection.html">ritz.debugger.connection</a></li><li class="ns-link"><a href="ritz.debugger.exception-filters.html">ritz.debugger.exception-filters</a></li><li class="ns-link"><a href="ritz.debugger.executor.html">ritz.debugger.executor</a></li><li class="ns-link"><a href="ritz.debugger.inspect.html">ritz.debugger.inspect</a></li><li class="ns-link"><a href="ritz.jpda.debug.html">ritz.jpda.debug</a></li><li class="ns-link"><a href="ritz.jpda.disassemble.html">ritz.jpda.disassemble</a></li><li class="ns-link"><a href="ritz.jpda.jdi.html">ritz.jpda.jdi</a></li><li class="ns-link"><a href="ritz.jpda.jdi-clj.html">ritz.jpda.jdi-clj</a></li><li class="ns-link"><a href="ritz.jpda.jdi-vm.html">ritz.jpda.jdi-vm</a></li><li class="ns-link"><a href="ritz.jpda.swell.html">ritz.jpda.swell</a></li><li class="ns-link"><a href="ritz.jpda.swell.impl.html">ritz.jpda.swell.impl</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.jpda.debug.html#var-assoc-local">assoc-local</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-break-for-exception%3F">break-for-exception?</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-breakpoints">breakpoints</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-continue-level">continue-level</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-debugger-event-info">debugger-event-info</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-disassemble-method">disassemble-method</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-disassemble-symbol">disassemble-symbol</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-dismiss-break-level">dismiss-break-level</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-display-break-level">display-break-level</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-eval-string-in-frame">eval-string-in-frame</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-event-break-info">event-break-info</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-frame-locals-with-string-values">frame-locals-with-string-values</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-frame-source-location">frame-source-location</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-ignore-exception-catch-location">ignore-exception-catch-location</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-ignore-exception-location">ignore-exception-location</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-ignore-exception-message">ignore-exception-message</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-ignore-exception-type">ignore-exception-type</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-invoke-debugger">invoke-debugger</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-launch-vm">launch-vm</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-line-breakpoint">line-breakpoint</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-local-bindings">local-bindings</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-make-restart">make-restart</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-nth-frame-var">nth-frame-var</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-pprint-eval-string-in-frame">pprint-eval-string-in-frame</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-quit-level">quit-level</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-remote-condition-printer">remote-condition-printer</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-remote-empty-map">remote-empty-map</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-remote-map-sym">remote-map-sym</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-remove-breakpoint">remove-breakpoint</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-resume-break-level">resume-break-level</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-set-remote-values">set-remote-values</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-thread-list">thread-list</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-threads">threads</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-user-threads">user-threads</a></li><li class="ns-var-link"><a href="ritz.jpda.debug.html#var-with-local-bindings-form">with-local-bindings-form</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.jpda.debug documentation</h2>
+        <div class="doc"><p>Debug functions using jpda/jdi, used to implement debugger commands via jpda.
+The aim is to move all return messaging back up into ritz.commands.*
+and to accept only vm-context aguments, rather than a connection</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-assoc-local">assoc-local</h3>
+            <div class="usage">[context thread map-var local]</div>
+            
+            
+            <div class="doc"><p>Assoc a local variable into a remote var</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-for-exception%3F">break-for-exception?</h3>
+            <div class="usage">[exception-event connection]</div>
+            
+            
+            <div class="doc"><p>Predicate to check whether we should invoke the debugger for the given
+exception event</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-breakpoints">breakpoints</h3>
+            <div class="usage">[vm-context]</div>
+            
+            
+            <div class="doc"><p>Return a sequence of breakpoints.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-continue-level">continue-level</h3>
+            <div class="usage">[connection thread-id]</div>
+            
+            
+            <div class="doc"><p>Continue the current level.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-debugger-event-info">debugger-event-info</h3>
+            <div class="usage">[connection event]</div>
+            
+            
+            <div class="doc"><p>Calculate debugger information and invoke</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-disassemble-method">disassemble-method</h3>
+            <div class="usage">[const-pool method]</div>
+            
+            
+            <div class="doc"><p>Dissasemble a method, adding location info</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-disassemble-symbol">disassemble-symbol</h3>
+            <div class="usage">[context thread sym-ns sym-name]</div>
+            
+            
+            <div class="doc"><p>Dissasemble a symbol var</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-dismiss-break-level">dismiss-break-level</h3>
+            
+            
+            
+            <div class="doc"><p>Dismiss any UI displaying the break level</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-display-break-level">display-break-level</h3>
+            
+            
+            
+            <div class="doc"><p>Display any UI for the break level</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-eval-string-in-frame">eval-string-in-frame</h3>
+            <div class="usage">[connection context thread expr frame-number]</div>
+            
+            
+            <div class="doc"><p>Eval the string <code>expr</code> in the context of the specified <code>frame-number</code>.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-event-break-info">event-break-info</h3>
+            <div class="usage">[connection event]</div>
+            
+            
+            <div class="doc"><p>Return a basic break-info for an event</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-frame-locals-with-string-values">frame-locals-with-string-values</h3>
+            <div class="usage">[context thread n]</div>
+            
+            
+            <div class="doc"><p>Return frame locals for slime</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-frame-source-location">frame-source-location</h3>
+            <div class="usage">[thread frame-number]</div>
+            
+            
+            <div class="doc"><p>Return a source location vector [buffer position] for the specified
+frame number.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-ignore-exception-catch-location">ignore-exception-catch-location</h3>
+            <div class="usage">[connection catch-location]</div>
+            
+            
+            <div class="doc"><p>Add the specified exception catch location to the connection's
+never-break-exceptions set.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-ignore-exception-location">ignore-exception-location</h3>
+            <div class="usage">[connection catch-location]</div>
+            
+            
+            <div class="doc"><p>Add the specified exception throw location to the connection's
+never-break-exceptions set.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-ignore-exception-message">ignore-exception-message</h3>
+            <div class="usage">[connection exception-message]</div>
+            
+            
+            <div class="doc"><p>Add the specified exception to the connection's never-break-exceptions set.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-ignore-exception-type">ignore-exception-type</h3>
+            <div class="usage">[connection exception-type]</div>
+            
+            
+            <div class="doc"><p>Add the specified exception to the connection's never-break-exceptions set.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-invoke-debugger">invoke-debugger</h3>
+            <div class="usage">[connection event]</div>
+            
+            
+            <div class="doc"><p>Calculate debugger information and invoke</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-launch-vm">launch-vm</h3>
+            <div class="usage">[{:keys [classpath main], :as options}]</div>
+            
+            
+            <div class="doc"><p>Launch and configure the vm for the debugee.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-line-breakpoint">line-breakpoint</h3>
+            <div class="usage">[vm-context namespace filename line]</div>
+            
+            
+            <div class="doc"><p>Set a line breakpoint.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-local-bindings">local-bindings</h3>
+            <div class="usage">[map-sym locals]</div>
+            
+            
+            <div class="doc"><p>Create a lexical environment with the specified values</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-make-restart">make-restart</h3>
+            <div class="usage">[kw name description f]</div>
+            
+            
+            <div class="doc"><p>Make a restart map.
+Contains
+  :id keyword id
+  :name short name
+  :descritpton longer description
+  :f restart function to invoke</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-nth-frame-var">nth-frame-var</h3>
+            <div class="usage">[context thread frame-index var-index]</div>
+            
+            
+            <div class="doc"><p>Return the var-index'th var in the frame-index'th frame</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-pprint-eval-string-in-frame">pprint-eval-string-in-frame</h3>
+            <div class="usage">[connection context thread expr frame-number]</div>
+            
+            
+            <div class="doc"><p>Eval the string <code>expr</code> in the context of the specified <code>frame-number</code>
+and pretty print the result</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-quit-level">quit-level</h3>
+            <div class="usage">[connection thread-id]</div>
+            
+            
+            <div class="doc"><p>Abort the current level</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-remote-condition-printer">remote-condition-printer</h3>
+            <div class="usage">[context thread]</div>
+            
+            
+            <div class="doc"><p>Return the remote symbol for a var to use for the condition printer</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-remote-empty-map">remote-empty-map</h3>
+            <div class="usage">[context thread]</div>
+            
+            
+            <div class="doc"><p>Return a remote empty map for use in resetting the swank remote var</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-remote-map-sym">remote-map-sym</h3>
+            <div class="usage">[context thread]</div>
+            
+            
+            <div class="doc"><p>Return the remote symbol for a var to use in swank</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-remove-breakpoint">remove-breakpoint</h3>
+            <div class="usage">[connection event]</div>
+            
+            
+            <div class="doc"><p>Remove a line breakpoint.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-resume-break-level">resume-break-level</h3>
+            <div class="usage">[connection {:keys [event user-threads], :as level-info}]</div>
+            
+            
+            <div class="doc"><p>Resume a break level.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-set-remote-values">set-remote-values</h3>
+            <div class="usage">[context thread map-var locals]</div>
+            
+            
+            <div class="doc"><p>Build a map in map-var of name to value for all the locals</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-thread-list">thread-list</h3>
+            <div class="usage">[context]</div>
+            
+            
+            <div class="doc"><p>Provide a list of threads.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-threads">threads</h3>
+            <div class="usage">[context]</div>
+            
+            
+            <div class="doc"><p>Return a sequence containing a thread reference for each remote thread.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-user-threads">user-threads</h3>
+            <div class="usage">[vm-context]</div>
+            
+            
+            <div class="doc"><p>Return the user threads.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-with-local-bindings-form">with-local-bindings-form</h3>
+            <div class="usage">[map-sym locals expr]</div>
+            
+            
+            <div class="doc"><p>Create a form setting up local bindings around the given expr</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

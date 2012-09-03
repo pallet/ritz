@@ -1,0 +1,151 @@
+<html lang="en">
+  <head>
+    <title>ritz.swank.messages documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-swank 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.swank.html">ritz.swank</a></li><li class="ns-link"><a href="ritz.swank.break.html">ritz.swank.break</a></li><li class="ns-link"><a href="ritz.swank.cl.html">ritz.swank.cl</a></li><li class="ns-link"><a href="ritz.swank.commands.html">ritz.swank.commands</a></li><li class="ns-link"><a href="ritz.swank.commands.basic.html">ritz.swank.commands.basic</a></li><li class="ns-link"><a href="ritz.swank.commands.completion.html">ritz.swank.commands.completion</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.html">ritz.swank.commands.contrib</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.ritz.html">ritz.swank.commands.contrib.ritz</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-arglists.html">ritz.swank.commands.contrib.swank-arglists</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-fuzzy.html">ritz.swank.commands.contrib.swank-fuzzy</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-media.html">ritz.swank.commands.contrib.swank-media</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-presentations.html">ritz.swank.commands.contrib.swank-presentations</a></li><li class="ns-link"><a href="ritz.swank.commands.debugger.html">ritz.swank.commands.debugger</a></li><li class="ns-link"><a href="ritz.swank.commands.emacs.html">ritz.swank.commands.emacs</a></li><li class="ns-link"><a href="ritz.swank.commands.inspector.html">ritz.swank.commands.inspector</a></li><li class="ns-link"><a href="ritz.swank.commands.xref.html">ritz.swank.commands.xref</a></li><li class="ns-link"><a href="ritz.swank.connection.html">ritz.swank.connection</a></li><li class="ns-link"><a href="ritz.swank.connections.html">ritz.swank.connections</a></li><li class="ns-link"><a href="ritz.swank.core.html">ritz.swank.core</a></li><li class="ns-link"><a href="ritz.swank.debug.html">ritz.swank.debug</a></li><li class="ns-link"><a href="ritz.swank.hooks.html">ritz.swank.hooks</a></li><li class="ns-link"><a href="ritz.swank.indent.html">ritz.swank.indent</a></li><li class="ns-link"><a href="ritz.swank.inspect.html">ritz.swank.inspect</a></li><li class="ns-link"><a href="ritz.swank.main.html">ritz.swank.main</a></li><li class="ns-link"><a href="ritz.swank.messages.html">ritz.swank.messages</a></li><li class="ns-link"><a href="ritz.swank.proxy.html">ritz.swank.proxy</a></li><li class="ns-link"><a href="ritz.swank.repl.html">ritz.swank.repl</a></li><li class="ns-link"><a href="ritz.swank.rpc.html">ritz.swank.rpc</a></li><li class="ns-link"><a href="ritz.swank.rpc-server.html">ritz.swank.rpc-server</a></li><li class="ns-link"><a href="ritz.swank.rpc-socket-connection.html">ritz.swank.rpc-socket-connection</a></li><li class="ns-link"><a href="ritz.swank.socket-server.html">ritz.swank.socket-server</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.swank.messages.html#var-abort">abort</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-compilation-result">compilation-result</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-compiler-message">compiler-message</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-condition">condition</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-debug">debug</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-debug-activate">debug-activate</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-debug-info">debug-info</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-debug-return">debug-return</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-frame-locals">frame-locals</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-inspect">inspect</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-inspector">inspector</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-location">location</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-ok">ok</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-restart">restart</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.swank.messages documentation</h2>
+        <div class="doc"><p>Swank messages</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-abort">abort</h3>
+            <div class="usage">[id]</div><div class="usage">[id t]</div>
+            
+            
+            <div class="doc"><p>Command aborted message.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-compilation-result">compilation-result</h3>
+            <div class="usage">[notes result duration-s]</div>
+            
+            
+            <div class="doc"><p>Return a compilation result. Clojure doesn't have fasl files so the
+loadp and faslfile are ommited from the end of the message.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-compiler-message">compiler-message</h3>
+            <div class="usage">[m]</div>
+            
+            
+            <div class="doc"><p>A compiler message</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-condition">condition</h3>
+            <div class="usage">[condition-map]</div>
+            
+            
+            <div class="doc"><p>A condition message component</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-debug">debug</h3>
+            <div class="usage">[thread-id level condition-map restarts backtrace continutions]</div>
+            
+            
+            <div class="doc"><p>Provide debugger information</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-debug-activate">debug-activate</h3>
+            <div class="usage">[thread-id level activate]</div><div class="usage">[thread-id level]</div>
+            
+            
+            <div class="doc"><p>Activate debugger</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-debug-info">debug-info</h3>
+            <div class="usage">[condition-map restarts backtrace continutions]</div>
+            
+            
+            <div class="doc"><p>Provide debugger information</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-debug-return">debug-return</h3>
+            <div class="usage">[thread-id level stepping]</div><div class="usage">[thread-id level]</div>
+            
+            
+            <div class="doc"><p>Message to end debugging.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-frame-locals">frame-locals</h3>
+            <div class="usage">[locals-map]</div>
+            
+            
+            <div class="doc"><p>Message to return frame locals for slime.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-inspect">inspect</h3>
+            <div class="usage">[object-string]</div>
+            
+            
+            <div class="doc"><p>Message to request an inspector for given content, as a readable string.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-inspector">inspector</h3>
+            <div class="usage">[[title id content]]</div>
+            
+            
+            <div class="doc"><p>Message for an inspector</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-location">location</h3>
+            <div class="usage">[[{:keys [file buffer source-form zip], :as buffer-path} {:keys [position offset line column function-name method source-path eof], :as buffer-position} hints]]</div>
+            
+            
+            <div class="doc"><p>A source location. Only one key can be specifed for each map.
+From slime-goto-source-location docstring:
+<buffer>   ::= (:file <filename>)
+             | (:buffer <buffername>)
+             | (:source-form <string>)
+             | (:zip <file> <entry>)</entry></file></string></buffername></filename></buffer></p>
+
+<p><position> ::= (:position <fixnum>) ; 1 based (for files)
+             | (:offset <start> <offset>) ; start+offset (for C-c C-c)
+             | (:line <line> [<column>])
+             | (:function-name <string>)
+             | (:source-path <list> <start-position>)
+             | (:method <name string="string"> <specializer strings="strings"> . <qualifiers>)</qualifiers></specializer></name></start-position></list></string></column></line></offset></start></fixnum></position></p>
+</div>
+          </div><div class="public">
+            <h3 id="var-ok">ok</h3>
+            <div class="usage">[result id]</div>
+            
+            
+            <div class="doc"><p>Command completed message.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-restart">restart</h3>
+            <div class="usage">[{:keys [name description]}]</div>
+            
+            
+            <div class="doc"><p>A restart message component</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

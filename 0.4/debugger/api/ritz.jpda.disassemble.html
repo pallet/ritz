@@ -1,0 +1,105 @@
+<html lang="en">
+  <head>
+    <title>ritz.jpda.disassemble documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-debugger 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.debugger.break.html">ritz.debugger.break</a></li><li class="ns-link"><a href="ritz.debugger.connection.html">ritz.debugger.connection</a></li><li class="ns-link"><a href="ritz.debugger.exception-filters.html">ritz.debugger.exception-filters</a></li><li class="ns-link"><a href="ritz.debugger.executor.html">ritz.debugger.executor</a></li><li class="ns-link"><a href="ritz.debugger.inspect.html">ritz.debugger.inspect</a></li><li class="ns-link"><a href="ritz.jpda.debug.html">ritz.jpda.debug</a></li><li class="ns-link"><a href="ritz.jpda.disassemble.html">ritz.jpda.disassemble</a></li><li class="ns-link"><a href="ritz.jpda.jdi.html">ritz.jpda.jdi</a></li><li class="ns-link"><a href="ritz.jpda.jdi-clj.html">ritz.jpda.jdi-clj</a></li><li class="ns-link"><a href="ritz.jpda.jdi-vm.html">ritz.jpda.jdi-vm</a></li><li class="ns-link"><a href="ritz.jpda.swell.html">ritz.jpda.swell</a></li><li class="ns-link"><a href="ritz.jpda.swell.impl.html">ritz.jpda.swell.impl</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-byte-for-uvalue">byte-for-uvalue</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-class-pool-entry">class-pool-entry</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-implicit-arg-values">implicit-arg-values</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-index-consts">index-consts</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-instruction">instruction</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-lookupswitch-size">lookupswitch-size</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-opcodes">opcodes</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-resolve-pool-index-values">resolve-pool-index-values</a></li><li class="ns-var-link"><a href="ritz.jpda.disassemble.html#var-ubyte-value">ubyte-value</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.jpda.disassemble documentation</h2>
+        <div class="doc">
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-byte-for-uvalue">byte-for-uvalue</h3>
+            <div class="usage">[i]</div>
+            
+            
+            <div class="doc"><p>convert an int into a byte value with correct bits for an unsigned byte</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-class-pool-entry">class-pool-entry</h3>
+            <div class="usage">[bytes]</div>
+            
+            
+            <div class="doc"><p>:index is index to class name</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-implicit-arg-values">implicit-arg-values</h3>
+            <div class="usage">[const-pool args]</div>
+            
+            
+            <div class="doc"><p>Obtain opcode implicit arguments</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-index-consts">index-consts</h3>
+            <div class="usage">[consts]</div>
+            
+            
+            <div class="doc"><p>Insert dummy index values for long and double entries</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-instruction">instruction</h3>
+            <div class="usage">[const-pool bytecode address]</div>
+            
+            
+            <div class="doc"><p>Dissasmble an instruction</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-lookupswitch-size">lookupswitch-size</h3>
+            <div class="usage">[address bytecode]</div>
+            
+            
+            <div class="doc"><p>Size of a lookupswitch op.
+See: </p>
+</div>
+          </div><div class="public">
+            <h3 id="var-opcodes">opcodes</h3>
+            
+            
+            
+            <div class="doc"><p>Each element is:
+[opcode nemonic description args opstack-pop opstack-push</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-resolve-pool-index-values">resolve-pool-index-values</h3>
+            <div class="usage">[consts]</div>
+            
+            
+            <div class="doc"><p>Lookup the index values in the consts pool.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-ubyte-value">ubyte-value</h3>
+            <div class="usage">[byte]</div>
+            
+            
+            <div class="doc"><p>convert an unsigned byte value to an int</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

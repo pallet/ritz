@@ -1,0 +1,99 @@
+<html lang="en">
+  <head>
+    <title>ritz.nrepl documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-nrepl 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.nrepl.html">ritz.nrepl</a></li><li class="ns-link"><a href="ritz.nrepl.add-thread-id.html">ritz.nrepl.add-thread-id</a></li><li class="ns-link"><a href="ritz.nrepl.commands.html">ritz.nrepl.commands</a></li><li class="ns-link"><a href="ritz.nrepl.connections.html">ritz.nrepl.connections</a></li><li class="ns-link"><a href="ritz.nrepl.debug.html">ritz.nrepl.debug</a></li><li class="ns-link"><a href="ritz.nrepl.debug-eval.html">ritz.nrepl.debug-eval</a></li><li class="ns-link"><a href="ritz.nrepl.exec.html">ritz.nrepl.exec</a></li><li class="ns-link"><a href="ritz.nrepl.handler.html">ritz.nrepl.handler</a></li><li class="ns-link"><a href="ritz.nrepl.middleware.html">ritz.nrepl.middleware</a></li><li class="ns-link"><a href="ritz.nrepl.middleware.apropos.html">ritz.nrepl.middleware.apropos</a></li><li class="ns-link"><a href="ritz.nrepl.middleware.describe-symbol.html">ritz.nrepl.middleware.describe-symbol</a></li><li class="ns-link"><a href="ritz.nrepl.middleware.doc.html">ritz.nrepl.middleware.doc</a></li><li class="ns-link"><a href="ritz.nrepl.middleware.javadoc.html">ritz.nrepl.middleware.javadoc</a></li><li class="ns-link"><a href="ritz.nrepl.pr-values.html">ritz.nrepl.pr-values</a></li><li class="ns-link"><a href="ritz.nrepl.rexec.html">ritz.nrepl.rexec</a></li><li class="ns-link"><a href="ritz.nrepl.simple-eval.html">ritz.nrepl.simple-eval</a></li><li class="ns-link"><a href="ritz.nrepl.transport.html">ritz.nrepl.transport</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.nrepl.html#var-debug-handler">debug-handler</a></li><li class="ns-var-link"><a href="ritz.nrepl.html#var-execute-eval">execute-eval</a></li><li class="ns-var-link"><a href="ritz.nrepl.html#var-jpda-eval-middleware">jpda-eval-middleware</a></li><li class="ns-var-link"><a href="ritz.nrepl.html#var-make-connection">make-connection</a></li><li class="ns-var-link"><a href="ritz.nrepl.html#var-process-reply">process-reply</a></li><li class="ns-var-link"><a href="ritz.nrepl.html#var-rexec-handler">rexec-handler</a></li><li class="ns-var-link"><a href="ritz.nrepl.html#var-start-remote-thread">start-remote-thread</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.nrepl documentation</h2>
+        <div class="doc"><p>nrepl support for ritz.</p>
+
+<p>nREPL has a concept of session, that maintains state based on a session id
+that is passed back and forth from client and server. We use this session to
+store some extra info. We also unify the session id across the jpda and user
+processes.</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-debug-handler">debug-handler</h3>
+            <div class="usage">[host port]</div>
+            
+            
+            <div class="doc"><p>nrepl handler with debug support</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-execute-eval">execute-eval</h3>
+            <div class="usage">[host port {:keys [op transport], :as msg}]</div>
+            
+            
+            <div class="doc"><p>Execute a jpda action</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-jpda-eval-middleware">jpda-eval-middleware</h3>
+            <div class="usage">[]</div>
+            
+            
+            <div class="doc"><p>Handler for jpda actions</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-make-connection">make-connection</h3>
+            <div class="usage">[msg]</div>
+            
+            
+            <div class="doc"><p>Return a new connection map, saving the message's transport for later
+reference.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-process-reply">process-reply</h3>
+            <div class="usage">[{:keys [id new-session session status], :as msg}]</div>
+            
+            
+            <div class="doc"><p>Process a reply. The reply is expected to have a session id. If this is the
+first reply for a session, the connection is looked up in the pending-ids map
+based on the message id and added to the connections map. Otherwise the
+connection is found in the connections map based on the session id.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-rexec-handler">rexec-handler</h3>
+            <div class="usage">[host port]</div>
+            
+            
+            <div class="doc"><p>Handler for jpda actions</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-start-remote-thread">start-remote-thread</h3>
+            <div class="usage">[vm thread-name]</div>
+            
+            
+            <div class="doc"><p>Start a remote thread in the specified vm context, using thread-name to
+generate a name for the thread.</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

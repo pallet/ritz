@@ -1,0 +1,116 @@
+<html lang="en">
+  <head>
+    <title>ritz.swank.debug documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-swank 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.swank.html">ritz.swank</a></li><li class="ns-link"><a href="ritz.swank.break.html">ritz.swank.break</a></li><li class="ns-link"><a href="ritz.swank.cl.html">ritz.swank.cl</a></li><li class="ns-link"><a href="ritz.swank.commands.html">ritz.swank.commands</a></li><li class="ns-link"><a href="ritz.swank.commands.basic.html">ritz.swank.commands.basic</a></li><li class="ns-link"><a href="ritz.swank.commands.completion.html">ritz.swank.commands.completion</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.html">ritz.swank.commands.contrib</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.ritz.html">ritz.swank.commands.contrib.ritz</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-arglists.html">ritz.swank.commands.contrib.swank-arglists</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-fuzzy.html">ritz.swank.commands.contrib.swank-fuzzy</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-media.html">ritz.swank.commands.contrib.swank-media</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-presentations.html">ritz.swank.commands.contrib.swank-presentations</a></li><li class="ns-link"><a href="ritz.swank.commands.debugger.html">ritz.swank.commands.debugger</a></li><li class="ns-link"><a href="ritz.swank.commands.emacs.html">ritz.swank.commands.emacs</a></li><li class="ns-link"><a href="ritz.swank.commands.inspector.html">ritz.swank.commands.inspector</a></li><li class="ns-link"><a href="ritz.swank.commands.xref.html">ritz.swank.commands.xref</a></li><li class="ns-link"><a href="ritz.swank.connection.html">ritz.swank.connection</a></li><li class="ns-link"><a href="ritz.swank.connections.html">ritz.swank.connections</a></li><li class="ns-link"><a href="ritz.swank.core.html">ritz.swank.core</a></li><li class="ns-link"><a href="ritz.swank.debug.html">ritz.swank.debug</a></li><li class="ns-link"><a href="ritz.swank.hooks.html">ritz.swank.hooks</a></li><li class="ns-link"><a href="ritz.swank.indent.html">ritz.swank.indent</a></li><li class="ns-link"><a href="ritz.swank.inspect.html">ritz.swank.inspect</a></li><li class="ns-link"><a href="ritz.swank.main.html">ritz.swank.main</a></li><li class="ns-link"><a href="ritz.swank.messages.html">ritz.swank.messages</a></li><li class="ns-link"><a href="ritz.swank.proxy.html">ritz.swank.proxy</a></li><li class="ns-link"><a href="ritz.swank.repl.html">ritz.swank.repl</a></li><li class="ns-link"><a href="ritz.swank.rpc.html">ritz.swank.rpc</a></li><li class="ns-link"><a href="ritz.swank.rpc-server.html">ritz.swank.rpc-server</a></li><li class="ns-link"><a href="ritz.swank.rpc-socket-connection.html">ritz.swank.rpc-socket-connection</a></li><li class="ns-link"><a href="ritz.swank.socket-server.html">ritz.swank.socket-server</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.swank.debug.html#var-backtrace">backtrace</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-breakpoint-list">breakpoint-list</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-debugger-info-for-emacs">debugger-info-for-emacs</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-disassemble-symbol">disassemble-symbol</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-execute-unless-inspect">execute-unless-inspect</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-launch-vm-with-swank">launch-vm-with-swank</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-line-breakpoint">line-breakpoint</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-remote-swank-port">remote-swank-port</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-setup-debugee">setup-debugee</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-thread-list">thread-list</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.swank.debug documentation</h2>
+        <div class="doc"><p>Debugger interaction for swank</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-backtrace">backtrace</h3>
+            <div class="usage">[connection start end]</div>
+            
+            
+            <div class="doc"><p>Create a backtrace for the specified frames.
+TODO: seperate out return message generation.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-breakpoint-list">breakpoint-list</h3>
+            <div class="usage">[connection]</div>
+            
+            
+            <div class="doc"><p>Update the context with a list of breakpoints. The list is cached in the
+context to allow it to be retrieveb by index.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-debugger-info-for-emacs">debugger-info-for-emacs</h3>
+            <div class="usage">[connection start end]</div>
+            
+            
+            <div class="doc"><p>Calculate debugger display information</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-disassemble-symbol">disassemble-symbol</h3>
+            <div class="usage">[context thread sym-ns sym-name]</div>
+            
+            
+            <div class="doc"><p>Dissasemble a symbol var</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-execute-unless-inspect">execute-unless-inspect</h3>
+            <div class="usage">[handler]</div>
+            
+            
+            <div class="doc"><p>If the function has resolved (in the debug proxy) then execute it,
+otherwise pass it on.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-launch-vm-with-swank">launch-vm-with-swank</h3>
+            <div class="usage">[{:keys [port announce log-level classpath], :as options}]</div>
+            
+            
+            <div class="doc"><p>Launch and configure the vm for the debugee.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-line-breakpoint">line-breakpoint</h3>
+            <div class="usage">[connection namespace filename line]</div>
+            
+            
+            <div class="doc"><p>Set a breakpoint at the specified line. Updates the vm-context in the
+connection.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-remote-swank-port">remote-swank-port</h3>
+            <div class="usage">[context]</div>
+            
+            
+            <div class="doc"><p>Obtain the swank port on the remote vm</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-setup-debugee">setup-debugee</h3>
+            <div class="usage">[connection]</div>
+            
+            
+            <div class="doc"><p>Forward info to the debuggee. This uses request id 0, which will be
+filtered from returning a reply to slime.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-thread-list">thread-list</h3>
+            <div class="usage">[connection]</div>
+            
+            
+            <div class="doc"><p>Provide a list of threads. The list is cached in the context
+to allow it to be retrieved by index.</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

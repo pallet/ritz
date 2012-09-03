@@ -1,0 +1,96 @@
+<html lang="en">
+  <head>
+    <title>ritz.repl-utils.class-browse documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-repl-utils 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.logging.html">ritz.logging</a></li><li class="ns-link"><a href="ritz.repl-utils.arglist.html">ritz.repl-utils.arglist</a></li><li class="ns-link"><a href="ritz.repl-utils.class-browse.html">ritz.repl-utils.class-browse</a></li><li class="ns-link"><a href="ritz.repl-utils.clojure.html">ritz.repl-utils.clojure</a></li><li class="ns-link"><a href="ritz.repl-utils.compile.html">ritz.repl-utils.compile</a></li><li class="ns-link"><a href="ritz.repl-utils.completion.html">ritz.repl-utils.completion</a></li><li class="ns-link"><a href="ritz.repl-utils.doc.html">ritz.repl-utils.doc</a></li><li class="ns-link"><a href="ritz.repl-utils.find.html">ritz.repl-utils.find</a></li><li class="ns-link"><a href="ritz.repl-utils.format.html">ritz.repl-utils.format</a></li><li class="ns-link"><a href="ritz.repl-utils.fuzzy-completion.html">ritz.repl-utils.fuzzy-completion</a></li><li class="ns-link"><a href="ritz.repl-utils.helpers.html">ritz.repl-utils.helpers</a></li><li class="ns-link"><a href="ritz.repl-utils.indent.html">ritz.repl-utils.indent</a></li><li class="ns-link"><a href="ritz.repl-utils.io.html">ritz.repl-utils.io</a></li><li class="ns-link"><a href="ritz.repl-utils.java.html">ritz.repl-utils.java</a></li><li class="ns-link"><a href="ritz.repl-utils.macroexpand.html">ritz.repl-utils.macroexpand</a></li><li class="ns-link"><a href="ritz.repl-utils.mangle.html">ritz.repl-utils.mangle</a></li><li class="ns-link"><a href="ritz.repl-utils.namespaces.html">ritz.repl-utils.namespaces</a></li><li class="ns-link"><a href="ritz.repl-utils.sys.html">ritz.repl-utils.sys</a></li><li class="ns-link"><a href="ritz.repl-utils.trace.html">ritz.repl-utils.trace</a></li><li class="ns-link"><a href="ritz.repl-utils.utils.html">ritz.repl-utils.utils</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-class-or-ns-name">class-or-ns-name</a></li><li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-classpath">classpath</a></li><li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-classpath-urls">classpath-urls</a></li><li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-file-for-url">file-for-url</a></li><li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-path-class-files">path-class-files</a></li><li class="ns-var-link"><a href="ritz.repl-utils.class-browse.html#var-scan-paths">scan-paths</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.repl-utils.class-browse documentation</h2>
+        <div class="doc"><p>Provides Java classpath and (compiled) Clojure namespace browsing.
+Scans the classpath for all class files, and provides functions for
+categorizing them. Classes are resolved on the start-up classpath only.
+Calls to 'add-classpath', etc are not considered.</p>
+
+<p>Class information is built as a list of maps of the following keys:
+  :name  Java class or Clojure namespace name
+  :loc   Classpath entry (directory or jar) on which the class is located
+  :file  Path of the class file, relative to :loc</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-class-or-ns-name">class-or-ns-name</h3>
+            <div class="usage">[n]</div>
+            
+            
+            <div class="doc"><p>Returns the Java class or Clojure namespace name for a class relative path.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-classpath">classpath</h3>
+            <div class="usage">[]</div>
+            
+            
+            <div class="doc"><p>Return the classpath File's for the current clojure classloader.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-classpath-urls">classpath-urls</h3>
+            <div class="usage">[]</div>
+            
+            
+            <div class="doc"><p>Return the classpath URL's for the current clojure classloader.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-file-for-url">file-for-url</h3>
+            <div class="usage">[url]</div>
+            
+            
+            <div class="doc"><p>Convert a URL to a File. </p>
+</div>
+          </div><div class="public">
+            <h3 id="var-path-class-files">path-class-files</h3>
+            
+            
+            
+            <div class="doc"><p>Returns a list of classes found on the specified path location
+(jar or directory), each comprised of a map with the following keys:
+  :name  Java class or Clojure namespace name
+  :loc   Classpath entry (directory or jar) on which the class is located
+  :file  Path of the class file, relative to :loc</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-scan-paths">scan-paths</h3>
+            <div class="usage">[files]</div>
+            
+            
+            <div class="doc"><p>Takes one or more classpath strings, scans each classpath entry location, and
+returns a list of all class file paths found, each relative to its parent
+directory or jar on the classpath.</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

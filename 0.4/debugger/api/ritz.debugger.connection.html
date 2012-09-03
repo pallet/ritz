@@ -1,0 +1,124 @@
+<html lang="en">
+  <head>
+    <title>ritz.debugger.connection documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-debugger 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.debugger.break.html">ritz.debugger.break</a></li><li class="ns-link"><a href="ritz.debugger.connection.html">ritz.debugger.connection</a></li><li class="ns-link"><a href="ritz.debugger.exception-filters.html">ritz.debugger.exception-filters</a></li><li class="ns-link"><a href="ritz.debugger.executor.html">ritz.debugger.executor</a></li><li class="ns-link"><a href="ritz.debugger.inspect.html">ritz.debugger.inspect</a></li><li class="ns-link"><a href="ritz.jpda.debug.html">ritz.jpda.debug</a></li><li class="ns-link"><a href="ritz.jpda.disassemble.html">ritz.jpda.disassemble</a></li><li class="ns-link"><a href="ritz.jpda.jdi.html">ritz.jpda.jdi</a></li><li class="ns-link"><a href="ritz.jpda.jdi-clj.html">ritz.jpda.jdi-clj</a></li><li class="ns-link"><a href="ritz.jpda.jdi-vm.html">ritz.jpda.jdi-vm</a></li><li class="ns-link"><a href="ritz.jpda.swell.html">ritz.jpda.swell</a></li><li class="ns-link"><a href="ritz.jpda.swell.impl.html">ritz.jpda.swell.impl</a></li>
+        </ul>
+      </div>
+      <div id="vars" class="sidebar">
+        <h3>Public Vars</h3>
+        <ul class="ns-var-links">
+          <li class="ns-var-link"><a href="ritz.debugger.connection.html#var-bindings">bindings</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-bindings-assoc%21">bindings-assoc!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-bindings-merge%21">bindings-merge!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-break-assoc%21">break-assoc!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-break-assoc-in%21">break-assoc-in!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-break-context">break-context</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-break-update%21">break-update!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-break-update-in%21">break-update-in!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-connection-close">connection-close</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-debug-assoc%21">debug-assoc!</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-debug-context">debug-context</a></li><li class="ns-var-link"><a href="ritz.debugger.connection.html#var-debug-update-in%21">debug-update-in!</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-docs">
+        <h2 class="namespace-title">ritz.debugger.connection documentation</h2>
+        <div class="doc"><p>A connection is a map that maintains state for a client.</p>
+</div>
+        <div class="ns-vars">
+          <div class="public">
+            <h3 id="var-bindings">bindings</h3>
+            <div class="usage">[connection]</div>
+            
+            
+            <div class="doc"><p>Query the connection bindings.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-bindings-assoc%21">bindings-assoc!</h3>
+            <div class="usage">[connection &amp; var-bindings]</div>
+            
+            
+            <div class="doc"><p>Assoc values into the bindings</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-bindings-merge%21">bindings-merge!</h3>
+            <div class="usage">[connection &amp; maps]</div>
+            
+            
+            <div class="doc"><p>Merge values into the bindings</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-assoc%21">break-assoc!</h3>
+            <div class="usage">[connection &amp; var-bindings]</div>
+            
+            
+            <div class="doc"><p>Assoc values into the bindings</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-assoc-in%21">break-assoc-in!</h3>
+            <div class="usage">[connection keys arg]</div>
+            
+            
+            <div class="doc"><p>Assoc values into the break-context</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-context">break-context</h3>
+            <div class="usage">[connection]</div>
+            
+            
+            <div class="doc"><p>Query the break context</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-update%21">break-update!</h3>
+            <div class="usage">[connection f &amp; args]</div>
+            
+            
+            <div class="doc"><p>Apply a function on the break-context</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-break-update-in%21">break-update-in!</h3>
+            <div class="usage">[connection keys f &amp; args]</div>
+            
+            
+            <div class="doc"><p>Update values in the break-context</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-connection-close">connection-close</h3>
+            
+            
+            
+            <div class="doc"><p>Close a connection</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-debug-assoc%21">debug-assoc!</h3>
+            <div class="usage">[connection &amp; var-bindings]</div>
+            
+            
+            <div class="doc"><p>Assoc values into the bindings</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-debug-context">debug-context</h3>
+            <div class="usage">[connection]</div>
+            
+            
+            <div class="doc"><p>Query the debug context</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-debug-update-in%21">debug-update-in!</h3>
+            <div class="usage">[connection keys f &amp; args]</div>
+            
+            
+            <div class="doc"><p>Assoc values into the debug-context</p>
+</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>

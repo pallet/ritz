@@ -1,0 +1,351 @@
+<html lang="en">
+  <head>
+    <title>Ritz-swank 0.4.0-SNAPSHOT API documentation</title>
+    <link href="css/default.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/page_effects.js"></script>
+  </head>
+  <body>
+    <header>
+      <div id="header">
+        <h1 class="project-title">Ritz-swank 0.4.0-SNAPSHOT API documentation</h1>
+      </div>
+    </header>
+    <navigation>
+      <div id="namespaces" class="sidebar">
+        <h3>Namespaces</h3>
+        <ul class="ns-links">
+          <li class="ns-link"><a href="ritz.swank.html">ritz.swank</a></li><li class="ns-link"><a href="ritz.swank.break.html">ritz.swank.break</a></li><li class="ns-link"><a href="ritz.swank.cl.html">ritz.swank.cl</a></li><li class="ns-link"><a href="ritz.swank.commands.html">ritz.swank.commands</a></li><li class="ns-link"><a href="ritz.swank.commands.basic.html">ritz.swank.commands.basic</a></li><li class="ns-link"><a href="ritz.swank.commands.completion.html">ritz.swank.commands.completion</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.html">ritz.swank.commands.contrib</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.ritz.html">ritz.swank.commands.contrib.ritz</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-arglists.html">ritz.swank.commands.contrib.swank-arglists</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-fuzzy.html">ritz.swank.commands.contrib.swank-fuzzy</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-media.html">ritz.swank.commands.contrib.swank-media</a></li><li class="ns-link"><a href="ritz.swank.commands.contrib.swank-presentations.html">ritz.swank.commands.contrib.swank-presentations</a></li><li class="ns-link"><a href="ritz.swank.commands.debugger.html">ritz.swank.commands.debugger</a></li><li class="ns-link"><a href="ritz.swank.commands.emacs.html">ritz.swank.commands.emacs</a></li><li class="ns-link"><a href="ritz.swank.commands.inspector.html">ritz.swank.commands.inspector</a></li><li class="ns-link"><a href="ritz.swank.commands.xref.html">ritz.swank.commands.xref</a></li><li class="ns-link"><a href="ritz.swank.connection.html">ritz.swank.connection</a></li><li class="ns-link"><a href="ritz.swank.connections.html">ritz.swank.connections</a></li><li class="ns-link"><a href="ritz.swank.core.html">ritz.swank.core</a></li><li class="ns-link"><a href="ritz.swank.debug.html">ritz.swank.debug</a></li><li class="ns-link"><a href="ritz.swank.hooks.html">ritz.swank.hooks</a></li><li class="ns-link"><a href="ritz.swank.indent.html">ritz.swank.indent</a></li><li class="ns-link"><a href="ritz.swank.inspect.html">ritz.swank.inspect</a></li><li class="ns-link"><a href="ritz.swank.main.html">ritz.swank.main</a></li><li class="ns-link"><a href="ritz.swank.messages.html">ritz.swank.messages</a></li><li class="ns-link"><a href="ritz.swank.proxy.html">ritz.swank.proxy</a></li><li class="ns-link"><a href="ritz.swank.repl.html">ritz.swank.repl</a></li><li class="ns-link"><a href="ritz.swank.rpc.html">ritz.swank.rpc</a></li><li class="ns-link"><a href="ritz.swank.rpc-server.html">ritz.swank.rpc-server</a></li><li class="ns-link"><a href="ritz.swank.rpc-socket-connection.html">ritz.swank.rpc-socket-connection</a></li><li class="ns-link"><a href="ritz.swank.socket-server.html">ritz.swank.socket-server</a></li>
+        </ul>
+      </div>
+    </navigation>
+    <article>
+      <div id="content" class="namespace-index">
+        <h2 class="project-title">Ritz-swank 0.4.0-SNAPSHOT API documentation</h2>
+        <div class="doc"><p>Swank server using ritz</p>
+</div>
+        <div class="project-namespaces">
+          <div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.html">ritz.swank</a></h3>
+            <div class="doc"><p>Swank protocol</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.html#var-dispatch-event">dispatch-event</a></li><li class="ns-var-link"><a href="ritz.swank.html#var-handle-message">handle-message</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.break.html">ritz.swank.break</a></h3>
+            <div class="doc"><p>Break information. Break information is maintained based on thread id. For
+each thread a stack of break level-info's is maintained (since a thread may
+have multiple breaks pending).</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.break.html#var-aborting-level%3F">aborting-level?</a></li><li class="ns-var-link"><a href="ritz.swank.break.html#var-break-abort-to-level%21">break-abort-to-level!</a></li><li class="ns-var-link"><a href="ritz.swank.break.html#var-break-drop-level%21">break-drop-level!</a></li><li class="ns-var-link"><a href="ritz.swank.break.html#var-break-drop-levels%21">break-drop-levels!</a></li><li class="ns-var-link"><a href="ritz.swank.break.html#var-break-exception-message">break-exception-message</a></li><li class="ns-var-link"><a href="ritz.swank.break.html#var-break-exception-message%21">break-exception-message!</a></li><li class="ns-var-link"><a href="ritz.swank.break.html#var-break-level-add%21">break-level-add!</a></li><li class="ns-var-link"><a href="ritz.swank.break.html#var-break-level-info">break-level-info</a></li><li class="ns-var-link"><a href="ritz.swank.break.html#var-break-level-infos">break-level-infos</a></li><li class="ns-var-link"><a href="ritz.swank.break.html#var-clear-abort-for-current-level">clear-abort-for-current-level</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.cl.html">ritz.swank.cl</a></h3>
+            <div class="doc"><p>cl commands used by slime whan calling swank</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.cl.html#var-mapc">mapc</a></li><li class="ns-var-link"><a href="ritz.swank.cl.html#var-nth-value">nth-value</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.html">ritz.swank.commands</a></h3>
+            <div class="doc"><p>Namespace for swank functions. Slime calls functions in the swank package,
+so we need to be able o lookup symbols with a swank/ prefix. This is solved
+by interning every slime function into this namespace, and providing a
+namespace alias for itself.  The namespace alias is then used when looking up
+symbols via ns-resolve.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.commands.html#var-defslimefn">defslimefn</a></li><li class="ns-var-link"><a href="ritz.swank.commands.html#var-slime-fn">slime-fn</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.basic.html">ritz.swank.commands.basic</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.commands.basic.html#var-compile-options">compile-options</a></li><li class="ns-var-link"><a href="ritz.swank.commands.basic.html#var-eval-form">eval-form</a></li><li class="ns-var-link"><a href="ritz.swank.commands.basic.html#var-eval-region">eval-region</a></li><li class="ns-var-link"><a href="ritz.swank.commands.basic.html#var-list-threads">list-threads</a></li><li class="ns-var-link"><a href="ritz.swank.commands.basic.html#var-possibly-relative-path">possibly-relative-path</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.completion.html">ritz.swank.commands.completion</a></h3>
+            <div class="doc"><p>Symbol completion commands</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.contrib.html">ritz.swank.commands.contrib</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.contrib.ritz.html">ritz.swank.commands.contrib.ritz</a></h3>
+            <div class="doc"><p>Contrib for providing ritz specific functions</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.commands.contrib.ritz.html#var-exception-filter-list">exception-filter-list</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.ritz.html#var-line-breakpoint">line-breakpoint</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.ritz.html#var-list-repl-source-forms">list-repl-source-forms</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.ritz.html#var-resume-vm">resume-vm</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.ritz.html#var-toggle-swank-logging">toggle-swank-logging</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.contrib.swank-arglists.html">ritz.swank.commands.contrib.swank-arglists</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-arglists.html#var-autodoc">autodoc</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.contrib.swank-fuzzy.html">ritz.swank.commands.contrib.swank-fuzzy</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-fuzzy.html#var-with-timeout">with-timeout</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.contrib.swank-media.html">ritz.swank.commands.contrib.swank-media</a></h3>
+            <div class="doc"><p>Contrib for display of images in slime</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.contrib.swank-presentations.html">ritz.swank.commands.contrib.swank-presentations</a></h3>
+            <div class="doc"><p>Adapted from slime's swank-presentations.lisp</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-presentations.html#var-*record-repl-results*">*record-repl-results*</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-presentations.html#var-clear-repl-results">clear-repl-results</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-presentations.html#var-initialize">initialize</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-presentations.html#var-lookup-presented-object">lookup-presented-object</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-presentations.html#var-lookup-presented-object-or-lose">lookup-presented-object-or-lose</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-presentations.html#var-object-to-presentation-id">object-to-presentation-id</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-presentations.html#var-presentation-counter">presentation-counter</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-presentations.html#var-presentation-id-to-object">presentation-id-to-object</a></li><li class="ns-var-link"><a href="ritz.swank.commands.contrib.swank-presentations.html#var-save-presented-object">save-presented-object</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.debugger.html">ritz.swank.commands.debugger</a></h3>
+            <div class="doc"><p>Debugger commands.  Everything that the proxy responds to.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.commands.debugger.html#var-list-threads">list-threads</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.emacs.html">ritz.swank.commands.emacs</a></h3>
+            <div class="doc"><p>Emacs interaction</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.commands.emacs.html#var-ed-in-emacs">ed-in-emacs</a></li><li class="ns-var-link"><a href="ritz.swank.commands.emacs.html#var-eval-in-emacs">eval-in-emacs</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.inspector.html">ritz.swank.commands.inspector</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.commands.xref.html">ritz.swank.commands.xref</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.connection.html">ritz.swank.connection</a></h3>
+            <div class="doc"><p>Connection specifics for swank</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.connection.html#var-buffer-ns-name">buffer-ns-name</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-call-on-flush-stream">call-on-flush-stream</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-connected%3F">connected?</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-inspector">inspector</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-make-repl-input-stream">make-repl-input-stream</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-pending">pending</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-read-from-connection">read-from-connection</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-request">request</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-request-ns">request-ns</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-send-to-emacs">send-to-emacs</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-send-to-emacs*">send-to-emacs*</a></li><li class="ns-var-link"><a href="ritz.swank.connection.html#var-write-to-input">write-to-input</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.connections.html">ritz.swank.connections</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.connections.html#var-all-connections">all-connections</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.core.html">ritz.swank.core</a></h3>
+            <div class="doc"><p>Base namespace for swank</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.core.html#var-lines">lines</a></li><li class="ns-var-link"><a href="ritz.swank.core.html#var-write-result">write-result</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.debug.html">ritz.swank.debug</a></h3>
+            <div class="doc"><p>Debugger interaction for swank</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.debug.html#var-backtrace">backtrace</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-breakpoint-list">breakpoint-list</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-debugger-info-for-emacs">debugger-info-for-emacs</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-disassemble-symbol">disassemble-symbol</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-execute-unless-inspect">execute-unless-inspect</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-launch-vm-with-swank">launch-vm-with-swank</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-line-breakpoint">line-breakpoint</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-remote-swank-port">remote-swank-port</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-setup-debugee">setup-debugee</a></li><li class="ns-var-link"><a href="ritz.swank.debug.html#var-thread-list">thread-list</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.hooks.html">ritz.swank.hooks</a></h3>
+            <div class="doc"><p>Define, and run hooks.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.hooks.html#var-add">add</a></li><li class="ns-var-link"><a href="ritz.swank.hooks.html#var-defhook">defhook</a></li><li class="ns-var-link"><a href="ritz.swank.hooks.html#var-run">run</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.indent.html">ritz.swank.indent</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.indent.html#var-perform-indentation-update">perform-indentation-update</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.inspect.html">ritz.swank.inspect</a></h3>
+            <div class="doc"><p>The inspector is an atom, containing parts</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.main.html">ritz.swank.main</a></h3>
+            <div class="doc">
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.main.html#var-main">main</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.messages.html">ritz.swank.messages</a></h3>
+            <div class="doc"><p>Swank messages</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.messages.html#var-abort">abort</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-compilation-result">compilation-result</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-compiler-message">compiler-message</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-condition">condition</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-debug">debug</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-debug-activate">debug-activate</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-debug-info">debug-info</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-debug-return">debug-return</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-frame-locals">frame-locals</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-inspect">inspect</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-inspector">inspector</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-location">location</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-ok">ok</a></li><li class="ns-var-link"><a href="ritz.swank.messages.html#var-restart">restart</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.proxy.html">ritz.swank.proxy</a></h3>
+            <div class="doc"><p>Swank proxy server.  Sits between slime and the target swank process</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.proxy.html#var-forward-commands">forward-commands</a></li><li class="ns-var-link"><a href="ritz.swank.proxy.html#var-serve-connection">serve-connection</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.repl.html">ritz.swank.repl</a></h3>
+            <div class="doc"><p>REPL server. No JPDA functionality.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.repl.html#var-serve-connection">serve-connection</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.rpc.html">ritz.swank.rpc</a></h3>
+            <div class="doc"><p>Pass remote calls and responses between lisp systems using the swank-rpc
+protocol. Code from Terje Norderhaug <a href="mailto:terje@in-progress.com">terje@in-progress.com</a>.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.rpc.html#var-decode-message">decode-message</a></li><li class="ns-var-link"><a href="ritz.swank.rpc.html#var-encode-message">encode-message</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.rpc-server.html">ritz.swank.rpc-server</a></h3>
+            <div class="doc"><p>RPC server</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.rpc-server.html#var-serve-connection">serve-connection</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.rpc-socket-connection.html">ritz.swank.rpc-socket-connection</a></h3>
+            <div class="doc"><p>A socket connection that speaks rpc</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.rpc-socket-connection.html#var-close">close</a></li><li class="ns-var-link"><a href="ritz.swank.rpc-socket-connection.html#var-connected%3F">connected?</a></li><li class="ns-var-link"><a href="ritz.swank.rpc-socket-connection.html#var-read-message">read-message</a></li><li class="ns-var-link"><a href="ritz.swank.rpc-socket-connection.html#var-write-message">write-message</a></li>
+              </ul>
+            </div>
+          </div><div class="namespace">
+            <h3 class="ns-link"><a href="ritz.swank.socket-server.html">ritz.swank.socket-server</a></h3>
+            <div class="doc"><p>Socket server.</p>
+</div>
+            <div class="index ns-var-links">
+              <p>Public variables and functions:</p>
+              <ul>
+                <li class="ns-var-link"><a href="ritz.swank.socket-server.html#var-announce-port-to-file">announce-port-to-file</a></li><li class="ns-var-link"><a href="ritz.swank.socket-server.html#var-server-socket">server-socket</a></li><li class="ns-var-link"><a href="ritz.swank.socket-server.html#var-start">start</a></li><li class="ns-var-link"><a href="ritz.swank.socket-server.html#var-start-server">start-server</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+
+</html>
