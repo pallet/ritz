@@ -19,7 +19,7 @@
     LongValue ShortValue))
   (:use clojure.test))
 
-;(logging/set-level :trace)
+;; (logging/set-level :trace)
 
 (deftest eval-test
   (let [context (jdi-vm/launch-vm

@@ -23,7 +23,7 @@
     LongValue ShortValue))
   (:use clojure.test))
 
-(logging/set-level :trace)
+;; (logging/set-level :trace)
 
 
 (deftest inspect-test

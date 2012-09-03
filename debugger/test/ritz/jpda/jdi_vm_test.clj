@@ -7,7 +7,7 @@
   (:use clojure.test)
   (:import com.sun.jdi.event.VMDeathEvent))
 
-;;(logging/set-level :trace)
+;; (logging/set-level :trace)
 
 (deftest launch-vm-test
   (is (= "hi\n"
