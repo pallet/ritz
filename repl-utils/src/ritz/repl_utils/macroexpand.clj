@@ -1,4 +1,6 @@
-(ns ritz.clj-contrib.macroexpand)
+(ns ritz.repl-utils.macroexpand)
+
+;;; taken from the old macroexpand contrib
 
 (def
  ^{:private true}
