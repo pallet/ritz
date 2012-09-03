@@ -26,8 +26,7 @@
 (def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
                                      :exclusions [org.clojure/clojure]]]})
 
-(def ritz-profile {:dependencies '[[org.clojure/clojure "1.4.0"]
-                                   [ritz/ritz-nrepl "0.4.0-SNAPSHOT"
+(def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.4.0-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
 (def lein-project-profile {:dependencies '[[leiningen "2.0.0-SNAPSHOT"]]})
@@ -57,11 +56,12 @@ project server."
         user-classpath (vec (get-classpath user-project))
         _ (require 'leiningen.ritz) ;; for add-hooks
         server-starting-form
-        `(ritz.nrepl/start-jpda-server
-          ~host ~port ~ack-port
-          ~(str (io/file (:target-path project) "repl-port"))
-          ~(string/join ":" user-classpath)
-          ~nrepl-middleware)]
+        `(do
+           (ritz.nrepl/start-jpda-server
+            ~host ~port ~ack-port
+            ~(str (io/file (:target-path project) "repl-port"))
+            ~(string/join ":" user-classpath)
+            ~nrepl-middleware))]
     (eval/eval-in-project
      jpda-project
      server-starting-form

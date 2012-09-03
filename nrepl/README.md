@@ -24,7 +24,7 @@ to `:nrepl-middleware` under `:repl-options` in `project.clj.
 
 ```clj
 :dependencies [[ritz/ritz-nrepl "0.4.0-SNAPSHOT"]]
-:repl-options {:nrepl-middleware [ritz.nrepl.middleware.javadoc/wrap-javadoc]}
+:repl-options {:nrepl-middleware ['ritz.nrepl.middleware.javadoc/wrap-javadoc]}
 ```
 
 ## Provided nREPL ops

@@ -251,11 +251,17 @@ generate a name for the thread."
      `(do
         (require
          'ritz.nrepl.handler 'ritz.nrepl.exec 'clojure.tools.nrepl.server)
+        (doseq [ns# ~(vec
+                      (map #(list `quote (symbol (namespace %))) middleware))]
+          (require ns#))
+        nil))
+    (ritz.jpda.jdi-clj/control-eval
+     vm
+     `(do
         (ritz.nrepl.exec/set-handler!
          (apply clojure.tools.nrepl.server/default-handler
                 ~@middleware
-                (var-get
-                 (ns-resolve '~'ritz.nrepl.handler '~'ritz-middlewares))))
+                ritz.nrepl.handler/ritz-middlewares))
         nil))
     (println "nREPL server started on port" port)
     (spit repl-port-path port)))
