@@ -6,6 +6,8 @@ JPDA Debugger library for clojure.
 
 The library provides various layers for using JPDA/JDI in clojure.
 
+[API Docs](http://palletops.com/ritz/0.4/debugger/api/)
+
 ## Install
 
 Add the following to your `:dependencies`:

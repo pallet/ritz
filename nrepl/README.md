@@ -16,13 +16,20 @@ Then in emacs, `M-x nrepl` and enter the port printed by the previous command.
 
 # Provided nREPL ops
 
-"javadoc" Returns a url of the javadoc for the specified symbol
+["javadoc"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.javadoc.html)
+: Returns a url of the javadoc for the specified symbol
 
-"apropos" Returns a description of each function matching a partial symbol
+["apropos"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.apropos.html)
+: Returns a description of each function matching a partial symbol
 
-"doc" Returns the doc string for the specified symbol
 
-"describe-symbol" Returns a description of the specified symbol
+["doc"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.doc.html)
+: Returns the doc string for the specified symbol
+
+["describe-symbol"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.describe-symbol.html)
+: Returns a description of the specified symbol
+
+[API Docs](http://palletops.com/ritz/0.4/nrepl/api/)
 
 ## License
 

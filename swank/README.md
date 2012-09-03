@@ -1,6 +1,6 @@
-# ritz
+# ritz-swank
 
-Ritz is a swank server for running [clojure](http://clojure.org) in
+Ritz-swank is a swank server for running [clojure](http://clojure.org) in
 [slime](http://common-lisp.net/project/slime).
 
 ## Features

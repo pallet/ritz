@@ -4,7 +4,7 @@ Library of useful functions for implementing clojure development clients.
 
 ## Usage
 
-TODO
+[API Docs](http://palletops.com/ritz/0.4/repl-utils/api/)
 
 ## Install
 
