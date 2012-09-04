@@ -9,7 +9,22 @@ Alpha.
 
 ## nREPL debugger server usage
 
-You will need lein-ritz 0.4.0-SNAPSHOT. You will need to install nrepl-ritz.el.
+Add `lein-ritz` to the `:plugins` key of your `~/.lein/profiles` file (requires
+lein version 2).
+
+```clj
+{:user {:plugins [[lein-ritz "0.4.0-SNAPSHOT"]]}}
+```
+
+Install the nrepl-ritz.el contrib from
+[marmalade](http://marmalade-repo.org/). If you are using a SNAPSHOT version of
+ritz-nrepl, you probably will need to install nrepl-ritz.el from
+[melpa](http://melpa.milkbox.net/packages/) instead.
+
+Note that on Emacs 23 you will need to
+[install](http://tromey.com/elpa/install.html) package.el.
+
+Once installed, run the server with:
 
 ```
 lein2 ritz-nrepl
