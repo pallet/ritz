@@ -1,4 +1,4 @@
-(defproject ritz/ritz-swank "0.4.0"
+(defproject ritz/ritz-swank "0.4.1-SNAPSHOT"
   :description "Swank server using ritz"
   :url "https://github.com/pallet/ritz"
   :scm {:url "git@github.com:pallet/ritz.git"}
@@ -9,4 +9,4 @@
                   :exclusions [org.clojure/clojure]]
                  [org.clojure/tools.macro "0.1.1"
                   :exclusions [org.clojure/clojure]]
-                 [ritz/ritz-debugger "0.4.0"]])
+                 [ritz/ritz-debugger "0.4.1-SNAPSHOT"]])
