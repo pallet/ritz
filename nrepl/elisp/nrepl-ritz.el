@@ -24,9 +24,6 @@
                             "code" input)
                       callback))
 
-;;; Overwrite the default nrepl exception handler
-(setq nrepl-err-handler 'nrepl-ritz-err-handler)
-
 ;;; # General helpers
 (defun flatten-alist (alist)
   "Convert the ALIST into a list with a sequence of key and value."
@@ -1321,33 +1318,6 @@ frame move command."
           (nrepl-dbg-setup thread-id level exception restarts frames))))
     nil nil nil)
    `("enable" ,(if flag "true" "false"))))
-
-
-;; (defun nrepl-ritz-continue (thread-id)
-;;   (interactive "nthread-id: ")
-;;   (nrepl-ritz-send-op
-;;    "continue"
-;;    (nrepl-make-response-handler (current-buffer) nil nil nil nil)
-;;    `(("thread-id" . ,(prin1-to-string thread-id)))))
-
-;; (defun nrepl-ritz-abort (thread-id)
-;;   (interactive "nthread-id: ")
-;;   (nrepl-ritz-send-op
-;;    "abort-level"
-;;    (nrepl-make-response-handler (current-buffer) nil nil nil nil)
-;;    `(("thread-id" . ,(prin1-to-string thread-id)))))
-
-;; (defun nrepl-ritz-quit-to-top-level (thread-id)
-;;   (interactive "nthread-id: ")
-;;   (nrepl-ritz-send-op
-;;    "quit-to-top-level"
-;;    (nrepl-make-response-handler (current-buffer) nil nil nil nil)
-;;    `(("thread-id" . ,(prin1-to-string thread-id)))))
-
-
-(defun nrepl-ritz-err-handler (buffer ex root-ex)
-  (with-current-buffer buffer
-    (nrepl-dbg-activate nrepl-dbg-thread-id :e true)))
 
 (provide 'nrepl-ritz)
 ;;; nrepl-ritz.el ends here
