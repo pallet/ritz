@@ -5,13 +5,13 @@
 
 ;;; Default connection
 (def default-connection
-  {:debug (atom {:breakpoints nil})
+  {:debug (atom {:breakpoints []})
    :break (atom {:break-levels {}})
    :inspector (atom {})
    :bindings (atom (dissoc (get-thread-bindings) #'*agent*))
    :indent (atom {:indent-cache-hash nil
                   :indent-cache {}})
-   :exception-filters (atom nil)})
+   :exception-filters (atom [])})
 
 ;;; # Query
 (defn vm-context
