@@ -11,6 +11,32 @@
 
 (require 'nrepl)
 
+(defcustom nrepl-ritz-server-command
+  (if (or (locate-file nrepl-lein-command exec-path)
+          (locate-file (format "%s.bat" nrepl-lein-command) exec-path))
+      (format "%s ritz-nrepl :headless" nrepl-lein-command)
+    (format "echo \"%s ritz-nrepl :headless\" | $SHELL -l" nrepl-lein-command))
+  "The command used to start the nREPL via nrepl-ritz-jack-in.
+For a remote nREPL server lein must be in your PATH.  The remote
+proc is launched via sh rather than bash, so it might be necessary
+to specific the full path to it. Localhost is assumed."
+  :type 'string
+  :group 'nrepl-mode)
+
+;;;###autoload
+(defun nrepl-ritz-jack-in (prompt-project)
+  (interactive "P")
+  (let* ((cmd (if prompt-project
+                  (format "cd %s && %s" (ido-read-directory-name "Project: ")
+                          nrepl-ritz-server-command)
+                  nrepl-ritz-server-command))
+         (process (start-process-shell-command
+                   "nrepl-ritz-server" "*nrepl-server*" cmd)))
+    (set-process-filter process 'nrepl-server-filter)
+    (set-process-sentinel process 'nrepl-server-sentinel)
+    (set-process-coding-system process 'utf-8-unix 'utf-8-unix)
+    (message "Starting nREPL ritz server...")))
+
 ;;; overwrite nrepl.el functions to allow easy development of ritz.
 ;;; Maybe these could be put back into nrepl.el
 (defvar nrepl-eval-op "eval"
