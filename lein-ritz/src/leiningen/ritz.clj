@@ -20,8 +20,8 @@
              (load-file is#)))
          (when-let [repl-init# '~(:repl-init project)]
            (doto repl-init# require in-ns))
-         (require '~'ritz.socket-server)
-         (@(ns-resolve '~'ritz.socket-server '~'start)
+         (require '~'ritz.swank.socket-server)
+         (@(ns-resolve '~'ritz.swank.socket-server '~'start)
           '~(merge
              (select-keys project [:jvm-opts :properties])
              (zipmap
@@ -53,9 +53,9 @@
   "JPDA is in the JDK's tools.jar and sa-jdi.jar. Add them to the classpath."
   [project]
   (update-in project [:dependencies]
-             conj ['ritz
+             conj ['ritz/ritz-swank
                    (or (System/getenv "RITZ_VERSION")
-                       (System/getProperty "ritz.version" "0.3.2"))]))
+                       (System/getProperty "ritz.version" "0.4.0"))]))
 
 (defn ritz
   "Launch ritz server for Emacs to connect. Optionally takes PORT and HOST."

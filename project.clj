@@ -1,22 +1,14 @@
-(defproject ritz "0.3.2"
+(defproject ritz "0.4.0"
   :description "Another swank server for clojure in SLIME"
-  :source-paths ["src/main/clojure"]
-  :resources-paths ["src/main/resources"]
-  :test-paths ["src/test/clojure"]
-  :dependencies [[org.clojure/clojure "1.3.0"]
-                 [org.clojure/data.codec "0.1.0"]]
-  :profiles {:it {:source-paths ["src/main/clojure" "src/it/clojure"]
-                  :dependencies [[org.palletops/clojure "1.3.0-p1"]
-                                 [org.cloudhoist/pallet "0.6.7"]
-                                 [org.cloudhoist/automated-admin-user "0.6.0"]
-                                 [org.cloudhoist/git "0.5.0"]
-                                 [org.cloudhoist/java "0.5.1"]
-                                 [org.cloudhoist/pallet-lein "0.4.1"]
-                                 [org.slf4j/slf4j-api "1.6.1"]
-                                 [ch.qos.logback/logback-core "1.0.0"]
-                                 [ch.qos.logback/logback-classic "1.0.0"]
-                                 [vmfest "0.2.3"]
-                                 [org.clojure/clojure-contrib "1.2.0"]]}}
-  :jvm-opts ["-Djava.awt.headless=true"]
-  :repositories
-  {"sonatype" "https://oss.sonatype.org/content/repositories/releases/"})
+  :url "https://github.com/pallet/ritz"
+  :license {:name "Eclipse Public License"
+            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :scm {:url "git@github.com:pallet/ritz.git"}
+  :sub ["repl-utils" "debugger" "nrepl" "swank" "lein-ritz"]
+  :plugins [[lein-sub "0.2.1"]]
+  :aliases {"clean" ["sub" "clean"]
+            "install" ["sub" "install"]
+            "deploy" ["sub" "deploy"]
+            "test" ["sub" "with-profile" "jdk1.7" "test"]
+            "doc" ["sub" "with-profile" "codox,jdk1.7" "doc"]
+            "set-version" ["sub" "with-profile" "release" "set-version"]})

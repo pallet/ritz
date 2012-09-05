@@ -1,0 +1,783 @@
+(ns ritz.jpda.jdi
+  "JDI wrapper.
+   The aim here is to work towards a clojure interface for JDI
+   but is currently mainly a set of light wrapper functions."
+  (:refer-clojure :exclude [methods])
+  (:require
+   [ritz.debugger.executor :as executor]
+   [ritz.logging :as logging]
+   [clojure.string :as string]
+   [clojure.java.io :as io])
+  (:use
+   [clojure.stacktrace :only [print-cause-trace]])
+  (:import
+   (com.sun.jdi
+    VirtualMachine PathSearchingVirtualMachine
+    Bootstrap VMDisconnectedException
+    ObjectReference StringReference
+    ThreadReference ThreadGroupReference
+    ReferenceType Locatable Location StackFrame
+    Field LocalVariable Method ClassType Value)
+   (com.sun.jdi.connect
+    Connector)
+   (com.sun.jdi.event
+    VMDisconnectEvent LocatableEvent ExceptionEvent StepEvent VMDeathEvent
+    BreakpointEvent Event EventSet EventQueue)
+   (com.sun.jdi.request
+    BreakpointRequest ExceptionRequest EventRequest StepRequest
+    EventRequestManager)))
+
+;;; Connections
+(def connector-names
+     {:command-line "com.sun.jdi.CommandLineLaunch"
+      :attach-shmem "com.sun.jdi.SharedMemoryAttach"
+      :attach-socket "com.sun.jdi.SocketAttach"
+      :listen-shmem "com.sun.jdi.SharedMemoryListen"
+      :listen-socket "com.sun.jdi.SocketListen"})
+
+(defn connectors
+  "List known connectors."
+  []
+  (.. (Bootstrap/virtualMachineManager) allConnectors))
+
+(defn ^Connector connector
+  "Lookup connector based on a keyword in (keys connector-names)"
+  [connector-kw]
+  (let [^String name (connector-names connector-kw)]
+    (some #(and (= (.name ^Connector %) name) %) (connectors))))
+
+(defn connector-args
+  "Returns connector arguments based on name value pairs in arg-map."
+  [^Connector connector arg-map]
+  (let [args (.defaultArguments connector)]
+    (doseq [[^String arg-name value] arg-map
+            :let [arg (.get args arg-name)]]
+      (when-not arg
+        (throw
+         (IllegalStateException.
+          (str "Could not find JPDA connector argument for " arg-name))))
+      (.setValue arg value))
+    args))
+
+(defn launch
+  "Launch a vm.
+   `classpath` is a string to pass as the classpath, and `expr` is an
+   sexp that will be passed to clojure.main.
+
+   Returns an instance of VirtualMachine."
+  ([classpath expr options]
+     (let [^Connector launch-connector (connector :command-line)
+           arguments (.defaultArguments launch-connector)
+           main-args (.get arguments "main")
+           option-args (.get arguments "options")]
+       (logging/trace "jdi/launch %s" expr)
+       (.setValue
+        main-args
+        (str " -cp " classpath " clojure.main -e \"" expr "\""))
+       (.setValue option-args (string/join " " options))
+       (.launch launch-connector arguments)))
+  ([classpath expr]
+     (launch classpath expr "")))
+
+(defn interrupt-if-alive
+  [^Thread thread]
+  (when (.isAlive thread)
+    (.interrupt thread)))
+
+(defn shutdown
+  "Shut down virtual machine."
+  [context]
+  (.exit ^VirtualMachine (:vm context) 0)
+  (interrupt-if-alive (:vm-out-thread context))
+  (interrupt-if-alive (:vm-in-thread context))
+  (interrupt-if-alive (:vm-err-thread context)))
+
+;;; Streams
+(defn vm-stream-daemons
+  "Start threads to copy standard input, output and error streams"
+  [^VirtualMachine vm {:keys [in out err]}]
+  (let [process (.process vm)]
+    (logging/trace "vm-stream-daemons")
+    {:vm-in-thread (executor/daemon-thread
+                    "vm-in"
+                    (io/copy (or in *in*) (.getOutputStream process))
+                    (logging/trace "vm-in: exit"))
+     :vm-out-thread (executor/daemon-thread
+                     "vm-out"
+                     (io/copy (.getInputStream process) (or out *out*))
+                     (logging/trace "vm-out: exit"))
+     :vm-err-thread (executor/daemon-thread
+                     "vm-err"
+                     (io/copy (.getErrorStream process) (or err *err*))
+                     (logging/trace "vm-err: exit"))}))
+
+;;; Event handling
+;;; `run-events` provides an event loop for jdi events.
+(defmulti handle-event
+  "Client code should implement this for event tyoes that it is interested
+   in receiving.
+   By default, events are ignored."
+  (fn [event _] (class event)))
+
+(defmethod handle-event :default [event context]
+  (logging/trace "Unhandled event: %s" event))
+
+(defn silent-event?
+  [^Event event]
+  (if-let [^String event-str (try (.toString event)
+                                  (catch java.lang.InternalError _))]
+    (or (.startsWith event-str "ExceptionEvent@java.net.URLClassLoader")
+        (.startsWith event-str "ExceptionEvent@java.lang.Class")
+        (.startsWith event-str "ExceptionEvent@clojure.lang.RT")
+        (.startsWith event-str "ExceptionEvent@com.sun.xml.internal")
+        (.startsWith event-str "ExceptionEvent@sun.reflect.generics.parser")
+        (.startsWith event-str "ExceptionEvent@sun.net.www")
+        (.startsWith
+         event-str "ExceptionEvent@com.sun.org.apache.xerces.internal")
+        (.startsWith
+         event-str "ExceptionEvent@com.google.inject.spi.InjectionPoint"))
+    false))
+
+(defn handle-event-set
+  "NB, this resumes the event-set, so you will need to suspend within
+   the handlers if required."
+  [^EventQueue queue connected context f]
+  (let [^EventSet event-set (.remove queue)]
+    (try
+      (doseq [^Event event event-set]
+        (try
+          (if (silent-event? event)
+            (logging/trace-str "!")
+            (logging/trace "jdi/handle-event-set: %s" event))
+          (f event context)
+          (when (instance? VMDeathEvent event)
+            (logging/trace "jdi/handle-event-set: vm death seen")
+            (reset! connected false))
+          (catch VMDisconnectedException e
+            (logging/trace
+             "jdi/handle-event-set: vm disconnected exception seen")
+            (reset! connected false))
+          (catch Throwable e
+            (logging/trace "jdi/handle-event-set: Unexpected exeception %s" e)
+            (logging/trace
+             "jdi/handle-event-set:  root exeception %s"
+             (with-out-str
+               (print-cause-trace e)
+               ;; (.printStackTrace (or
+               ;;                    ; (clojure.stacktrace/root-cause e)
+               ;;                    e))
+               ))
+            (.printStackTrace e))))
+      (finally (when @connected (.resume event-set))))))
+
+(defn run-events
+  "Run the event loop for the specified vm. `connected` should be an atom
+   that can be set to false to cleanly shut down the event loop.
+   context is passed opaquely to the event handlers."
+  ([vm connected context] (run-events vm connected context handle-event))
+  ([^VirtualMachine vm connected context f]
+     (loop []
+       (when @connected
+         (try
+           ;; (logging/trace "jdi/run-events: handle event set")
+           (handle-event-set (.eventQueue vm) connected context f)
+           (catch VMDisconnectedException e
+             (reset! connected false))
+           (catch com.sun.jdi.InternalException e
+             (logging/trace "jdi/run-events: Unexpected exeception %s" e)))
+         (recur)))))
+
+(defn vm-event-daemon
+  "Runs a thread to dispatch the vm events
+   `connected` is an atom to to allow clean loop shutdown"
+  [vm connected context]
+  (logging/trace "vm-event-daemons")
+  {:vm-ev (executor/daemon-thread
+           "vm-events"
+           (run-events vm connected context handle-event)
+           (logging/trace "vm-events: exit"))})
+
+;;; low level wrappers
+(defn classes
+  "Return the class references for the class name from the vm."
+  [^VirtualMachine vm ^String class-name]
+  (.classesByName vm class-name))
+
+(defn methods
+  "Return a class's methods with name from the vm."
+  ([^ReferenceType class ^String method-name]
+     (.methodsByName class method-name))
+  ([^ReferenceType class ^String method-name ^String signature]
+     (.methodsByName class method-name signature)))
+
+(defn mirror-of
+  "Mirror a primitive value or string into the given vm."
+  [^VirtualMachine vm value]
+  (.mirrorOf vm value))
+
+(defn string-value
+  [^StringReference value]
+  ;; create a copy of the string to prevent pinning of string in client vm
+  (str (.value value)))
+
+(defn object-reference-type-name
+  [^ObjectReference obj-ref]
+  (format "ObjectReference %s" (.. obj-ref referenceType name)))
+
+
+(defn save-exception-request-states
+  [^VirtualMachine vm]
+  (reduce
+   (fn [m ^ExceptionRequest r] (assoc m r (.isEnabled r)))
+   {}
+   (.. vm eventRequestManager exceptionRequests)))
+
+(defn disable-exception-request-states
+  [^VirtualMachine vm]
+  (doseq [^ExceptionRequest r (.. vm eventRequestManager exceptionRequests)]
+    (.disable r)))
+
+(defn enable-exception-request-states
+  [^VirtualMachine vm]
+  (doseq [^ExceptionRequest r (.. vm eventRequestManager exceptionRequests)]
+    (.enable r)))
+
+(defn restore-exception-request-states
+  [^VirtualMachine vm m]
+  (doseq [^ExceptionRequest r (.. vm eventRequestManager exceptionRequests)]
+    (.setEnabled r (m r))))
+
+(defmacro with-disabled-exception-requests [[vm] & body]
+  `(let [vm# ~vm
+         m# (save-exception-request-states vm#)]
+     (try
+       (disable-exception-request-states vm#)
+       ~@body
+       (finally
+         ;; (restore-exception-request-states vm# m#)
+        (enable-exception-request-states vm#)))))
+
+(def invoke-multi-threaded 0)
+(def invoke-single-threaded ObjectReference/INVOKE_SINGLE_THREADED)
+(def invoke-nonvirtual ObjectReference/INVOKE_NONVIRTUAL)
+
+(defn arg-list [& args]
+  (or args []))
+
+(defn ^Value invoke-method
+  "Methods can only be invoked on threads suspended for exceptions.
+   `args` is a sequence of remote object references."
+  [^ThreadReference thread
+   {:keys [threading disable-exception-requests]
+    :or {threading invoke-single-threaded disable-exception-requests false}
+    :as options}
+   class-or-object ^Method method args]
+  ;; (logging/trace
+  ;;  "jdi/invoke-method %s %s\nargs %s\noptions %s"
+  ;;  class-or-object method (pr-str args) options)
+  (logging/trace "jdi/invoke-method %s %s" method options)
+  (letfn [(invoke []
+            (let [args (java.util.ArrayList. (or args []))]
+                    (cond
+                      (instance? com.sun.jdi.ClassType class-or-object)
+                      (.invokeMethod
+                       ^ClassType class-or-object thread
+                       method args (int threading))
+                      (instance? com.sun.jdi.ObjectReference class-or-object)
+                      (.invokeMethod
+                       ^ObjectReference class-or-object thread
+                       method args (int threading)))))]
+    (if disable-exception-requests
+      (with-disabled-exception-requests [(.virtualMachine thread)]
+        (invoke))
+      (invoke))))
+
+;;; classpath
+(defn classpath
+  [^PathSearchingVirtualMachine vm]
+  (.classPath vm))
+
+(defn base-directory
+  [^PathSearchingVirtualMachine vm]
+  (.baseDirectory vm))
+
+(defn jar-file?
+  "Returns true if file is a normal file with a .jar or .JAR extension."
+  [^java.io.File file]
+  (and (.isFile file)
+       (or (.endsWith (.getName file) ".jar")
+           (.endsWith (.getName file) ".JAR"))))
+
+(defn filepaths-from-jar
+  "Returns a sequence of Strings naming the non-directory entries in jar-file."
+  [^java.util.jar.JarFile jar-file]
+  (->>
+   (.entries jar-file)
+   enumeration-seq
+   (filter #(not (.isDirectory ^java.io.File %)))
+   (map #(.getName ^java.io.File %))))
+
+(defn filepaths
+  "Returns a sequence of JarFile objects for the jar files on classpath."
+  [classpath]
+  (filter
+   identity
+   (mapcat
+    (fn [^java.io.File file]
+      (if (jar-file? file)
+        (try
+          (->
+           file
+           (java.util.jar.JarFile.)
+           filepaths-from-jar)
+          (catch Exception _))
+        [(str file)]))
+    (map #(java.io.File. ^String %) classpath))))
+
+(defn matching-classpath-files
+  "Return a sequence of class paths that the specified filepath matches."
+  [classpath filepath]
+  (logging/trace "matching-classpath-files %s" filepath)
+  ;; (logging/trace "matching-classpath-files %s" (vec (filepaths classpath)))
+  (filter #(re-find (re-pattern filepath) %) (filepaths classpath)))
+
+(defn namespace-for-path
+  "Takes a path and builds a namespace string from it"
+  [path]
+  (logging/trace "namespace-for-path %s" path)
+  (when path
+    (->
+     path
+     (string/replace #".class$" "")
+     (string/replace "/" "."))))
+
+(defn file-namespace
+  "Get the top level namespace for the given file path"
+  [classpath ^String filepath]
+  (logging/trace "file-namespace %s" filepath)
+  (->>
+   (string/replace (-> filepath (.split "\\.jar:") last) ".java" ".class")
+   (matching-classpath-files classpath)
+   (map namespace-for-path)))
+
+(defn classname-re
+  "Return a regular expression pattern for matching all classes in the
+   given namespace name"
+  [ns]
+  (re-pattern (str (string/replace ns "-" "_") "\\$")))
+
+(defn namespace-classes
+  "Return all classes for the given namespace"
+  [^VirtualMachine vm namespace]
+  (logging/trace "namespace-classes %s" namespace)
+  (when-not (string/blank? namespace)
+    (let [re (classname-re namespace)]
+      (logging/trace "Looking for re %s" re)
+      (filter
+       (fn [^ReferenceType class-ref]
+         (re-find re (.name class-ref)))
+       (.allClasses vm)))))
+
+(defn file-classes
+  "Return all classes for the given path"
+  [^VirtualMachine vm filename]
+  (let [file-ns (file-namespace (classpath vm) filename)]
+    (logging/trace
+       "Looking for %s in %s using %s"
+       filename
+       (vec (map #(.name ^ReferenceType %) (take 50 (.allClasses vm))))
+       (vec file-ns))
+    (namespace-classes vm (first file-ns))))
+
+
+;;; Threads
+(def thread-states
+  {ThreadReference/THREAD_STATUS_MONITOR :monitor
+   ThreadReference/THREAD_STATUS_NOT_STARTED :not-started
+   ThreadReference/THREAD_STATUS_RUNNING :running
+   ThreadReference/THREAD_STATUS_SLEEPING :sleeping
+   ThreadReference/THREAD_STATUS_UNKNOWN :unknown
+   ThreadReference/THREAD_STATUS_WAIT :wait
+   ThreadReference/THREAD_STATUS_ZOMBIE :zombie})
+
+(defn thread-data
+  "Returns thread data"
+  [^ThreadReference thread]
+  {:id (.uniqueID thread)
+   :name (.name thread)
+   :status (thread-states (.status thread))
+   :suspend-count (.suspendCount thread)
+   :suspended? (.isSuspended thread)
+   :at-breakpoint? (.isAtBreakpoint thread)})
+
+(defn threads
+  [^VirtualMachine vm]
+  (when vm (.allThreads vm)))
+
+(defn thread-groups
+  "Build a thread group tree"
+  [^VirtualMachine vm]
+  (letfn [(thread-group-f [^ThreadGroupReference group]
+            [{:name (.name group) :id (.uniqueID group)}
+             (map thread-group-f (.threadGroups group))
+             (map thread-data (.threads group))])]
+    (map thread-group-f (.topLevelThreadGroups vm))))
+
+(defn threads-in-group
+  "Returns all threads under a named group"
+  [^VirtualMachine vm ^String group-name]
+  (letfn [(thread-group-f [^ThreadGroupReference group]
+            (concat
+             (mapcat thread-group-f (.threadGroups group))
+             (.threads group)))
+          (thread-filter-f [^ThreadGroupReference group]
+            (if (= (.name group) group-name)
+              (thread-group-f group)
+              (mapcat thread-filter-f (.threadGroups group))))]
+    (mapcat thread-filter-f (.topLevelThreadGroups vm))))
+
+(defn suspend-thread
+  "Suspend a thread reference"
+  [^ThreadReference thread]
+  (.suspend thread))
+
+(defn suspend-threads
+  "Suspend a thread reference"
+  [threads]
+  (doseq [^ThreadReference thread threads]
+    (.suspend thread)))
+
+(defn resume-thread
+  "Resume a thread reference"
+  [^ThreadReference thread]
+  (.resume thread))
+
+(defn resume-threads
+  "Suspend a thread reference"
+  [threads]
+  (doseq [^ThreadReference thread threads]
+    (.resume thread)))
+
+;;; Event Requests
+(def
+  ^{:doc "Keyword to event request suspend policy value. Allows specification
+          of suspend policy by keyword."}
+  event-request-policies
+  {:suspend-all EventRequest/SUSPEND_ALL
+   :suspend-event-thread EventRequest/SUSPEND_EVENT_THREAD
+   :suspend-none EventRequest/SUSPEND_NONE})
+
+(defn discard-event-request
+  [^VirtualMachine vm ^EventRequest event-request]
+  (.disable event-request)
+  (.deleteEventRequest (.eventRequestManager vm) event-request))
+
+(defn ^ExceptionRequest exception-request
+  "Create an exception request"
+  [^VirtualMachine vm ^ReferenceType ref-type
+   notify-caught notify-uncaught]
+  (.createExceptionRequest
+   (.eventRequestManager vm)
+   ref-type (boolean notify-caught) (boolean notify-uncaught)))
+
+(defn suspend-policy
+  "Set the suspend policy for an exeception request.
+   policy is one of :suspend-all, :suspend-event-thread, or :suspend-none"
+  [^EventRequest request policy]
+  (.setSuspendPolicy request (policy event-request-policies)))
+
+(defn event-suspend-policy
+  "Returns the suspend policy for an event"
+  [^Event event]
+  (let [policy (.. event (request) (suspendPolicy))]
+    (some #(and (= policy (val %)) (key %)) event-request-policies)))
+
+(defn suspend-event-threads
+  [^Event event]
+  (condp = (.. event (request) (suspendPolicy))
+      EventRequest/SUSPEND_ALL (.suspend (.virtualMachine event))
+      EventRequest/SUSPEND_EVENT_THREAD (.suspend (.thread event))
+      EventRequest/SUSPEND_NONE nil))
+
+(defn resume-event-threads
+  [^Event event]
+  (condp = (.. event (request) (suspendPolicy))
+      EventRequest/SUSPEND_ALL (.resume (.virtualMachine event))
+      EventRequest/SUSPEND_EVENT_THREAD (.resume (.thread event))
+      EventRequest/SUSPEND_NONE nil))
+
+(def step-sizes
+  {:min StepRequest/STEP_MIN
+   :line StepRequest/STEP_LINE})
+
+(def step-depths
+  {:into StepRequest/STEP_INTO
+   :over StepRequest/STEP_OVER
+   :out StepRequest/STEP_OUT})
+
+(defn ^StepRequest step-request
+  "Create an step request
+   `size` is one of :min or :line
+   `depth` is one of :into, :over or :out"
+  [^ThreadReference thread size depth]
+  (..
+   thread
+   (virtualMachine)
+   (eventRequestManager)
+   (createStepRequest
+    thread
+    (size step-sizes StepRequest/STEP_LINE)
+    (depth step-depths StepRequest/STEP_OVER))))
+
+(defn ^ThreadReference event-thread
+  "Return the event's thread - note that there is no common interface for this.
+   A BreakpointEvent just has a thread method."
+  [^LocatableEvent event]
+  (.thread event))
+
+;;; locations
+(defn catch-location
+  [^ExceptionEvent event]
+  (.catchLocation event))
+
+(defn location
+  [^Locatable l]
+  (.location l))
+
+(defn location-type-name
+  [^Location location]
+  (.. location declaringType name))
+
+(defn location-method-name
+  [^Location location]
+  (.. location method name))
+
+(defn location-source-name
+  [^Location location]
+  (try
+    (.. location sourceName)
+    (catch Exception _)))
+
+(defn location-source-path
+  [^Location location]
+  (try
+    (.. location sourcePath)
+    (catch Exception _)))
+
+(defn location-line-number
+  [^Location location]
+  (try
+    (.lineNumber location)
+    (catch Exception _ -1)))
+
+(defn method-line-locations
+  "Return all locations at the given line for the given method.
+   If the line doesn't exist for the given class, returns nil."
+  [^Method method line]
+  ;; (logging/trace
+  ;;  "Looking for line %s in %s" line (.name method))
+  (try
+    (.locationsOfLine method line)
+    (catch com.sun.jdi.AbsentInformationException _
+      (logging/trace "not found")
+      nil)))
+
+(defn class-line-locations
+  "Return all locations at the given line for the given class.
+   If the line doesn't exist for the given class, returns nil."
+  [^ReferenceType class line]
+  (logging/trace
+   "Looking for line %s in %s" line (.name class))
+  (try
+    (distinct
+     (concat
+      (.locationsOfLine class line)
+      (mapcat #(method-line-locations % line) (.methods class))))
+    (catch com.sun.jdi.ClassNotPreparedException _)
+    (catch com.sun.jdi.AbsentInformationException _
+      (logging/trace "not found")
+      nil)))
+
+
+;;; breakpoints
+
+(defn breakpoint
+  "Create a breakpoint"
+  [^VirtualMachine vm suspend-policy ^Location location]
+  (logging/trace "Setting breakpoint %s %s %s"
+                 (location-type-name location)
+                 (location-method-name location)
+                 (location-line-number location))
+  (doto (.createBreakpointRequest (.eventRequestManager vm) location)
+    (.setSuspendPolicy (suspend-policy event-request-policies))
+    (.enable)))
+
+(defn line-breakpoints
+  "Create breakpoints at the given location"
+  [vm suspend-policy namespace filename line]
+  (logging/trace "line-breakpoints %s %s %s" namespace filename line)
+  (->>
+   (or (and namespace (namespace-classes vm namespace))
+       (file-classes vm filename))
+   (mapcat #(class-line-locations % line))
+   (map #(breakpoint vm suspend-policy %))))
+
+;;; from cdt
+(defn clojure-frame?
+  "Predicate to test if a frame is a clojure frame. Checks the for the extension
+   of the frame location's source name, or for the presence of well know clojure
+   field prefixes."
+  [^StackFrame frame fields]
+  (let [^String source-path (location-source-path (.location frame))]
+    (or (and source-path (.endsWith source-path ".clj"))
+        (and
+         (some #{"__meta"} (map #(.name ^Field %) fields))
+         ;;(or (nil? source-path) (not (.endsWith source-path ".java")))
+         ))))
+
+(def clojure-implementation-regex
+  #"(^const__\d*$|^__meta$|^__var__callsite__\d*$|^__site__\d*__$|^__thunk__\d*__$)")
+
+(defn visible-clojure-fields
+  "Return the subset of fields that should be visible."
+  [fields]
+  (remove
+   #(re-find clojure-implementation-regex (.name ^Field %))
+   fields))
+
+(defn ^String unmunge-clojure
+  "unmunge a clojure name"
+  [^String munged-name]
+  {:pre [(string? munged-name)]}
+  (reduce
+   #(string/replace %1 (val %2) (str (key %2)))
+   (string/replace munged-name "$" "/")
+   clojure.lang.Compiler/CHAR_MAP))
+
+(defn frame-fields
+  "Fields for the frame's this object."
+  [^StackFrame frame]
+  (try
+    (when-let [this (.thisObject frame)]
+      (.. this referenceType fields))
+    (catch com.sun.jdi.AbsentInformationException e
+      (logging/trace "fields unavailable"))))
+
+(defn frame-field-values
+  "Fields for the frame's this object."
+  [^StackFrame frame fields]
+  (when-let [this (.thisObject frame)]
+    (.. this (getValues fields))))
+
+(defn frame-locals
+  "Returns a map from LocalVariable to Value"
+  [^StackFrame frame]
+  (try
+    (when-let [locals (.visibleVariables frame)]
+      (.getValues frame locals))
+    (catch com.sun.jdi.AbsentInformationException e
+      (logging/trace "locals unavailable")
+      nil)))
+
+(defn field-maps
+  "Returns a sequence of maps representing unmangled clojure fields."
+  [fields]
+  (for [[^Field field value] fields
+        :let [field-name (.name field)]]
+    {:field field
+     :name field-name
+     :unmangled-name (unmunge-clojure field-name)
+     :value value}))
+
+(defn local-maps
+  "Returns a sequence of maps representing unmangled clojure locals."
+  [locals unmangle?]
+  (for [[^LocalVariable local value] locals
+        :let [local-name (.name local)]]
+    {:local local
+     :name local-name
+     :unmangled-name (if unmangle? (unmunge-clojure local-name) local-name)
+     :value value}))
+
+(defn unmangled-frame-locals
+  "Return a sequence of maps, representing the fields and locals in a frame.
+   Each map has :name, :unmangled-name and :value keys, and either a :field
+   or a :local key."
+  [frame]
+  (let [fields (frame-fields frame)
+        locals (frame-locals frame)]
+    (if (clojure-frame? frame fields)
+      (concat
+       (field-maps (frame-field-values frame (visible-clojure-fields fields)))
+       (local-maps locals true))
+      (local-maps locals false))))
+
+(defn breakpoint-data
+  "Returns breakpoint data"
+  [^BreakpointRequest breakpoint]
+  (let [location (.location breakpoint)]
+    {:file (str (.sourcePath location))
+     :line (.lineNumber location)
+     :enabled (.isEnabled breakpoint)}))
+
+(defn breakpoints
+  "List breakpoints"
+  [^VirtualMachine vm]
+  (.. vm (eventRequestManager) (breakpointRequests)))
+
+(defn exception-requests
+  "List exception requests"
+  [^VirtualMachine vm]
+  (.. vm (eventRequestManager) (exceptionRequests)))
+
+(defn location-data
+  "Take a location, and extract function source and line."
+  [^Location location]
+  (let [declaring-type (location-type-name location)
+        method (location-method-name location)
+        line (location-line-number location)
+        ^String source-name (or (location-source-name location) "UNKNOWN")
+        ^String source-path (or (location-source-path location) "UNKNOWN")]
+    (if (and (= method "invoke") source-name
+             (or (.endsWith source-name ".clj")
+                 (.startsWith source-name "SOURCE_FORM_")))
+      {:function (and declaring-type (unmunge-clojure declaring-type))
+       :source source-name
+       :source-path source-path
+       :line line}
+      {:function (format "%s.%s" declaring-type method)
+       :source source-name
+       :source-path source-path
+       :line line})))
+
+(defn exception-message
+  "Provide a string with the details of the exception"
+  [context ^ExceptionEvent event]
+  (with-disabled-exception-requests [(:vm context)]
+    (when-let [msg (invoke-method
+                    (event-thread event)
+                    {:disable-exception-requests true}
+                    (.exception event)
+                    (:exception-message context) [])]
+      (string-value msg))))
+
+(defn exception-event-string
+  "Provide a string with the details of the exception"
+  [context ^ExceptionEvent event]
+  (format
+   "%s\n%s\n%s\n%s"
+   (.. event exception referenceType name)
+   (exception-message context event)
+   (.. event exception toString)
+   (string/join
+    \newline
+    (map
+     (fn [i ^StackFrame frame]
+       (let [l (location-data (.location frame))]
+         (str i " " (:function l) " " (:source l) " " (:line l))))
+     (iterate inc 0)
+     (.. (event-thread event) (frames))))))
+
+(defn collected?
+  [^ObjectReference obj]
+  (.isCollected obj))
