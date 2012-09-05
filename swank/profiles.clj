@@ -9,6 +9,6 @@
   {:updates [{:path "README.md"
               :no-snapshot true
               :search-regex #"lein-ritz \"\d+\.\d+\.\d+\""}
-             {:path "elisp/nrepl-ritz.el"
+             {:path "elisp/slime-ritz.el"
               :no-snapshot true
-              :search-regex #";; Version: \"\d+\.\d+\.\d+\""}]}}}
+              :search-regex #";; Version: \d+\.\d+\.\d+"}]}}}
