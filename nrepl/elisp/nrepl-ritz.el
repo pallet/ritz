@@ -372,11 +372,8 @@ are supported:
                                 "ns" nrepl-buffer-ns
                                 "symbol" str))
                          :value)))
-    (message "strlist is %s" strlst)
     (when strlst
-      ;(message "strlist read is %s" (read-from-string strlst))
-      (car strlst ;; (read-from-string strlst)
-           ))))
+      (car strlst))))
 
 ;; If the version of nrepl.el has nrepl-completion-fn, enable this using:
 ;; (setq nrepl-completion-fn 'nrepl-completion-complete-op-fn)
