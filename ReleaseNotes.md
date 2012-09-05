@@ -1,6 +1,51 @@
 # Release Notes
 
-Current release is 0.3.2.
+Current release is 0.4.0.
+
+## 0.4.0
+
+This is a major refactoring into individual sub-projects, with the introduction
+of nrepl support.
+
+# features
+
+- Add nrepl-ritz-jack-in command
+
+- Add nrepl-ritz-toggle-nrepl-logging
+  Toggles :trace level logging in the nrepl server.
+
+- Add nREPL complete middleware implementation using simple-complete
+
+- Add apropos, doc, and describe-symbol nrepl middleware
+
+- Add javadoc middleware
+
+- Add a test nrepl transport
+
+- Add resolve of Java symbols in javadoc using ns-interns
+
+- Factor out projects for repl-utils, debugger, swank and nrepl
+
+- Update to nrepl 0.2.0-beta9 and add op metadata
+
+- Make nrepl-ritz depend on the nrepl elisp package
+
+- Add port of sldb to nrepl-ritz.el
+  The port isn't completely functional yet, but will allow examination of
+  stacktraces.
+
+- Disable break on exception by default
+  Adds bindings for C-c C-x b to slime-break-on-exception. With a prefix it
+  will disable break on exception
+
+- Add nrepl-ritz-undefine-symbol
+
+- Add nrepl-ritz-javadoc
+  Bound to C-x b, displays javadoc for the symbol at point
+
+- Refactor thread listing
+  Removes the associng of the thread list onto the context from the 
+  ritz.jpda.debug/thread-list function, and pushes it into the swank code.
 
 ## 0.3.2
 

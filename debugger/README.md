@@ -13,7 +13,7 @@ The library provides various layers for using JPDA/JDI in clojure.
 Add the following to your `:dependencies`:
 
 ```clj
-[ritz/ritz-debugger "0.4.0-SNAPSHOT"]
+[ritz/ritz-debugger "0.4.0"]
 ```
 
 ## License
