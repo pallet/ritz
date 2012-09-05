@@ -13,7 +13,7 @@ Add `lein-ritz` to the `:plugins` key of your `~/.lein/profiles` file (requires
 lein version 2).
 
 ```clj
-{:user {:plugins [[lein-ritz "0.4.0-SNAPSHOT"]]}}
+{:user {:plugins [[lein-ritz "0.4.0"]]}}
 ```
 
 Install the nrepl-ritz.el contrib from
@@ -38,7 +38,7 @@ Add `ritz-nrepl` to your `:dev` `:dependencies` vector, and add the middleware
 to `:nrepl-middleware` under `:repl-options` in `project.clj.
 
 ```clj
-:dependencies [[ritz/ritz-nrepl "0.4.0-SNAPSHOT"]]
+:dependencies [[ritz/ritz-nrepl "0.4.0"]]
 :repl-options {:nrepl-middleware ['ritz.nrepl.middleware.javadoc/wrap-javadoc]}
 ```
 
