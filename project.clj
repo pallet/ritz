@@ -6,7 +6,8 @@
   :scm {:url "git@github.com:pallet/ritz.git"}
   :sub ["repl-utils" "debugger" "nrepl" "swank" "lein-ritz"]
   :plugins [[lein-sub "0.2.1"]]
-  :aliases {"install" ["sub" "install"]
+  :aliases {"clean" ["sub" "clean"]
+            "install" ["sub" "install"]
             "deploy" ["sub" "deploy"]
             "test" ["sub" "with-profile" "jdk1.7" "test"]
             "doc" ["sub" "with-profile" "codox,jdk1.7" "doc"]
