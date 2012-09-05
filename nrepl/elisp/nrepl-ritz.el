@@ -1046,12 +1046,13 @@ This is 0 if START and END at the same line."
 (defun nrepl-dbg-show-frame-source (frame-number)
   (nrepl-ritz-send-dbg-op
    "frame-source"
-   (lambda (&key zip file line error)
-     (if error
-         (progn
-           (message "%s" error)
-           (ding))
-       (nrepl-ritz-show-source-location zip file line)))
+   (lambda (&rest args)
+     (destructuring-bind (&key zip file line error) args
+       (if error
+           (progn
+             (message "%s" error)
+             (ding))
+         (nrepl-ritz-show-source-location zip file line))))
    'frame-number frame-number))
 
 ;;; ## Toggle frame details

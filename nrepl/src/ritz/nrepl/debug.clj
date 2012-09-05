@@ -133,6 +133,7 @@ the events can be delivered back."
   [connection thread-id frame]
   (let [[level-info level] (break/break-level-info connection thread-id)
         [buffer position] (frame-source-location (:thread level-info) frame)]
+    (trace "frame-source %s %s" buffer position)
     (when buffer (merge buffer position))))
 
 (defn frame-locals-msg
