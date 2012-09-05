@@ -284,6 +284,20 @@ are supported:
                       (line-end-position)
                       timeout))
 
+;;; logging
+(defun nrepl-ritz-toggle-nrepl-logging ()
+  "Describe symbol."
+  (interactive)
+  (nrepl-send-string
+   "(require 'ritz.logging)"
+   (nrepl-current-ns)
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil))
+  (nrepl-send-string
+   "(ritz.logging/toggle-level :trace)"
+   (nrepl-current-ns)
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+
+
 ;;; jpda commands
 (defun nrepl-ritz-threads ()
   (interactive)

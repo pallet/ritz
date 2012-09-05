@@ -13,6 +13,11 @@
   [level]
   (reset! log-level level))
 
+(defn toggle-level
+  "Toggle log level between `level` and nil"
+  [level]
+  (swap! log-level #(if % nil level)))
+
 (defmacro log
   [level fmt-str & args]
   `(when (= ~level @log-level)
