@@ -167,15 +167,15 @@
                    (.get future timeout TimeUnit/MILLISECONDS)
                    (.get future))])
     (catch CancellationException e
-      (connection/send-to-emacs connection "cancelled"))
+      (connection/send-to-emacs connection '(:background-message "cancelled")))
     (catch TimeoutException e
-      (connection/send-to-emacs connection "timeout"))
+      (connection/send-to-emacs connection '(:background-message "timeout")))
     (catch ExecutionException e
       (.printStackTrace e)
-      (connection/send-to-emacs connection "server-failure"))
+      (connection/send-to-emacs connection '(:background-message "server-failure")))
     (catch InterruptedException e
       (.printStackTrace e)
-      (connection/send-to-emacs connection "server-failure"))))
+      (connection/send-to-emacs connection '(:background-message "server-failure")))))
 
 
 (defn send-repl-results-to-emacs
