@@ -1021,7 +1021,7 @@
   (first (map #(% event) @connection-for-event-fns)))
 
 (defn all-connections []
-  (mapcat #(%) @all-connections-fns))
+  (mapcat #(when % (%)) @all-connections-fns))
 
 (defmethod jdi/handle-event ExceptionEvent
   [^ExceptionEvent event context]
