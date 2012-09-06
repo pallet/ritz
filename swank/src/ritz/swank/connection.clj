@@ -128,7 +128,7 @@
                                     io-connection)
                      :result-history nil
                      :send-repl-results-function nil
-                     :namespace 'user})]
+                     :namespace (atom 'user)})]
     (exception-filters-set!
      connection (or (read-exception-filters) default-exception-filters))
     (merge
@@ -229,8 +229,8 @@
 
 (defn set-namespace
   [connection ns]
-  (assoc connection :namespace ns))
+  (reset! (:namespace connection) ns))
 
 (defn current-namespace
   [connection]
-  (:namespace connection))
+  @(:namespace connection))
