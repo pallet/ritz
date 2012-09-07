@@ -1,1 +1,1 @@
-../../../../src/main/elisp/slime-ritz.el
+../../../../swank/elisp/slime-ritz.el
