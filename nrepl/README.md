@@ -1,4 +1,4 @@
-# rtiz-nrepl
+# ritz-nrepl
 
 `ritz-nrepl` comprises an nREPL server and middleware. The server uses JPDA to
 provide debugger middleware. The library also provides general purpose
@@ -13,7 +13,7 @@ Add `lein-ritz` to the `:plugins` key of your `~/.lein/profiles` file (requires
 lein version 2).
 
 ```clj
-{:user {:plugins [[lein-ritz "0.4.0"]]}}
+{:user {:plugins [[lein-ritz "0.4.1"]]}}
 ```
 
 Install the nrepl-ritz.el contrib from
@@ -38,7 +38,7 @@ Add `ritz-nrepl` to your `:dev` `:dependencies` vector, and add the middleware
 to `:nrepl-middleware` under `:repl-options` in `project.clj.
 
 ```clj
-:dependencies [[ritz/ritz-nrepl "0.4.0"]]
+:dependencies [[ritz/ritz-nrepl "0.4.1"]]
 :repl-options {:nrepl-middleware ['ritz.nrepl.middleware.javadoc/wrap-javadoc]}
 ```
 
