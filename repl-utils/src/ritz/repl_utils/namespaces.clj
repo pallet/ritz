@@ -1,7 +1,9 @@
 (ns ritz.repl-utils.namespaces
   "Namespace functions"
   (:use
-   [clojure.set :only [union]]))
+   [clojure.set :only [union]])
+  (:require
+   ritz.repl-utils.core.defonce))
 
 ;;; Functions to flag and clear marked vars. Used to remove dead vars on
 ;;; load-file operations.
