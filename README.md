@@ -22,10 +22,6 @@ environments and for debuggers.
       <td><a href="https://github.com/pallet/ritz/tree/develop/repl-utils">ritz-repl-utils</a></td>
       <td>A library of functions useful when working in a clojure REPL.</td>
     </tr>
-    <tr>
-      <td><a href="https://github.com/pallet/ritz/tree/develop/swank">ritz-swank</a></td>
-      <td>SWANK server for emacs SLIME environment</td>
-    </tr>
   </tbody>
 </table>
 

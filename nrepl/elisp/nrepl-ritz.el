@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.4.0
+;; Version: 0.4.1
 ;; Package-Requires: ((nrepl "0.1.4"))
 ;; License: EPL
 

@@ -702,7 +702,8 @@
 
 (defn restart-info
   [connection event level]
-  (let [exception-info (exception-info connection event)]
+  (let [exception-info (when (instance? ExceptionEvent event)
+                         (exception-info connection event))]
     {:condition exception-info
      :restarts (restarts event exception-info connection level)}))
 
@@ -1021,7 +1022,7 @@
   (first (map #(% event) @connection-for-event-fns)))
 
 (defn all-connections []
-  (mapcat #(%) @all-connections-fns))
+  (mapcat #(when % (%)) @all-connections-fns))
 
 (defmethod jdi/handle-event ExceptionEvent
   [^ExceptionEvent event context]
