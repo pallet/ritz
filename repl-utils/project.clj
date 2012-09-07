@@ -1,4 +1,4 @@
-(defproject ritz/ritz-repl-utils "0.4.1-SNAPSHOT"
+(defproject ritz/ritz-repl-utils "0.4.1"
   :description "Library of functions useful in clojure development environments"
   :url "https://github.com/pallet/ritz"
   :scm {:url "git@github.com:pallet/ritz.git"}

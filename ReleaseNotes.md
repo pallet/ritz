@@ -1,13 +1,40 @@
 # Release Notes
 
-Current release is 0.4.0.
+Current release is 0.4.1.
+
+## 0.4.1
+
+### Fixes
+- Fix display of condition for breakpoints
+  No longer tries to interpret an exception for the breakpoint event. 
+  Fixes #26
+
+- Fix symlink to slime-ritz.el in ritz jack-in payloads
+  Fixes #31
+
+- send back well formed events to slime
+
+- Fix connection/set-namespace (called for side effects, but without an atom
+  the namespace was being forgotten and namespace could not be changed)
+  Fixes #29
+
+- Add guard to all-connections function evaluation. Fixes an exception on
+  closing a swank session.
+
+### Features
+
+- Add functions to return dependencies between namespaces
+  dependent-on returns the sequence of namespaces that are dependent on a
+  namespace. dependencies returns the sequence of namespaces that a
+  namespace depends on.
+
 
 ## 0.4.0
 
 This is a major refactoring into individual sub-projects, with the introduction
 of nrepl support.
 
-# features
+### features
 
 - Add nrepl-ritz-jack-in command
 
