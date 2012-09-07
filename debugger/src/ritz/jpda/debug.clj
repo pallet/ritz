@@ -702,7 +702,8 @@
 
 (defn restart-info
   [connection event level]
-  (let [exception-info (exception-info connection event)]
+  (let [exception-info (when (instance? ExceptionEvent event)
+                         (exception-info connection event))]
     {:condition exception-info
      :restarts (restarts event exception-info connection level)}))
 
