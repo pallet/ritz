@@ -32,13 +32,13 @@
 
    It is assumed that `bindings` already contains useful/appropriate entries
    for all vars indicated by `clojure.main/with-bindings`."
-  [bindings {:keys [code ns transport file id line] :as msg}]
+  [bindings {:keys [code ns transport file-path id line] :as msg}]
   (let [explicit-ns-binding (when-let [ns (and ns (-> ns symbol find-ns))]
                               {#'*ns* ns})
         bindings (atom (merge bindings explicit-ns-binding))
         out (@bindings #'*out*)
         err (@bindings #'*err*)
-        file (or file (source-form-path id))
+        file-path (or file-path (source-form-path id))
         line (or line 1)]
     (if (and ns (not explicit-ns-binding))
       (transport/send
@@ -46,7 +46,7 @@
        (response-for msg {:status #{:error :namespace-not-found :done}}))
       (with-bindings @bindings
         (try
-          (let [[v f] (eval-region code file line)]
+          (let [[v f] (eval-region code file-path line)]
             (.flush ^Writer err)
             (.flush ^Writer out)
             (transport/send
@@ -117,9 +117,9 @@
 (defn wrap-source-forms
   "Middleware that notes and allows query of source forms."
   [h]
-  (fn [{:keys [op id transport code file line] :as msg}]
+  (fn [{:keys [op id transport code file-path line] :as msg}]
     (case op
-      "eval" (if (and file line)
+      "eval" (if (and file-path line)
                (h msg)
                (do (source-form! (read-string id) code) (h msg)))
       "source-forms" (source-forms-reply msg)
@@ -140,7 +140,9 @@
     :optional
     {"id" "An opaque message ID that will be included in responses
  related to the evaluation, and which may be used to restrict the scope
- of a later \"interrupt\" operation."}
+ of a later \"interrupt\" operation."
+     "file-path" "A file-path to the file defining the code"
+     "line" "A line number within the file at which the code starts"}
     :returns {}}
    "interrupt"
    {:doc "Attempts to interrupt some code evaluation."
