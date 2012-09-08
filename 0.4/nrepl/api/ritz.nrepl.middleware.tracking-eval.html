@@ -1,6 +1,6 @@
 <html lang="en">
   <head>
-    <title>ritz.nrepl.middleware.javadoc documentation</title>
+    <title>ritz.nrepl.middleware.tracking-eval documentation</title>
     <link href="css/default.css" type="text/css" rel="stylesheet" />
     <script type="text/javascript" src="js/jquery.min.js"></script>
     <script type="text/javascript" src="js/page_effects.js"></script>
@@ -21,23 +21,50 @@
       <div id="vars" class="sidebar">
         <h3>Public Vars</h3>
         <ul class="ns-var-links">
-          <li class="ns-var-link"><a href="ritz.nrepl.middleware.javadoc.html#var-wrap-javadoc">wrap-javadoc</a></li>
+          <li class="ns-var-link"><a href="ritz.nrepl.middleware.tracking-eval.html#var-evaluate">evaluate</a></li><li class="ns-var-link"><a href="ritz.nrepl.middleware.tracking-eval.html#var-tracking-eval">tracking-eval</a></li><li class="ns-var-link"><a href="ritz.nrepl.middleware.tracking-eval.html#var-wrap-source-forms">wrap-source-forms</a></li>
         </ul>
       </div>
     </navigation>
     <article>
       <div id="content" class="namespace-docs">
-        <h2 class="namespace-title">ritz.nrepl.middleware.javadoc documentation</h2>
-        <div class="doc">
+        <h2 class="namespace-title">ritz.nrepl.middleware.tracking-eval documentation</h2>
+        <div class="doc"><p>An eval operation with source form tracking.</p>
 </div>
         <div class="ns-vars">
           <div class="public">
-            <h3 id="var-wrap-javadoc">wrap-javadoc</h3>
-            <div class="usage">[handler]</div>
+            <h3 id="var-evaluate">evaluate</h3>
+            <div class="usage">[bindings {:keys [code ns transport file-path id line], :as msg}]</div>
             
             
-            <div class="doc"><p>Middleware that looks up javadoc for a symbol.
-Accepts local-paths, a space separated list of local paths to local javadoc.</p>
+            <div class="doc"><p>Evaluates some code within the dynamic context defined by a map of
+<code>bindings</code>, as per <code>clojure.core/get-thread-bindings</code>.</p>
+
+<p>Uses <code>clojure.main/repl</code> to drive the evaluation of :code in a second map
+argument (a string), which may also optionally specify a :ns (resolved via
+<code>find-ns</code>).  The map MUST contain a Transport implementation in :transport;
+expression results and errors will be sent via that Transport.</p>
+
+<p>Returns the dynamic scope that remains after evaluating all expressions
+in :code.</p>
+
+<p>It is assumed that <code>bindings</code> already contains useful/appropriate entries
+for all vars indicated by <code>clojure.main/with-bindings</code>.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-tracking-eval">tracking-eval</h3>
+            <div class="usage">[h &amp; {:keys [executor], :or {executor (configure-executor)}}]</div>
+            
+            
+            <div class="doc"><p>Evaluation middleware that supports interrupts and tracking of source forms.
+Returns a handler that supports "eval" and "interrupt" :op-erations that
+delegates to the given handler otherwise.</p>
+</div>
+          </div><div class="public">
+            <h3 id="var-wrap-source-forms">wrap-source-forms</h3>
+            <div class="usage">[h]</div>
+            
+            
+            <div class="doc"><p>Middleware that notes and allows query of source forms.</p>
 </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 <html lang="en">
   <head>
-    <title>ritz.logging documentation</title>
+    <title>ritz.repl-utils.core.defonce documentation</title>
     <link href="css/default.css" type="text/css" rel="stylesheet" />
     <script type="text/javascript" src="js/jquery.min.js"></script>
     <script type="text/javascript" src="js/page_effects.js"></script>
@@ -21,36 +21,41 @@
       <div id="vars" class="sidebar">
         <h3>Public Vars</h3>
         <ul class="ns-var-links">
-          <li class="ns-var-link"><a href="ritz.logging.html#var-log-str">log-str</a></li><li class="ns-var-link"><a href="ritz.logging.html#var-set-level">set-level</a></li><li class="ns-var-link"><a href="ritz.logging.html#var-toggle-level">toggle-level</a></li>
+          <li class="ns-var-link"><a href="ritz.repl-utils.core.defonce.html#var-defmulti">defmulti</a></li><li class="ns-var-link"><a href="ritz.repl-utils.core.defonce.html#var-defonce">defonce</a></li>
         </ul>
       </div>
     </navigation>
     <article>
       <div id="content" class="namespace-docs">
-        <h2 class="namespace-title">ritz.logging documentation</h2>
-        <div class="doc"><p>Logging for swank. Rudimentary for now</p>
+        <h2 class="namespace-title">ritz.repl-utils.core.defonce documentation</h2>
+        <div class="doc"><p>Ritz reloading of namespaces checks :defonce metadata. This ensures
+the metadata gets set by clojure.core/defonce.</p>
 </div>
         <div class="ns-vars">
           <div class="public">
-            <h3 id="var-log-str">log-str</h3>
-            <div class="usage">[level fmt-str &amp; args]</div>
+            <h3 id="var-defmulti">defmulti</h3>
+            <div class="usage">[name docstring? attr-map? dispatch-fn &amp; options]</div>
+            <div class="added">
+              <p>Added: <span class="version">1.0</span></p>
+            </div>
             
-            
-            <div class="doc"><p>Log without newline or flushing</p>
+            <div class="doc"><p>Creates a new multimethod with the associated dispatch function.
+The docstring and attribute-map are optional.</p>
+
+<p>Options are key-value pairs and may be one of:
+  :default    the default dispatch value, defaults to :default
+  :hierarchy  the isa? hierarchy to use for dispatching
+              defaults to the global hierarchy</p>
 </div>
           </div><div class="public">
-            <h3 id="var-set-level">set-level</h3>
-            <div class="usage">[level]</div>
+            <h3 id="var-defonce">defonce</h3>
+            <div class="usage">[name expr]</div>
+            <div class="added">
+              <p>Added: <span class="version">1.0</span></p>
+            </div>
             
-            
-            <div class="doc"><p>Set log level</p>
-</div>
-          </div><div class="public">
-            <h3 id="var-toggle-level">toggle-level</h3>
-            <div class="usage">[level]</div>
-            
-            
-            <div class="doc"><p>Toggle log level between <code>level</code> and nil</p>
+            <div class="doc"><p>defs name to have the root value of the expr iff the named var has no root value,
+else expr is unevaluated</p>
 </div>
           </div>
         </div>
