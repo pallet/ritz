@@ -35,6 +35,7 @@ processes."
            promote-pending-connection rename-connection]]
    [ritz.nrepl.debug-eval :only [debug-eval]]
    [ritz.nrepl.exec :only [read-msg]]
+   [ritz.nrepl.middleware.tracking-eval :only [wrap-source-forms]]
    [ritz.nrepl.rexec :only [rexec]]
    [ritz.nrepl.simple-eval :only [simple-eval]])
   (:require
@@ -158,7 +159,8 @@ reference."
         jpda-eval (jpda-eval-middleware)
         pr-values (pr-values/pr-values #{"jpda"})]
     (-> unknown-op
-        rexec jpda-eval debug-eval pr-values connection log-message)))
+        rexec wrap-source-forms jpda-eval debug-eval pr-values connection
+        log-message)))
 
 ;;; # Reply pump
 ;;; The reply pump takes all nREPL replies sent from the user process, and
@@ -249,8 +251,7 @@ generate a name for the thread."
     (ritz.jpda.jdi-clj/control-eval
      vm
      `(do
-        (require
-         'ritz.nrepl.handler 'ritz.nrepl.exec 'clojure.tools.nrepl.server)
+        (require 'ritz.nrepl.handler 'ritz.nrepl.exec)
         (doseq [ns# ~(vec
                       (map #(list `quote (symbol (namespace %))) middleware))]
           (require ns#))
@@ -259,9 +260,7 @@ generate a name for the thread."
      vm
      `(do
         (ritz.nrepl.exec/set-handler!
-         (apply clojure.tools.nrepl.server/default-handler
-                ~@middleware
-                ritz.nrepl.handler/ritz-middlewares))
+         (ritz.nrepl.handler/default-handler ~@middleware))
         nil))
     (println "nREPL server started on port" port)
     (spit repl-port-path port)))

@@ -61,69 +61,12 @@ project server."
             ~host ~port ~ack-port
             ~(str (io/file (:target-path project) "repl-port"))
             ~(string/join ":" user-classpath)
-            ~nrepl-middleware))]
+            ~(vec (map #(list 'quote %) nrepl-middleware))))]
     (eval/eval-in-project
      jpda-project
      server-starting-form
      '(do (require
            'ritz.nrepl)))))
-
-;; (do
-;;            (println "start-jpda-server jpda repl")
-;;            (let [server# (clojure.tools.nrepl.server/start-server
-;;                           :bind "localhost" :port 0 :ack-port ~ack-port
-;;                           :handler (ritz.nrepl/debug-handler ~host ~port))
-;;                  project# (read-string ~(pr-str user-project))
-;;                  ;; nrepl-server# (ritz.nrepl/start-nrepl-server
-;;                  ;;                project# ~host ~port ~ack-port {:headless? true})
-;;                  vm# (ritz.jpda.jdi-vm/launch-vm
-;;                       ~(string/join ":" user-classpath)
-;;                       `@(promise))
-;;                  msg-thread# (ritz.jpda.jdi-vm/acquire-thread vm# "msg-pump")
-;;                  vm# (assoc :msg-pump-thread msg-thread#)
-;;                  _# (ritz.nrepl/set-vm vm#)
-;;                  port# (-> server# deref :ss .getLocalPort)]
-;;              (ritz.jpda.jdi-vm/vm-resume vm#)
-;;              (println "nREPL server started on port" port#)
-;;              (spit ~(str (io/file (:target-path project) "repl-port")) port#)))
-
-
-
-;; (defn- start-jpda-server
-;;   "Start the JPDA nrepl server. The JPDA nrepl server will start the user nrepl
-;;   server."
-;;   [project host port ack-port {:keys [headless? debug?]}]
-;;   {:pre [project]}
-;;   (let [jpda-project (->
-;;                       project
-;;                       (project/merge-profiles
-;;                        [ritz-profile lein-project-profile :jpda]))
-;;         user-project (->
-;;                       project
-;;                       (update-in [:jvm-opts] conj jvm-jdwp-opts)
-;;                       (project/merge-profiles [profile]))
-;;         server-starting-form
-;;         `(do
-;;            (println "start-jpda-server jpda repl")
-;;            (let [server# (clojure.tools.nrepl.server/start-server
-;;                           :bind "localhost" :port 0 :ack-port ~ack-port
-;;                           :handler (ritz.nrepl/debug-handler ~host ~port))
-;;                  project# (read-string ~(pr-str user-project))
-;;                  nrepl-server# (ritz.nrepl/start-nrepl-server
-;;                                 project# ~host ~port ~ack-port {:headless? true})
-;;                  port# (-> server# deref :ss .getLocalPort)]
-;;              (println "nREPL server started on port" port#)
-;;              (spit ~(str (io/file (:target-path project) "repl-port")) port#)))]
-;;     (println "start-jpda-server eval-in-project")
-;;     (println "start-jpda-server user-project" user-project)
-;;     (eval/eval-in-project
-;;      jpda-project
-;;      server-starting-form
-;;      '(do (require
-;;            'clojure.main
-;;            'clojure.tools.nrepl.server
-;;            'ritz.nrepl
-;;            'ordered.map)))))
 
 (defn- repl-port [project]
   (Integer. (or (System/getenv "LEIN_REPL_PORT")
