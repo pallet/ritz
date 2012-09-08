@@ -39,3 +39,34 @@
    (or
     (resolve 'clojure.core/with-redefs)
     (resolve 'clojure.core/binding))))
+
+(def clojure-1-2-or-greater
+  (let [{:keys [major minor]} *clojure-version*]
+    (or (and (= major 1) (> minor 1)) (> major 1))))
+
+(def clojure-1-3-or-greater
+  (let [{:keys [major minor]} *clojure-version*]
+    (or (and (= major 1) (> minor 2)) (> major 1))))
+
+(def clojure-1-4-or-greater
+  (let [{:keys [major minor]} *clojure-version*]
+    (or (and (= major 1) (> minor 3)) (> major 1))))
+
+(def ^{:doc "Predicate to test if the version of clojure has protocols"}
+  protocols (ns-resolve 'clojure.core 'defprotocol))
+
+(def ^{:doc "Predicate to test if the version of clojure has with-redefs"}
+  redefs (ns-resolve 'clojure.core 'with-redefs))
+
+(def
+  ^{:doc "Predicate to test if the version of clojure has *compiler-options*"}
+  compiler-options (ns-resolve 'clojure.core '*compiler-options*))
+
+(defmacro feature-cond
+  [& feature-expressions]
+  (loop [[expr body] (take 2 feature-expressions)
+         others (drop 2 feature-expressions)]
+    (when expr
+      (if (eval expr)
+        body
+        (recur (take 2 others) (drop 2 others))))))
