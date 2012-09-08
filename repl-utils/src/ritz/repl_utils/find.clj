@@ -25,6 +25,10 @@
   [id]
   (swap! source-form-map dissoc id))
 
+(defn source-forms-clear!
+  [id]
+  (reset! source-form-map {}))
+
 ;;; Provide a mapping from source path to source form
 (def ^{:private true} source-form-name "SOURCE_FORM_")
 (def ^{:private true} source-form-name-count (count source-form-name))

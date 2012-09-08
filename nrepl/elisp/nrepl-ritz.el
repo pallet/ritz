@@ -76,24 +76,6 @@ to specific the full path to it. Localhost is assumed."
      (list (intern (concat ":" (car alist))) (cadr alist))
      (nrepl-keywordise (cddr alist)))))
 
-;; (defmacro nrepl-ritz-alambda (args &rest body)
-;;   (lexical-let ((value (gensym "value")))
-;;     `(lambda (,value)
-;;        (message "got %s" ,value)
-;;        (lexical-let (,@(mapcar
-;;                         (lambda (arg)
-;;                           `(,arg (assoc-default ,(symbol-name arg) ,value)))
-;;                         args))
-;;          ,@body))))
-
-;; (put 'nrepl-ritz-alambda 'lisp-indent-function 1)
-
-;; (nrepl-ritz-alambda (a) a)
-;; (let ((xxxx (nrepl-ritz-alambda (a) a)))
-;;   (xxxx '(("a". 1))))
-;; (defun xxxx () (apply (nrepl-ritz-alambda (a) a) '((("a". 1)))))
-;; (xxxx)
-
 (defun nrepl-length= (seq n)
   "Return (= (length SEQ) N)."
   (etypecase seq
@@ -228,7 +210,7 @@ Assumes all insertions are made at point."
            (cond ((= (current-column) 0) (recenter 1))
                  (t (recenter)))))))))
 
-(defun nrepl-ritz-goto-location-buffer (zip file)
+(defun nrepl-ritz-goto-location-buffer (zip file source-form)
   (cond
     (file
      (let ((filename file))
@@ -245,7 +227,13 @@ Assumes all insertions are made at point."
                        (archive-extract)
                        (current-buffer))))
          (set-buffer buffer)
-         (goto-char (point-min)))))))
+         (goto-char (point-min)))))
+    (source-form
+     (set-buffer (get-buffer-create "*nREPL source*"))
+     (erase-buffer)
+     (clojure-mode)
+     (insert source-form)
+     (goto-char (point-min)))))
 
 (defun nrepl-ritz-goto-location-position (line)
   (cond
@@ -280,7 +268,7 @@ are supported:
              | (:function-name <string>)
              | (:source-path <list> <start-position>)
              | (:method <name string> <specializers> . <qualifiers>)"
-  (nrepl-ritz-goto-location-buffer zip file)
+  (nrepl-ritz-goto-location-buffer zip file source-form)
   (let ((pos (nrepl-ritz-location-offset line)))
     (cond ((and (<= (point-min) pos) (<= pos (point-max))))
           (widen-automatically (widen))
@@ -289,10 +277,10 @@ are supported:
     (goto-char pos)))
 
 (defun nrepl-ritz-show-source-location
-  (zip file line &optional no-highlight-p)
+  (zip file line source-form &optional no-highlight-p)
   "Show the source location, but don't hijack focus."
   (save-selected-window
-    (nrepl-ritz-goto-source-location zip file line)
+    (nrepl-ritz-goto-source-location zip file line source-form)
     (unless no-highlight-p (nrepl-ritz-highlight-sexp))
     (nrepl-ritz-show-buffer-position (point))))
 
@@ -1081,12 +1069,12 @@ This is 0 if START and END at the same line."
   (nrepl-ritz-send-dbg-op
    "frame-source"
    (lambda (&rest args)
-     (destructuring-bind (&key zip file line error) args
+     (destructuring-bind (&key zip file line error source-form) args
        (if error
            (progn
              (message "%s" error)
              (ding))
-         (nrepl-ritz-show-source-location zip file line))))
+         (nrepl-ritz-show-source-location zip file line source-form))))
    'frame-number frame-number))
 
 ;;; ## Toggle frame details
