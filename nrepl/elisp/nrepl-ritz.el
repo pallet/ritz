@@ -505,6 +505,34 @@ are supported:
 (define-key
   nrepl-interaction-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
 
+(defun nrepl-ritz-compile-expression (&optional prefix)
+  "Compile the current toplevel form."
+  (interactive "P")
+  (apply
+   #'nrepl-ritz-compile-region
+   prefix (nrepl-region-for-expression-at-point)))
+
+(defun nrepl-ritz-compile-region (prefix start end)
+  "Compile the current toplevel form."
+  (interactive "Pr")
+  (nrepl-ritz-flash-region start end)
+  (let ((form (buffer-substring-no-properties start end)))
+    (nrepl-ritz-send-op-strings
+     "eval"
+     (nrepl-make-response-handler
+      (current-buffer)
+      (lambda (buffer description)
+        (message description))
+      (lambda (buffer out) (message out))
+      (lambda (buffer err) (message err))
+      nil)
+     `("code" ,form
+       "debug" ,(if prefix "true" "false")
+       "ns" ,nrepl-buffer-ns))))
+
+(define-key
+  nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-ritz-compile-expression)
+
 
 ;;; # Minibuffer
 (defvar nrepl-ritz-minibuffer-map
