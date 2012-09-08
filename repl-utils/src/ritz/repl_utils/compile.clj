@@ -53,3 +53,18 @@
                     next-form (read rdr false ::eof)]
                 (recur next-form form res)))))
         (finally (pop-thread-bindings))))))
+
+(defmacro with-compiler-options
+  "Provides a scope within which compiler are set. `options` should be
+an expression yielding a map. The :debug key in the map controls
+locals clearing. This has no effect on pre clojure 1.4.0."
+  {:indent 1}
+  [options & body]
+  (if-let [co (ns-resolve 'clojure.core '*compiler-options*)]
+    `(let [c-o# ~options]
+       (if (:debug c-o#)
+         (binding [*compiler-options*
+                   (assoc *compiler-options* :disable-locals-clearing true)]
+           ~@body)
+         (do ~@body)))
+    `(do ~@body)))
