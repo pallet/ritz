@@ -29,7 +29,7 @@
 (def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.4.0-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
-(def lein-project-profile {:dependencies '[[leiningen "2.0.0-SNAPSHOT"]]})
+(def lein-project-profile {:dependencies '[[leiningen "2.0.0-preview8"]]})
 
 (def trampoline-profile {:dependencies '[[reply "0.1.0-beta9"
                                          :exclusions [org.clojure/clojure]]]})
