@@ -10,7 +10,7 @@
    [clojure.tools.nrepl.middleware.interruptible-eval
     :only [interruptible-eval *msg*]]
    [clojure.tools.nrepl.misc :only [response-for returning]]
-   [ritz.repl-utils.compile :only [eval-region]]
+   [ritz.repl-utils.compile :only [eval-region with-compiler-options]]
    [ritz.repl-utils.source-forms
     :only [source-form source-forms source-form! clear-source-forms!
            source-form-path]]
@@ -32,7 +32,7 @@
 
    It is assumed that `bindings` already contains useful/appropriate entries
    for all vars indicated by `clojure.main/with-bindings`."
-  [bindings {:keys [code ns transport file-path id line] :as msg}]
+  [bindings {:keys [code ns transport file-path id line debug] :as msg}]
   (let [explicit-ns-binding (when-let [ns (and ns (-> ns symbol find-ns))]
                               {#'*ns* ns})
         bindings (atom (merge bindings explicit-ns-binding))
@@ -46,7 +46,8 @@
        (response-for msg {:status #{:error :namespace-not-found :done}}))
       (with-bindings @bindings
         (try
-          (let [[v f] (eval-region code file-path line)]
+          (let [[v f] (with-compiler-options {:debug debug}
+                        (eval-region code file-path line))]
             (.flush ^Writer err)
             (.flush ^Writer out)
             (transport/send
