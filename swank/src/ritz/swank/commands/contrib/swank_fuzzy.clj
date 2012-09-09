@@ -9,34 +9,12 @@
 ;; Thanks the CL implementation authors for that useful software.
 
 (ns ritz.swank.commands.contrib.swank-fuzzy
+  (:use
+   [ritz.repl-utils.timeout :only [with-timeout]])
   (:require
    [ritz.repl-utils.fuzzy-completion :as fuzzy-completion]
    [ritz.repl-utils.utils :as utils]
    [ritz.swank.commands :as commands]))
-
-(defn- call-with-timeout [time-limit-in-msec proc]
-  "Create a thunk that returns true if given time-limit-in-msec has been
-  elapsed and calls proc with the thunk as an argument. Returns a 3 elements
-  vec: A proc result, given time-limit-in-msec has been elapsed or not
-  elapsed time in millisecond."
-  (let [timed-out (atom false)
-        start! (fn []
-                 (future (do
-                           (Thread/sleep time-limit-in-msec)
-                           (swap! timed-out (constantly true)))))
-        timed-out? (fn [] @timed-out)
-        started-at (System/nanoTime)]
-    (start!)
-    [(proc timed-out?)
-     @timed-out
-     (/ (double (- (System/nanoTime) started-at)) 1000000.0)]))
-
-(defmacro with-timeout
-  "Create a thunk that returns true if given time-limit-in-msec has been
-  elapsed and bind it to timed-out?. Then execute body."
-  ^{:private true}
-  [[timed-out? time-limit-in-msec] & body]
-  `(call-with-timeout ~time-limit-in-msec (fn [~timed-out?] ~@body)))
 
 (defn- fuzzy-format-matching [string matching]
   (let [[symbol package] (fuzzy-completion/fuzzy-extract-matching-info
