@@ -60,6 +60,9 @@ to `:nrepl-middleware` under `:repl-options` in `project.clj.
 ["complete"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.simple-complete.html)
 : Simple completion
 
+["complete"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.fuzzy-complete.html)
+: Fuzzy completion
+
 ["eval"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.tracking-eval.html)
 : eval with source form tracking
 
