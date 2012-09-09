@@ -11,8 +11,8 @@
     :only [interruptible-eval *msg*]]
    [clojure.tools.nrepl.misc :only [response-for returning]]
    [ritz.repl-utils.compile :only [eval-region]]
-   [ritz.repl-utils.find
-    :only [source-form source-forms source-form! source-forms-clear!
+   [ritz.repl-utils.source-forms
+    :only [source-form source-forms source-form! clear-source-forms!
            source-form-path]]
    [ritz.logging :only [trace]])
   (:import
@@ -105,7 +105,7 @@
 (defn source-forms-reply
   [{:keys [source-id clear id transport] :as msg}]
   (if clear
-    (source-forms-clear!)
+    (clear-source-forms!)
     (transport/send
      transport
      (response-for msg {:value (if source-id

@@ -5,6 +5,7 @@
    [ritz.repl-utils.compile :only [with-compiler-options]]
    [ritz.repl-utils.io :only [read-ns]]
    [ritz.repl-utils.namespaces :only [with-var-clearing]]
+   [ritz.repl-utils.source-forms :only [source-form-path]]
    [clojure.tools.macro :only [mexpand-all]])
   (:require
    [clojure.java.io :as io]
@@ -55,7 +56,7 @@
   [connection string]
   (compile/eval-region
    string
-   (find/source-form-path (connection/request-id connection))
+   (source-form-path (connection/request-id connection))
    1))
 
 (defn interactive-eval* [connection string]

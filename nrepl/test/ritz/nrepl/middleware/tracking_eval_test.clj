@@ -28,5 +28,5 @@
   (testing "source-form"
     (let [t (test-transport)]
       (source-forms-reply {:transport t})
-      (is (= [{:value ""} {:status #{:done}}]
+      (is (= [{:value '()} {:status #{:done}}]
              (messages t))))))

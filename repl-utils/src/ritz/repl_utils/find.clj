@@ -2,52 +2,10 @@
   "Find source for a given path."
   (:require
    [ritz.repl-utils.mangle :as mangle])
+  (:use
+   [ritz.repl-utils.source-forms
+    :only [source-form-from-path source-form-path?]])
   (:import java.io.File))
-
-;;; Provide source form tracking
-;; TODO work out how to call eval-clear-form, or use weak refs
-(def ^{:private true} source-form-map (atom {}))
-
-(defn source-form!
-  [id form]
-  (swap! source-form-map assoc id form))
-
-(defn source-form
-  [id]
-  (@source-form-map id))
-
-(defn source-forms
-  "All source forms entered at the reply"
-  []
-  (map second (sort-by key @source-form-map)))
-
-(defn source-form-clear
-  [id]
-  (swap! source-form-map dissoc id))
-
-(defn source-forms-clear!
-  [id]
-  (reset! source-form-map {}))
-
-;;; Provide a mapping from source path to source form
-(def ^{:private true} source-form-name "SOURCE_FORM_")
-(def ^{:private true} source-form-name-count (count source-form-name))
-
-(defn source-form-path
-  [id]
-  (str source-form-name id))
-
-(defn source-form-from-path
-  [^String path]
-  (when (> (count path) source-form-name-count)
-    (let [id-string (.substring path (count source-form-name))
-          id (eval (read-string id-string))]
-      {:source-form (source-form id)})))
-
-(defn source-form-path?
-  [^String source-path]
-  (when source-path
-    (.startsWith source-path source-form-name)))
 
 ;;; File and Resource Paths
 (defn- clean-windows-path

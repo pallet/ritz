@@ -11,7 +11,8 @@
            nth-thread stop-thread threads]]
    [ritz.logging :only [trace trace-str]]
    [ritz.debugger.connection
-    :only [debug-context debug-assoc! debug-update-in! vm-context]])
+    :only [debug-context debug-assoc! debug-update-in! vm-context]]
+   [ritz.repl-utils.source-forms :only [source-form!]])
   (:require
    [clojure.string :as string]
    [ritz.debugger.break :as break]
@@ -138,7 +139,7 @@
 (defn swank-peek
   [connection form buffer-package id f]
   (when (= (first form) 'swank/listener-eval)
-    (find/source-form! id (second form))))
+    (source-form! id (second form))))
 
 ;;; execute functions and forwarding don't belong in this
 ;;; namespace
