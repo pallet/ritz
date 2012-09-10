@@ -1,5 +1,9 @@
 (ns ritz.repl-utils.compile
   "Util functions for compilation and evaluation."
+  (:use
+   [ritz.repl-utils.io :only [reader-for-location]])
+  (:require
+   [clojure.java.io :as io])
   (:import
    java.io.StringReader
    java.io.File
@@ -53,6 +57,13 @@
                     next-form (read rdr false ::eof)]
                 (recur next-form form res)))))
         (finally (pop-thread-bindings))))))
+
+(defn load-file-location
+  [{:keys [file zip] :as location}]
+  (clojure.lang.Compiler/load
+   (reader-for-location location)
+   (.getAbsolutePath (io/file file))
+   (.getName (io/file file))))
 
 (defmacro with-compiler-options
   "Provides a scope within which compiler are set. `options` should be

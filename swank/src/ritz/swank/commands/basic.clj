@@ -2,8 +2,9 @@
   (:refer-clojure :exclude [load-file])
   (:use
    [ritz.swank.commands :only [defslimefn]]
-   [ritz.repl-utils.compile :only [with-compiler-options]]
-   [ritz.repl-utils.io :only [read-ns]]
+   [ritz.repl-utils.compile :only [with-compiler-options load-file-location]]
+   [ritz.repl-utils.find :only [find-source-path]]
+   [ritz.repl-utils.io :only [read-ns reader-for-location]]
    [ritz.repl-utils.namespaces :only [with-var-clearing]]
    [ritz.repl-utils.source-forms :only [source-form-path]]
    [clojure.tools.macro :only [mexpand-all]])
@@ -161,9 +162,11 @@
   "Compiles a file for emacs. Because clojure doesn't compile, this is
    simple an alias for load file w/ timing and messages."
   [file-name]
-  (let [start (System/nanoTime)]
+  (let [location (find-source-path file-name)
+        start (System/nanoTime)]
     (try
-      (let [ret (or (clojure.core/load-file file-name) file-name)
+      (let [ret (or (load-file-location location)
+                    file-name)
             delta (- (System/nanoTime) start)]
         (messages/compilation-result nil ret (secs-for-ns delta)))
       (catch Throwable t
@@ -199,7 +202,11 @@
       (compile-file-for-emacs* file-name))))
 
 (defslimefn load-file [connection file-name]
-  (if-let [file-ns (read-ns (java.io.PushbackReader. (io/reader file-name)))]
+  (if-let [file-ns (read-ns
+                    (-> file-name
+                        find-source-path
+                        reader-for-location
+                        (java.io.PushbackReader.)))]
     (with-var-clearing file-ns
       (pr-str (clojure.core/load-file file-name)))
     (pr-str (clojure.core/load-file file-name))))

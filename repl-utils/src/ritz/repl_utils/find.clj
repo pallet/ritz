@@ -3,6 +3,7 @@
   (:require
    [ritz.repl-utils.mangle :as mangle])
   (:use
+   [clojure.string :only [split]]
    [ritz.repl-utils.source-forms
     :only [source-form-from-path source-form-path?]])
   (:import java.io.File))
@@ -37,9 +38,11 @@
   (when source-path
     (if (source-form-path? source-path)
       (source-form-from-path source-path)
-      (if (.isAbsolute (File. source-path))
-        {:file source-path}
-        (find-resource source-path)))))
+      (cond
+        (re-find #"\.jar:" source-path) (zipmap [:zip :file]
+                                                (split source-path #":"))
+        (.isAbsolute (File. source-path)) {:file source-path}
+        :else (find-resource source-path)))))
 
 (def ^{:private true
        :doc "Regex for extacting file and line from a compiler exception"}
