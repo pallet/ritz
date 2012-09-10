@@ -32,7 +32,6 @@ still have metadata."
      ~@body
      (clear-marked-vars ns#)))
 
-
 ;;; Namespace Dependencies
 (defn package-dependencies
   "Returns the packages on which the namespace depends."
@@ -121,3 +120,14 @@ they depend on."
   (->
    (transitive-dependencies (direct-dependencies))
    (get ns)))
+
+;;; # Namespace modifications
+
+(defn unuse
+  "Remove all symbols from `from-ns` that have been refered from `ns`"
+  ([ns from-ns]
+     (doseq [[sym v] (ns-refers (ns-name from-ns))
+             :let [m (meta v)]
+             :when (and m (:ns m) (= ns (ns-name (:ns m))))]
+       (ns-unmap from-ns sym)))
+  ([ns] (unuse ns *ns*)))
