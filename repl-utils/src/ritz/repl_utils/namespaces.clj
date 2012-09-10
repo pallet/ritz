@@ -1,7 +1,7 @@
 (ns ritz.repl-utils.namespaces
   "Namespace functions"
   (:use
-   [clojure.set :only [union]])
+   [clojure.set :only [difference union]])
   (:require
    ritz.repl-utils.core.defonce))
 
@@ -131,3 +131,28 @@ they depend on."
              :when (and m (:ns m) (= ns (ns-name (:ns m))))]
        (ns-unmap from-ns sym)))
   ([ns] (unuse ns *ns*)))
+
+(defn ns-remove
+  "Remove the specified namespace, ensuring removal from core too"
+  [ns]
+  (remove-ns ns)
+  (dosync
+   (commute @#'clojure.core/*loaded-libs* disj ns)))
+
+;;; # All namespace tracking and reset
+
+(defn namespace-state
+  "Returns namespace symbols for all loaded namespaces"
+  []
+  (map ns-name (all-ns)))
+
+(defn namespaces-since
+  "Return the namespaces since the given namespace state"
+  [state]
+  (difference (set (namespace-state)) (set state)))
+
+(defn namespaces-reset
+  "Reset the set of loaded namespaces to the given state."
+  [state]
+  (doseq [ns (namespaces-since state)]
+    (ns-remove ns)))

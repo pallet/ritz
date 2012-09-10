@@ -328,6 +328,17 @@
   (call-interactively 'slime-resume-vm)
   (call-interactively 'slime-update-threads-buffer))
 
+;;; Namespace
+(defun slime-reset-repl ()
+  "Reset the repl"
+  (interactive)
+  (slime-eval-async `(swank:reset-repl)
+    (lambda (result)
+      (if result
+          (message "Reset REPL : %s" result)
+          (message "REPL reset")))))
+
+
 ;;; repl forms
 (defun slime-list-repl-forms ()
   "List the source forms"

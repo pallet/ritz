@@ -39,6 +39,7 @@
 (defn eval-for-emacs [connection form buffer-package thread id]
   (logging/trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
   (try
+    (core/record-namespace-state!)
     (let [connection (connection/request connection buffer-package thread id)
           f (commands/slime-fn (first form))
           handler (or (connection/swank-handler connection) default-pipeline)
