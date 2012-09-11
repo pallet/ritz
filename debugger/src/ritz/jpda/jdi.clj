@@ -314,8 +314,8 @@
   (->>
    (.entries jar-file)
    enumeration-seq
-   (filter #(not (.isDirectory ^java.io.File %)))
-   (map #(.getName ^java.io.File %))))
+   (filter #(not (.isDirectory ^java.util.jar.JarEntry %)))
+   (map #(.getName ^java.util.jar.JarEntry %))))
 
 (defn filepaths
   "Returns a sequence of JarFile objects for the jar files on classpath."
