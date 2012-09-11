@@ -9,6 +9,6 @@
   :aliases {"clean" ["sub" "clean"]
             "install" ["sub" "install"]
             "deploy" ["sub" "deploy"]
-            "test" ["sub" "with-profile" "jdk1.7" "test"]
+            "test" ["sub" "with-profile" "default,jdk1.7" "test"]
             "doc" ["sub" "with-profile" "codox,jdk1.7" "doc"]
             "set-version" ["sub" "with-profile" "release" "set-version"]})
