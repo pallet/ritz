@@ -61,14 +61,14 @@ To make ritz available in all your projects, add the lein-ritz plugin to your
 ritz on a per project basis.
 
 ```clj
-{:user {:plugins [[lein-ritz "0.4.1"]]}}
+{:user {:plugins [[lein-ritz "0.4.2"]]}}
 ```
 
 To enable ritz on a per project basis, add it to your `project.clj`'s :dev
 profile.
 
 ```clj
-{:dev {:plugins [[lein-ritz "0.4.1"]]}}
+{:dev {:plugins [[lein-ritz "0.4.2"]]}}
 ```
 
 In either case, start a swank server with `lein ritz` inside your project
@@ -79,10 +79,10 @@ directory, and then use `M-x slime-connect` in emacs to connect to it.
 To make ritz available in all your projects, install the lein-ritz plugin.
 
 ```
-lein plugin install lein-ritz "0.4.1"
+lein plugin install lein-ritz "0.4.2"
 ```
 
-Add `[lein-ritz "0.4.1"]` to your project.clj `:dev-dependencies`.
+Add `[lein-ritz "0.4.2"]` to your project.clj `:dev-dependencies`.
 
 
 Start a swank server with `lein ritz` inside your project directory,
@@ -98,7 +98,7 @@ For "jack-in" to work, you can not have SLIME installed.
 * Install `clojure-mode` either from
   [Marmalade](http://marmalade-repo.org) or from
   [git](http://github.com/technomancy/clojure-mode).
-* lein plugin install lein-ritz "0.4.1"
+* lein plugin install lein-ritz "0.4.2"
 * in your .emacs file, add the following and evalulate it (or restart emacs)
 
     ```lisp

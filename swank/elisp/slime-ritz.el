@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.4.1
+;; Version: 0.4.2
 ;; License: EPL
 
 (define-slime-contrib slime-ritz

@@ -2,6 +2,74 @@
 
 Current release is 0.4.1.
 
+## 0.4.2
+
+
+### Fixes
+
+- Fix some type declarations
+
+- Fix quoting in ritz.jpda/jdi/launch
+
+- Fix swank-fuzzy-test and add timeout-test
+
+- Update ritz-nrepl to depend on published leiningen preview10
+
+- Try and handled expired JPDA references
+
+- Fix project :nrepl-middleware
+  Removes the need for quoting, and adds the standard ritz-nrepl
+  middleware.
+
+- Ensure defonce and defmulti add :defonce metadata
+  Fixes #33
+
+### Features
+
+- Add nrepl-ritz-reload-project
+  This command will reload the project.clj file, compute a new classpath, 
+  and reset the REPL to run with the new classpath. Creates a new nrepl
+  session, and clears all user namespaces.
+
+- Add slime-reset-repl
+  Adds slime-reset-repl command, to reset a repl by unloading all user
+  defined namespaces.
+
+  Fixes #36
+
+- Add ritz.repl-utils.namespaces/ununse to remove a use'd namespace
+
+- Add a complete middleware using fuzzy-completion
+
+- Factor out with-timeout into ritz.repl-utils.timeout
+
+- Add debug option to tracking-eval
+
+- Factor out source form tracking into r.repl-utils.source-forms
+
+- Add tracking-eval middleware to ritz-nrepl README
+
+- Update lein-ritz ritz task to use tools.cli
+  The --no-debug option now allows starting the server without the
+  debugger.
+
+- Add nrepl-ritz-compile-expression
+  Compiles the top level expression. Bound to C-c C-c.
+
+- Add tracking-eval nREPL middleware
+  Adds a eval middleware that tracks source forms.
+
+- Add a defprotocol that caches it's Interface
+  Provides a defprotocol that does not regenerate it's interface unless a
+  chnge in protocol signature is detected.
+
+  Closes #34
+
+- Move with-compiler-options to ritz.ritz-utils.compile
+
+- Add feature-cond to ritz.ritz-utils.clojure
+  This allows feature based conditional compilation.
+
 ## 0.4.1
 
 ### Fixes
