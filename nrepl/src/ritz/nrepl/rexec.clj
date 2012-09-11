@@ -3,7 +3,7 @@
   (:use
    [clojure.tools.nrepl.misc :only [response-for]]
    [ritz.logging :only [trace]]
-   [ritz.nrepl.exec :only [exec read-msg]])
+   [ritz.nrepl.exec :only [exec-using-classloader]])
   (:require
    [clojure.tools.nrepl.transport :as transport]
    [ritz.jpda.jdi-clj :as jdi-clj]))
@@ -17,7 +17,7 @@
      `(require 'ritz.nrepl.exec))
     (jdi-clj/control-eval
      context
-     `(exec ~(dissoc msg :transport :ritz.nrepl/connection)))
+     `(exec-using-classloader ~(dissoc msg :transport :ritz.nrepl/connection)))
     (catch Exception e
       (let [root-ex (#'clojure.main/root-cause e)]
         (when-not (instance? ThreadDeath root-ex)

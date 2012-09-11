@@ -533,6 +533,33 @@ are supported:
 (define-key
   nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-ritz-compile-expression)
 
+;;; Reload project.clj
+(defun nrepl-ritz-recreate-session-handler ()
+  (lambda (response)
+    (message "Requesting new session completed")
+    (nrepl-dbind-response response (id new-session)
+      (cond (new-session
+             (message "Reloaded.")
+             (setq nrepl-session new-session))))))
+
+(defun nrepl-ritz-recreate-session ()
+  (message "Requesting new session")
+  (nrepl-create-client-session (nrepl-ritz-recreate-session-handler)))
+
+(defun nrepl-ritz-reload-project ()
+  "Reload project.clj."
+  (interactive)
+  (nrepl-ritz-send-op-strings
+   "reload-project"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer description)
+      (message description))
+    (lambda (buffer out) (message out))
+    (lambda (buffer err) (message err))
+    (lambda (buffer) (with-current-buffer buffer
+                       (nrepl-ritz-recreate-session))))
+   `()))
 
 ;;; # Minibuffer
 (defvar nrepl-ritz-minibuffer-map

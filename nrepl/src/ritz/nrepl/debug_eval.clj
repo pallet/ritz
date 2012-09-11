@@ -14,7 +14,8 @@
    [clojure.tools.nrepl.middleware.interruptible-eval :only [*msg*]]
    [ritz.debugger.connection :only [bindings bindings-assoc!]]
    [ritz.logging :only [trace]]
-   [ritz.nrepl.middleware :only [args-for-map read-when]]))
+   [ritz.nrepl.middleware :only [args-for-map read-when]]
+   [ritz.nrepl.project :only [reload]]))
 
 (defn evaluate
   [{:keys [op code ns session transport] :as msg}]
@@ -124,6 +125,13 @@
                (read-string (:frame-number msg)))]
         (transport/send transport (response-for msg :value (args-for-map v)))
         (transport/send transport (response-for msg :status :done)))
+
+      (= "reload-project" op)
+      (let [f #(transport/send transport (response-for msg :status :done))]
+        (reload connection)
+        (trace "reload-project done")
+        (f))
+
 
 
       :else (handler msg))))
