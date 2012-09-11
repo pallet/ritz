@@ -32,6 +32,13 @@ lein2 ritz-nrepl
 
 Then in emacs, `M-x nrepl` and enter the port printed by the previous command.
 
+## nREPL Ritz Emacs Commands
+
+* **C-c C-b**: display javadoc for class at point
+* **C-c C-u**: undefine symbol at point
+* **C-c C-c**: compile top-level expression at point
+
+
 ## nREPL general middleware usage
 
 Add `ritz-nrepl` to your `:dev` `:dependencies` vector, and add the middleware

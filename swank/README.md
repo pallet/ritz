@@ -155,6 +155,15 @@ To run with a maven project:
 
     mvn zi:ritz
 
+### SLIME Ritz Emacs Commands
+
+* **C-c C-b**: display javadoc for class at point
+* **C-c C-u**: undefine symbol at point
+* **C-c C-c**: compile top-level expression at point
+* **C-c C-x b**: break on exception (turn it off with a prefix)
+* **C-c C-x C-b**: set breakpoint at line
+* nrepl-ritz-reload-project: re-read classpath from project.clj
+
 ### Breakpoints
 
 To set a breakpoint, put the cursor on the line where you want a breakpoint, and
