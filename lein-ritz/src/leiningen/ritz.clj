@@ -2,8 +2,9 @@
   "Launch ritz server for Emacs to connect."
   (:require [clojure.java.io :as io])
   (:use
-   [robert.hooke :only [add-hook]]
-   [ritz.add-sources :only [add-source-artifacts]]))
+   [clojure.tools.cli :only [cli]]
+   [ritz.add-sources :only [add-source-artifacts]]
+   [robert.hooke :only [add-hook]]))
 
 (defn opts-list [port host opts]
   (apply concat (merge {:host host :port (Integer. port)
@@ -24,9 +25,7 @@
          (@(ns-resolve '~'ritz.swank.socket-server '~'start)
           '~(merge
              (select-keys project [:jvm-opts :properties])
-             (zipmap
-              (map read-string (keys opts))
-              (map read-string (vals opts)))
+             opts
              {:port (Integer. port) :host host})))))
 
 (defn eval-in-project
@@ -55,16 +54,28 @@
   (update-in project [:dependencies]
              conj ['ritz/ritz-swank
                    (or (System/getenv "RITZ_VERSION")
-                       (System/getProperty "ritz.version" "0.4.1"))]))
+                       (System/getProperty "ritz.version" "0.4.2"))]))
 
 (defn ritz
-  "Launch ritz server for Emacs to connect. Optionally takes PORT and HOST."
-  ([project port host & {:as opts}]
-     (eval-in-project
-      (add-ritz project)
-      (ritz-form project port host opts)))
-  ([project port] (ritz project port "localhost"))
-  ([project] (ritz project 4005)))
+  "Launch ritz server for Emacs to connect. Optionally takes PORT and HOST.
+
+-d   --[no-]debug      Enable debugger
+-f   --port-file       File to write port info to"
+  ([project & args]
+     (let [[opts [port host]]
+           (cli args
+                ["-d" "--[no-]debug" :default true]
+                ["-b" "--backlog" :parse-fn #(Integer. %) :default 0]
+                ["-l" "--log-level" :default nil]
+                ["-f" "--port-file"])
+           opts (->
+                 opts
+                 (assoc :server-ns
+                   (if (:debug opts) 'ritz.swank.proxy 'ritz.swank.repl))
+                 (update-in [:log-level] #(when % (keyword %))))]
+       (eval-in-project
+        (add-ritz project)
+        (ritz-form project (or port 0) (or host "localhost") opts)))))
 
 (defmacro add-hooks
   []

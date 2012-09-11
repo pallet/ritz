@@ -5,15 +5,16 @@
    [ritz.debugger.exception-filters
     :only [spit-exception-filters exception-filters exception-filter-kill!
            exception-filter-enable! exception-filter-disable!]]
+   [ritz.repl-utils.source-forms :only [source-forms]]
    [ritz.swank.commands :only [defslimefn]]
-   [ritz.swank.connection :only [current-namespace]])
+   [ritz.swank.connection :only [current-namespace]]
+   [ritz.swank.core :only [reset-namespaces]])
   (:require
    [clojure.java.javadoc :as javadoc]
    [clojure.string :as string]
    [ritz.debugger.connection :as connection]
    [ritz.logging :as logging]
    [ritz.repl-utils.doc :as doc]
-   [ritz.repl-utils.find :as find]
    [ritz.swank.debug :as debug]
    [ritz.swank.messages :as messages]))
 
@@ -124,11 +125,17 @@ corresponding attribute values per thread."
   [connection symbol-name]
   (doc/javadoc-url symbol-name (current-namespace connection)))
 
+;;; Namespaces
+(defslimefn reset-repl
+  "Reset the repl to an initial state"
+  [connection]
+  (reset-namespaces))
+
 ;;; list repl source forms
 (defslimefn list-repl-source-forms
   "List all the source forms entered in the REPL"
   [connection]
-  (string/join \newline (find/source-forms)))
+  (string/join \newline (source-forms)))
 
 ;;; swank development utilities
 (defslimefn toggle-swank-logging

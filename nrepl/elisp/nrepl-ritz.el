@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.4.1
+;; Version: 0.4.2
 ;; Package-Requires: ((nrepl "0.1.4"))
 ;; License: EPL
 
@@ -75,24 +75,6 @@ to specific the full path to it. Localhost is assumed."
     (append
      (list (intern (concat ":" (car alist))) (cadr alist))
      (nrepl-keywordise (cddr alist)))))
-
-;; (defmacro nrepl-ritz-alambda (args &rest body)
-;;   (lexical-let ((value (gensym "value")))
-;;     `(lambda (,value)
-;;        (message "got %s" ,value)
-;;        (lexical-let (,@(mapcar
-;;                         (lambda (arg)
-;;                           `(,arg (assoc-default ,(symbol-name arg) ,value)))
-;;                         args))
-;;          ,@body))))
-
-;; (put 'nrepl-ritz-alambda 'lisp-indent-function 1)
-
-;; (nrepl-ritz-alambda (a) a)
-;; (let ((xxxx (nrepl-ritz-alambda (a) a)))
-;;   (xxxx '(("a". 1))))
-;; (defun xxxx () (apply (nrepl-ritz-alambda (a) a) '((("a". 1)))))
-;; (xxxx)
 
 (defun nrepl-length= (seq n)
   "Return (= (length SEQ) N)."
@@ -228,7 +210,7 @@ Assumes all insertions are made at point."
            (cond ((= (current-column) 0) (recenter 1))
                  (t (recenter)))))))))
 
-(defun nrepl-ritz-goto-location-buffer (zip file)
+(defun nrepl-ritz-goto-location-buffer (zip file source-form)
   (cond
     (file
      (let ((filename file))
@@ -245,7 +227,13 @@ Assumes all insertions are made at point."
                        (archive-extract)
                        (current-buffer))))
          (set-buffer buffer)
-         (goto-char (point-min)))))))
+         (goto-char (point-min)))))
+    (source-form
+     (set-buffer (get-buffer-create "*nREPL source*"))
+     (erase-buffer)
+     (clojure-mode)
+     (insert source-form)
+     (goto-char (point-min)))))
 
 (defun nrepl-ritz-goto-location-position (line)
   (cond
@@ -280,7 +268,7 @@ are supported:
              | (:function-name <string>)
              | (:source-path <list> <start-position>)
              | (:method <name string> <specializers> . <qualifiers>)"
-  (nrepl-ritz-goto-location-buffer zip file)
+  (nrepl-ritz-goto-location-buffer zip file source-form)
   (let ((pos (nrepl-ritz-location-offset line)))
     (cond ((and (<= (point-min) pos) (<= pos (point-max))))
           (widen-automatically (widen))
@@ -289,10 +277,10 @@ are supported:
     (goto-char pos)))
 
 (defun nrepl-ritz-show-source-location
-  (zip file line &optional no-highlight-p)
+  (zip file line source-form &optional no-highlight-p)
   "Show the source location, but don't hijack focus."
   (save-selected-window
-    (nrepl-ritz-goto-source-location zip file line)
+    (nrepl-ritz-goto-source-location zip file line source-form)
     (unless no-highlight-p (nrepl-ritz-highlight-sexp))
     (nrepl-ritz-show-buffer-position (point))))
 
@@ -517,6 +505,61 @@ are supported:
 (define-key
   nrepl-interaction-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
 
+(defun nrepl-ritz-compile-expression (&optional prefix)
+  "Compile the current toplevel form."
+  (interactive "P")
+  (apply
+   #'nrepl-ritz-compile-region
+   prefix (nrepl-region-for-expression-at-point)))
+
+(defun nrepl-ritz-compile-region (prefix start end)
+  "Compile the current toplevel form."
+  (interactive "Pr")
+  (nrepl-ritz-flash-region start end)
+  (let ((form (buffer-substring-no-properties start end)))
+    (nrepl-ritz-send-op-strings
+     "eval"
+     (nrepl-make-response-handler
+      (current-buffer)
+      (lambda (buffer description)
+        (message description))
+      (lambda (buffer out) (message out))
+      (lambda (buffer err) (message err))
+      nil)
+     `("code" ,form
+       "debug" ,(if prefix "true" "false")
+       "ns" ,nrepl-buffer-ns))))
+
+(define-key
+  nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-ritz-compile-expression)
+
+;;; Reload project.clj
+(defun nrepl-ritz-recreate-session-handler ()
+  (lambda (response)
+    (message "Requesting new session completed")
+    (nrepl-dbind-response response (id new-session)
+      (cond (new-session
+             (message "Reloaded.")
+             (setq nrepl-session new-session))))))
+
+(defun nrepl-ritz-recreate-session ()
+  (message "Requesting new session")
+  (nrepl-create-client-session (nrepl-ritz-recreate-session-handler)))
+
+(defun nrepl-ritz-reload-project ()
+  "Reload project.clj."
+  (interactive)
+  (nrepl-ritz-send-op-strings
+   "reload-project"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer description)
+      (message description))
+    (lambda (buffer out) (message out))
+    (lambda (buffer err) (message err))
+    (lambda (buffer) (with-current-buffer buffer
+                       (nrepl-ritz-recreate-session))))
+   `()))
 
 ;;; # Minibuffer
 (defvar nrepl-ritz-minibuffer-map
@@ -1081,12 +1124,12 @@ This is 0 if START and END at the same line."
   (nrepl-ritz-send-dbg-op
    "frame-source"
    (lambda (&rest args)
-     (destructuring-bind (&key zip file line error) args
+     (destructuring-bind (&key zip file line error source-form) args
        (if error
            (progn
              (message "%s" error)
              (ding))
-         (nrepl-ritz-show-source-location zip file line))))
+         (nrepl-ritz-show-source-location zip file line source-form))))
    'frame-number frame-number))
 
 ;;; ## Toggle frame details

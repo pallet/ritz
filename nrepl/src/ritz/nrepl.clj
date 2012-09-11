@@ -7,6 +7,7 @@ store some extra info. We also unify the session id across the jpda and user
 processes."
   (:use
    [clojure.stacktrace :only [print-cause-trace]]
+   [clojure.string :only [join]]
    [clojure.tools.nrepl.server :only [start-server unknown-op]]
    [clojure.tools.nrepl.middleware.interruptible-eval
     :only [interruptible-eval]]
@@ -34,7 +35,8 @@ processes."
     :only [add-pending-connection connection-for-session
            promote-pending-connection rename-connection]]
    [ritz.nrepl.debug-eval :only [debug-eval]]
-   [ritz.nrepl.exec :only [read-msg]]
+   [ritz.nrepl.exec :only [read-msg-using-classloader]]
+   [ritz.nrepl.middleware.tracking-eval :only [wrap-source-forms]]
    [ritz.nrepl.rexec :only [rexec]]
    [ritz.nrepl.simple-eval :only [simple-eval]])
   (:require
@@ -42,8 +44,6 @@ processes."
    [clojure.tools.nrepl.transport :as transport]
    [ritz.jpda.jdi-clj :as jdi-clj]
    [ritz.nrepl.pr-values :as pr-values]))
-
-;; (set-level :trace)
 
 (add-connection-for-event-fn!
  ritz.nrepl.connections/connection-for-event)
@@ -80,6 +80,15 @@ reference."
   [handler]
   (fn [{:keys [id session] :as msg}]
     (trace "Message %s" msg)
+    (handler msg)))
+
+;;; ## block on startup
+(def server-ready (promise))
+
+(defn block-until-ready
+  [handler]
+  (fn [{:keys [id session] :as msg}]
+    @server-ready
     (handler msg)))
 
 ;;; ## Connection middleware
@@ -158,7 +167,8 @@ reference."
         jpda-eval (jpda-eval-middleware)
         pr-values (pr-values/pr-values #{"jpda"})]
     (-> unknown-op
-        rexec jpda-eval debug-eval pr-values connection log-message)))
+        rexec wrap-source-forms jpda-eval debug-eval pr-values connection
+        log-message block-until-ready)))
 
 ;;; # Reply pump
 ;;; The reply pump takes all nREPL replies sent from the user process, and
@@ -201,10 +211,18 @@ connection is found in the connections map based on the session id."
   [vm thread]
   (loop []
     (try
-      (process-reply
-       (jdi-clj/eval
-        vm thread invoke-single-threaded
-        `(read-msg)))
+      (let [reply (jdi-clj/eval
+                   vm thread invoke-single-threaded
+                   `(read-msg-using-classloader))]
+        (cond
+          (nil? reply) (do
+                         (trace "reply-pump returned nil message")
+                         (Thread/sleep 1000))
+
+          (= "ritz/release-read-msg" (:op reply))
+          (trace "reply-pump released")
+
+          :else (process-reply reply)))
       (catch Exception e
         (trace "Unexpected exception in reply-pump %s" e)
         (clojure.stacktrace/print-cause-trace e)))
@@ -234,34 +252,33 @@ generate a name for the thread."
         context (start-control-thread-body msg-thread-name))))))
 
 (defn start-jpda-server
-  [host port ack-port repl-port-path classpath middleware]
+  [{:keys [host port ack-port repl-port-path classpath vm-classpath
+           middleware log-level]}]
+  (when log-level
+    (set-level log-level))
   (let [server (start-server
                 :bind "localhost" :port 0 :ack-port ack-port
                 :handler (debug-handler host port))
-        vm (launch-vm classpath `@(promise))
+        vm (launch-vm (join ":" vm-classpath) `@(promise))
         msg-thread (start-remote-thread vm "msg-pump")
         vm (assoc vm :msg-pump-thread msg-thread)
         _ (set-vm vm)
         port (-> server deref ^java.net.ServerSocket (:ss) .getLocalPort)]
     (add-exception-event-request vm)
     (vm-resume vm)
+    (ritz.jpda.jdi-clj/control-eval
+     vm `(require 'ritz.nrepl.exec 'ritz.logging))
+    (when log-level
+      (ritz.jpda.jdi-clj/control-eval vm `(ritz.logging/set-level ~log-level)))
+    (ritz.jpda.jdi-clj/control-eval
+     vm `(ritz.nrepl.exec/set-middleware! ~(vec middleware)))
+    (ritz.jpda.jdi-clj/control-eval
+     vm `(ritz.nrepl.exec/set-classpath! ~(vec classpath)))
+    (when log-level
+      (ritz.jpda.jdi-clj/control-eval
+       vm `(ritz.nrepl.exec/set-log-level ~log-level)))
     (start-reply-pump server vm)
-    (ritz.jpda.jdi-clj/control-eval
-     vm
-     `(do
-        (require
-         'ritz.nrepl.handler 'ritz.nrepl.exec 'clojure.tools.nrepl.server)
-        (doseq [ns# ~(vec
-                      (map #(list `quote (symbol (namespace %))) middleware))]
-          (require ns#))
-        nil))
-    (ritz.jpda.jdi-clj/control-eval
-     vm
-     `(do
-        (ritz.nrepl.exec/set-handler!
-         (apply clojure.tools.nrepl.server/default-handler
-                ~@middleware
-                ritz.nrepl.handler/ritz-middlewares))
-        nil))
+    (deliver server-ready nil)
     (println "nREPL server started on port" port)
-    (spit repl-port-path port)))
+    (when repl-port-path
+      (spit repl-port-path port))))

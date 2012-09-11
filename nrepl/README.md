@@ -13,7 +13,7 @@ Add `lein-ritz` to the `:plugins` key of your `~/.lein/profiles` file (requires
 lein version 2).
 
 ```clj
-{:user {:plugins [[lein-ritz "0.4.1"]]}}
+{:user {:plugins [[lein-ritz "0.4.2"]]}}
 ```
 
 Install the nrepl-ritz.el contrib from
@@ -32,14 +32,21 @@ lein2 ritz-nrepl
 
 Then in emacs, `M-x nrepl` and enter the port printed by the previous command.
 
+## nREPL Ritz Emacs Commands
+
+* **C-c C-b**: display javadoc for class at point
+* **C-c C-u**: undefine symbol at point
+* **C-c C-c**: compile top-level expression at point
+
+
 ## nREPL general middleware usage
 
 Add `ritz-nrepl` to your `:dev` `:dependencies` vector, and add the middleware
 to `:nrepl-middleware` under `:repl-options` in `project.clj.
 
 ```clj
-:dependencies [[ritz/ritz-nrepl "0.4.1"]]
-:repl-options {:nrepl-middleware ['ritz.nrepl.middleware.javadoc/wrap-javadoc]}
+:dependencies [[ritz/ritz-nrepl "0.4.2"]]
+:repl-options {:nrepl-middleware [ritz.nrepl.middleware.javadoc/wrap-javadoc]}
 ```
 
 ## Provided nREPL ops
@@ -57,8 +64,14 @@ to `:nrepl-middleware` under `:repl-options` in `project.clj.
 ["describe-symbol"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.describe-symbol.html)
 : Returns a description of the specified symbol
 
-[complete"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.simple-complete.html)
+["complete"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.simple-complete.html)
 : Simple completion
+
+["complete"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.fuzzy-complete.html)
+: Fuzzy completion
+
+["eval"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.tracking-eval.html)
+: eval with source form tracking
 
 [API Docs](http://palletops.com/ritz/0.4/nrepl/api/)
 

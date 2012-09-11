@@ -1,5 +1,10 @@
 (ns ritz.repl-utils.io
-  "io for reading clojure files")
+  "io for reading clojure files"
+  (:require
+   [clojure.java.io :as io])
+  (:import
+   java.util.jar.JarFile
+   java.util.zip.ZipException))
 
 (defn guess-namespace [^java.io.File file]
   (->>
@@ -43,3 +48,12 @@
         (catch Exception _))
       (when-not (= ::done form)
         (recur rdr)))))
+
+(defn reader-for-location
+  [{:keys [file zip] :as location-map}]
+  (if zip
+    (let [jarfile (JarFile. zip)]
+      (-> jarfile
+          (.getInputStream (.getEntry jarfile file))
+          (java.io.InputStreamReader.)))
+    (io/reader file)))

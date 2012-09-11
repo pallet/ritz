@@ -6,6 +6,7 @@
    [ritz.swank.core :as core]
    [ritz.swank.hooks :as hooks]
    [ritz.swank.rpc-server :as rpc-server]
+   ritz.repl-utils.core.defprotocol
    ritz.swank.commands.basic
    ritz.swank.commands.inspector
    ritz.swank.commands.completion

@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.4.1
+;; Version: 0.4.2
 ;; License: EPL
 
 (define-slime-contrib slime-ritz
@@ -327,6 +327,17 @@
   (interactive)
   (call-interactively 'slime-resume-vm)
   (call-interactively 'slime-update-threads-buffer))
+
+;;; Namespace
+(defun slime-reset-repl ()
+  "Reset the repl"
+  (interactive)
+  (slime-eval-async `(swank:reset-repl)
+    (lambda (result)
+      (if result
+          (message "Reset REPL : %s" result)
+          (message "REPL reset")))))
+
 
 ;;; repl forms
 (defun slime-list-repl-forms ()

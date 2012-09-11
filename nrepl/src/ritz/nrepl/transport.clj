@@ -7,7 +7,8 @@
 
 (defprotocol ReadSent
   "Adds a read-sent function for retrieving queued messages"
-  (read-sent [_] "Return a sent message, or block"))
+  (read-sent [_] "Return a sent message, or block")
+  (release-queue [_] "Return a release message, as the queue is disappearing"))
 
 
 (defrecord JpdaTransport [^LinkedBlockingQueue queue]
@@ -18,7 +19,9 @@
     (.put queue msg))
   ReadSent
   (read-sent [this]
-    (.take queue)))
+    (.take queue))
+  (release-queue [this]
+    (.offer queue {:op "ritz/release-read-msg"})))
 
 
 (defn make-transport

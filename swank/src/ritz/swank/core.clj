@@ -10,7 +10,8 @@
    [ritz.swank.hooks :as hooks]
    [ritz.swank.messages :as messages])
   (:use
-   [ritz.debugger.connection :only [bindings-assoc!]]))
+   [ritz.debugger.connection :only [bindings-assoc!]]
+   [ritz.repl-utils.namespaces :only [namespace-state namespaces-reset]]))
 
 ;; Protocol version
 (defonce protocol-version "20101113")
@@ -110,3 +111,19 @@
   [s]
   string/join
   (.split ^String s (System/getProperty "line.separator")))
+
+;;; Namespace tracking
+(def initial-namespace-state (atom nil))
+
+(defn record-namespace-state!
+  "Record the namespace state, if not already recorded"
+  []
+  (when-not @initial-namespace-state
+    (swap! initial-namespace-state
+           (fn [s]
+             (when-not s
+               (namespace-state))))))
+
+(defn reset-namespaces
+  []
+  (namespaces-reset @initial-namespace-state))

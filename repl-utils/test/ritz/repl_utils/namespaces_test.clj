@@ -13,3 +13,12 @@
 (deftest dependencies-test
   (is (= #{'clojure.set 'clojure.core 'clojure.java.io}
          (set (dependencies 'ritz.repl-utils.namespaces)))))
+
+(deftest namespaces-reset-test
+  (let [state (namespace-state)]
+    (is (not ((set state) 'ritz.repl-utils.test-namespace)))
+    (require 'ritz.repl-utils.test-namespace)
+    (is (= #{'ritz.repl-utils.test-namespace}
+           (namespaces-since state)))
+    (namespaces-reset state)
+    (is (not ((set (namespace-state)) 'ritz.repl-utils.test-namespace)))))

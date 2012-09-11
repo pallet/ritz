@@ -1,5 +1,9 @@
 (ns ritz.repl-utils.compile
   "Util functions for compilation and evaluation."
+  (:use
+   [ritz.repl-utils.io :only [reader-for-location]])
+  (:require
+   [clojure.java.io :as io])
   (:import
    java.io.StringReader
    java.io.File
@@ -53,3 +57,25 @@
                     next-form (read rdr false ::eof)]
                 (recur next-form form res)))))
         (finally (pop-thread-bindings))))))
+
+(defn load-file-location
+  [{:keys [file zip] :as location}]
+  (clojure.lang.Compiler/load
+   (reader-for-location location)
+   (.getAbsolutePath (io/file file))
+   (.getName (io/file file))))
+
+(defmacro with-compiler-options
+  "Provides a scope within which compiler are set. `options` should be
+an expression yielding a map. The :debug key in the map controls
+locals clearing. This has no effect on pre clojure 1.4.0."
+  {:indent 1}
+  [options & body]
+  (if-let [co (ns-resolve 'clojure.core '*compiler-options*)]
+    `(let [c-o# ~options]
+       (if (:debug c-o#)
+         (binding [*compiler-options*
+                   (assoc *compiler-options* :disable-locals-clearing true)]
+           ~@body)
+         (do ~@body)))
+    `(do ~@body)))

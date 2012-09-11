@@ -2,8 +2,11 @@
   (:refer-clojure :exclude [load-file])
   (:use
    [ritz.swank.commands :only [defslimefn]]
-   [ritz.repl-utils.io :only [read-ns]]
+   [ritz.repl-utils.compile :only [with-compiler-options load-file-location]]
+   [ritz.repl-utils.find :only [find-source-path]]
+   [ritz.repl-utils.io :only [read-ns reader-for-location]]
    [ritz.repl-utils.namespaces :only [with-var-clearing]]
+   [ritz.repl-utils.source-forms :only [source-form-path]]
    [clojure.tools.macro :only [mexpand-all]])
   (:require
    [clojure.java.io :as io]
@@ -54,7 +57,7 @@
   [connection string]
   (compile/eval-region
    string
-   (find/source-form-path (connection/request-id connection))
+   (source-form-path (connection/request-id connection))
    1))
 
 (defn interactive-eval* [connection string]
@@ -159,9 +162,11 @@
   "Compiles a file for emacs. Because clojure doesn't compile, this is
    simple an alias for load file w/ timing and messages."
   [file-name]
-  (let [start (System/nanoTime)]
+  (let [location (find-source-path file-name)
+        start (System/nanoTime)]
     (try
-      (let [ret (or (clojure.core/load-file file-name) file-name)
+      (let [ret (or (load-file-location location)
+                    file-name)
             delta (- (System/nanoTime) start)]
         (messages/compilation-result nil ret (secs-for-ns delta)))
       (catch Throwable t
@@ -183,35 +188,25 @@
          (.getAbsolutePath file) (inc (count (.getAbsolutePath base))))
         file-path))))
 
-(defn compile-options
+(defn compiler-options
   "Process compile options. These look like (:policy ((cl/debug . 3)))"
   [options]
   (when (and (seq options) (even? (count options)))
     (let [{:keys [policy]} (apply hash-map options)]
       {:debug (some #(= 'cl/debug (first %)) policy)})))
 
-(defmacro with-compile-options
-  {:indent 1}
-  [options & body]
-  (if-let [co (ns-resolve 'clojure.core '*compiler-options*)]
-    `(let [c-o# (compile-options ~options)]
-       (if (:debug c-o#)
-         (binding [*compiler-options*
-                   (assoc *compiler-options*
-                     :locals-clearing false          ; for clojure-1.3.0-p1
-                     :disable-locals-clearing true)] ; for clojure-1.4.0
-           ~@body)
-         (do ~@body)))
-    `(do ~@body)))
-
 (defslimefn compile-file-for-emacs
   [connection file-name load? & compile-options]
   (when load?
-    (with-compile-options compile-options
+    (with-compiler-options (compiler-options compile-options)
       (compile-file-for-emacs* file-name))))
 
 (defslimefn load-file [connection file-name]
-  (if-let [file-ns (read-ns (java.io.PushbackReader. (io/reader file-name)))]
+  (if-let [file-ns (read-ns
+                    (-> file-name
+                        find-source-path
+                        reader-for-location
+                        (java.io.PushbackReader.)))]
     (with-var-clearing file-ns
       (pr-str (clojure.core/load-file file-name)))
     (pr-str (clojure.core/load-file file-name))))
@@ -222,7 +217,7 @@
         file (java.io.File. buffer-path)
         line (utils-io/read-position-line file position)
         ret (binding [*ns* (or (utils-io/guess-namespace file) *ns*)]
-              (with-compile-options debug
+              (with-compiler-options (compiler-options debug)
                 (compile/compile-region string buffer-path line)))
         delta (- (System/nanoTime) start)]
     (messages/compilation-result nil ret (/ delta 1000000000.0))))

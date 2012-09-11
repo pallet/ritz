@@ -1,3 +1,4 @@
-(defproject lein-ritz "0.4.1"
-  :description "A Leiningen plugin for launching a ritz server for Slime."
+(defproject lein-ritz "0.4.2"
+  :description "A Leiningen plugin for launching a ritz swank server for SLIME."
+  :dependencies [[org.clojure/tools.cli "0.2.2"]]
   :eval-in-leiningen true)
