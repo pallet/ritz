@@ -68,12 +68,13 @@
   ([classpath expr options]
      (let [^Connector launch-connector (connector :command-line)
            arguments (.defaultArguments launch-connector)
+           quote-args (.get arguments "quote")
            main-args (.get arguments "main")
-           option-args (.get arguments "options")]
-       (logging/trace "jdi/launch %s" expr)
-       (.setValue
-        main-args
-        (str " -cp " classpath " clojure.main -e \"" expr "\""))
+           option-args (.get arguments "options")
+           args (str " -cp '" classpath "' clojure.main -e '" expr "'")]
+       (logging/trace "jdi/launch %s" args)
+       (.setValue quote-args "'")
+       (.setValue main-args args)
        (.setValue option-args (string/join " " options))
        (.launch launch-connector arguments)))
   ([classpath expr]
