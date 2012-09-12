@@ -18,6 +18,12 @@
   (let [project (project/read)
         classpath (get-classpath project)]
     (trace "Resetting classpath to %s" (vec classpath))
-    (set-classpath!
-     (vm-context connection)
-     classpath)))
+    (set-classpath! (vm-context connection) classpath)))
+
+(defn reset-namespaces
+  [vm]
+  (ritz.jpda.jdi-clj/control-eval vm `(ritz.nrepl.exec/reset-namespaces!)))
+
+(defn reset-repl
+  [connection]
+  (reset-namespaces (vm-context connection)))

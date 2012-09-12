@@ -533,6 +533,22 @@ are supported:
 (define-key
   nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-ritz-compile-expression)
 
+;;; Reset repl
+(defun nrepl-ritz-reset-repl ()
+  "Reload project.clj."
+  (interactive)
+  (nrepl-ritz-send-op-strings
+   "reset-repl"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer description)
+      (message description))
+    (lambda (buffer out) (message out))
+    (lambda (buffer err) (message err))
+    nil)
+   `()))
+
+
 ;;; Reload project.clj
 (defun nrepl-ritz-recreate-session-handler ()
   (lambda (response)

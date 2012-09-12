@@ -15,7 +15,7 @@
    [ritz.debugger.connection :only [bindings bindings-assoc!]]
    [ritz.logging :only [trace]]
    [ritz.nrepl.middleware :only [args-for-map read-when]]
-   [ritz.nrepl.project :only [reload]]))
+   [ritz.nrepl.project :only [reload reset-repl]]))
 
 (defn evaluate
   [{:keys [op code ns session transport] :as msg}]
@@ -132,7 +132,11 @@
         (trace "reload-project done")
         (f))
 
-
+      (= "reset-repl" op)
+      (do
+        (reset-repl connection)
+        (trace "reset-repl done")
+        (transport/send transport (response-for msg :status :done)))
 
       :else (handler msg))))
 

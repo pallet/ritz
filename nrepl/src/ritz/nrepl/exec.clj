@@ -11,9 +11,9 @@
    [ritz.repl-utils.namespaces :only [namespaces-reset namespace-state]]
    [ritz.logging :only [set-level trace]]))
 
-(defonce transport (atom nil)) ;(make-transport {})
-(defonce middleware (atom nil)) ;[]
-(defonce handler (atom nil)) ; (default-handler)
+(defonce transport (atom nil))
+(defonce middleware (atom nil))
+(defonce handler (atom nil))
 (defonce namespaces (atom nil))
 (defonce wait-for-reinit (atom nil))
 
@@ -118,6 +118,35 @@
       (set-handler! (apply default-handler (map resolve @middleware)))
       nil)))
 
+
+(defn maybe-set-namespaces!
+  []
+  (feature-cond
+   (configurable-classpath?)
+   (if (has-classloader?)
+     (eval-clojure `(when-not @namespaces
+                      (reset! namespaces
+                              (remove #(= 'user %) (namespace-state)))))
+     (do
+       (trace "reset-namespaces! No classloader yet")
+       (Thread/sleep 1000)))
+   :else (when-not @namespaces
+           (reset! namespaces (namespace-state)))))
+
+(defn reset-namespaces!
+  []
+  (feature-cond
+   (configurable-classpath?)
+   (if (has-classloader?)
+     (eval-clojure `(when @namespaces
+                      (namespaces-reset @namespaces)
+                      (ns user)))
+     (do
+       (trace "reset-namespaces! No classloader yet")
+       (Thread/sleep 1000)))
+   :else (when @namespaces
+             (namespaces-reset @namespaces))))
+
 (defn set-extra-classpath!
   [files]
   (ritz.repl-utils.classloader/set-extra-classpath! files))
@@ -134,9 +163,9 @@
         (eval-clojure `(when (current-transport)
                          (release-queue (current-transport)))))
       (trace "set-classpath!/reset namespace")
-      (if @namespaces
-        (when reset? (namespaces-reset @namespaces))
-        (reset! namespaces (namespace-state)))
+      (maybe-set-namespaces!)
+      (when reset?
+        (reset-namespaces!))
       (trace "set-classpath!/set classpath")
       (ritz.repl-utils.classloader/set-classpath! files)
       (eval-clojure '(require 'ritz.nrepl.exec 'ritz.logging))
@@ -145,6 +174,7 @@
         (reset-middleware!)
         (trace "set-classpath!/set transport")
         (eval-clojure `(set-transport! (make-transport {}))))
+      (maybe-set-namespaces!)
       (when new-cl?
         (trace "set-classpath!/deliver wait-for-reinit")
         (deliver @wait-for-reinit nil)))))
