@@ -60,13 +60,15 @@
   "Launch ritz server for Emacs to connect. Optionally takes PORT and HOST.
 
 -d   --[no-]debug      Enable debugger
--f   --port-file       File to write port info to"
+-f   --port-file       File to write port info to
+-m   --message         announce message"
   ([project & args]
      (let [[opts [port host]]
            (cli args
                 ["-d" "--[no-]debug" :default true]
                 ["-b" "--backlog" :parse-fn #(Integer. %) :default 0]
                 ["-l" "--log-level" :default nil]
+                ["-m" "--message"]
                 ["-f" "--port-file"])
            opts (->
                  opts
