@@ -533,6 +533,22 @@ are supported:
 (define-key
   nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-ritz-compile-expression)
 
+;;; Lein
+(defun nrepl-ritz-lein (arg-string)
+  "Reload project.clj."
+  (interactive "slein ")
+  (nrepl-ritz-send-op
+   "lein"
+   (nrepl-make-response-handler
+    (nrepl-popup-buffer "*nREPL lein*" t)
+    (lambda (buffer description)
+      (message description))
+    'nrepl-emit-into-popup-buffer
+    'nrepl-emit-into-popup-buffer
+    (lambda (buffer) (message "lein done")))
+   `(args ,(split-string arg-string " "))))
+
+
 ;;; Reset repl
 (defun nrepl-ritz-reset-repl ()
   "Reload project.clj."

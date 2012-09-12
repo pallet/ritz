@@ -34,6 +34,10 @@ This depends on having classlojure on the classpath."
   [filename]
   (str (.toURL (file filename))))
 
+(defn files-to-urls
+  [files]
+  (->> files (map absolute-filename) (map filename-to-url-string)))
+
 (defn requires-reset?
   "Predicate to test if a new classpath would require a classpath reset.
 Returns a map with reset? and new-cl? flags."
@@ -60,10 +64,7 @@ Returns a map with reset? and new-cl? flags."
          reset-required (or (seq removed-files) (not (seq @cl-files)))
          loader (if reset-required
                   (doto (#'classlojure.core/url-classloader
-                         (->>
-                          files
-                          (map absolute-filename)
-                          (map filename-to-url-string))
+                         (files-to-urls files)
                          ext-classloader)
                     (.loadClass "clojure.lang.RT")
                     (eval-in* '(require 'clojure.main)))

@@ -57,3 +57,25 @@
           (.getInputStream (.getEntry jarfile file))
           (java.io.InputStreamReader.)))
     (io/reader file)))
+
+;;; ## Piped Streams
+(def
+  ^{:dynamic true
+    :doc (str "The buffer size (in bytes) for the piped stream used to implement
+    the :stream option for :out. If your ssh commands generate a high volume of
+    output, then this buffer size can become a bottleneck. You might also
+    increase the frequency with which you read the output stream if this is an
+    issue.")}
+  *piped-stream-buffer-size* (* 1024 10))
+
+(defn streams-for-out
+  ([buffer-size]
+     (let [os (java.io.PipedOutputStream.)]
+       [os (java.io.PipedInputStream. os buffer-size)]))
+  ([] (streams-for-out *piped-stream-buffer-size*)))
+
+(defn streams-for-in
+  ([buffer-size]
+     (let [os (java.io.PipedInputStream. buffer-size)]
+       [os (java.io.PipedOutputStream. os)]))
+  ([] (streams-for-in *piped-stream-buffer-size*)))

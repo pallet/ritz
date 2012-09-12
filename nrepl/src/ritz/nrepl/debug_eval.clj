@@ -9,13 +9,15 @@
    ritz.nrepl.debug
    ritz.repl-utils.doc) ;; ensure commands are loaded
   (:use
+   [clojure.java.io :only [writer]]
    [clojure.tools.nrepl.misc :only [response-for]]
    [clojure.tools.nrepl.middleware :only [set-descriptor!]]
    [clojure.tools.nrepl.middleware.interruptible-eval :only [*msg*]]
    [ritz.debugger.connection :only [bindings bindings-assoc!]]
    [ritz.logging :only [trace]]
    [ritz.nrepl.middleware :only [args-for-map read-when]]
-   [ritz.nrepl.project :only [reload reset-repl]]))
+   [ritz.nrepl.project :only [reload reset-repl lein]]
+   [ritz.repl-utils.io :only [streams-for-out]]))
 
 (defn evaluate
   [{:keys [op code ns session transport] :as msg}]
@@ -136,6 +138,30 @@
       (do
         (reset-repl connection)
         (trace "reset-repl done")
+        (transport/send transport (response-for msg :status :done)))
+
+      (= "lein" op)
+      (let [args (read-when (:args msg))
+            ]
+        (trace "lein %s" args)
+        (let [[os is] (streams-for-out)
+              buffer-size (* 1024 10)   ; bytes
+              period 500                ; ms
+              bytes (byte-array buffer-size)
+              read-ouput (fn []
+                           (when (pos? (.available is))
+                             (let [num-read (.read is bytes 0 buffer-size)
+                                   s (String. bytes 0 num-read "UTF-8")]
+                               (transport/send
+                                transport (response-for msg :out s)))))
+              f (future
+                  (binding [*out* (writer os)]
+                    (lein connection args)))]
+          (while (not (future-done? f))
+            (Thread/sleep period)
+            (read-ouput))
+          (while (read-ouput)))
+        (trace "lein done")
         (transport/send transport (response-for msg :status :done)))
 
       :else (handler msg))))

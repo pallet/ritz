@@ -6,7 +6,7 @@
    [ritz.nrepl.transport :only [make-transport read-sent release-queue]]
    [ritz.repl-utils.classloader
     :only [configurable-classpath? eval-clojure has-classloader?
-           requires-reset?]]
+           requires-reset? files-to-urls]]
    [ritz.repl-utils.clojure :only [feature-cond]]
    [ritz.repl-utils.namespaces :only [namespaces-reset namespace-state]]
    [ritz.logging :only [set-level trace]]))
@@ -183,3 +183,14 @@
   [level]
   (set-level level)
   (eval-clojure `(set-level ~level)))
+
+;;; ## Execute arbitrary code in the controlled vm
+(defn eval-with-classpath
+  "Eval a form using the classloader specified classpath if possible."
+  [files & forms]
+  (feature-cond
+   (configurable-classpath?)
+   (let [cl (classlojure.core/classlojure (files-to-urls files))]
+     (doseq [form forms]
+       (classlojure.core/eval-in cl form)))
+   :else (throw (Exception. "eval-with-classpath unsupported"))))
