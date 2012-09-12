@@ -5,7 +5,8 @@
    [ritz.nrepl.handler :only [default-handler]]
    [ritz.nrepl.transport :only [make-transport read-sent release-queue]]
    [ritz.repl-utils.classloader
-    :only [configurable-classpath? eval-clojure has-classloader?]]
+    :only [configurable-classpath? eval-clojure has-classloader?
+           requires-reset?]]
    [ritz.repl-utils.clojure :only [feature-cond]]
    [ritz.repl-utils.namespaces :only [namespaces-reset namespace-state]]
    [ritz.logging :only [set-level trace]]))
@@ -14,7 +15,7 @@
 (defonce middleware (atom nil)) ;[]
 (defonce handler (atom nil)) ; (default-handler)
 (defonce namespaces (atom nil))
-(def wait-for-reinit (atom nil))
+(defonce wait-for-reinit (atom nil))
 
 (defn set-handler!
   [handler-fn]
@@ -117,26 +118,36 @@
       (set-handler! (apply default-handler (map resolve @middleware)))
       nil)))
 
+(defn set-extra-classpath!
+  [files]
+  (ritz.repl-utils.classloader/set-extra-classpath! files))
+
 (defn set-classpath!
   [files]
   (when (configurable-classpath?)
-    (trace "set-classpath!/release queue")
-    (reset! wait-for-reinit (promise))
-    (when (has-classloader?)
-      (eval-clojure `(when (current-transport)
-                       (release-queue (current-transport)))))
-    (trace "set-classpath!/reset namespace")
-    (if @namespaces
-      (namespaces-reset @namespaces)
-      (reset! namespaces (namespace-state)))
-    (trace "set-classpath!/set classpath")
-    (ritz.repl-utils.classloader/set-classpath! files)
-    (eval-clojure '(require 'ritz.nrepl.exec 'ritz.logging))
-    (trace "set-classpath!/set middleware")
-    (reset-middleware!)
-    (trace "set-classpath!/set transport")
-    (eval-clojure `(set-transport! (make-transport {})))
-    (deliver @wait-for-reinit nil)))
+    (let [{:keys [reset? new-cl?] :as flags} (requires-reset? files)]
+      (trace "set-classpath!/release queue %s" flags)
+      (when new-cl?
+        (trace "set-classpath!/set wait-for-reinit")
+        (reset! wait-for-reinit (promise)))
+      (when (and (has-classloader?) new-cl?)
+        (eval-clojure `(when (current-transport)
+                         (release-queue (current-transport)))))
+      (trace "set-classpath!/reset namespace")
+      (if @namespaces
+        (when reset? (namespaces-reset @namespaces))
+        (reset! namespaces (namespace-state)))
+      (trace "set-classpath!/set classpath")
+      (ritz.repl-utils.classloader/set-classpath! files)
+      (eval-clojure '(require 'ritz.nrepl.exec 'ritz.logging))
+      (when reset?
+        (trace "set-classpath!/set middleware")
+        (reset-middleware!)
+        (trace "set-classpath!/set transport")
+        (eval-clojure `(set-transport! (make-transport {}))))
+      (when new-cl?
+        (trace "set-classpath!/deliver wait-for-reinit")
+        (deliver @wait-for-reinit nil)))))
 
 (defn set-log-level
   [level]

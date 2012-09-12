@@ -8,6 +8,7 @@
    [clojure.tools.nrepl.server :as nrepl.server])
   (:use
    [clojure.tools.cli :only [cli]]
+   [clojure.set :only [difference]]
    [leiningen.core.classpath :only [get-classpath]]))
 
 (def nrepl-version "0.2.0-beta9")
@@ -20,8 +21,15 @@
 (def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
                                      :exclusions [org.clojure/clojure]]]})
 
+(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
+                                     :exclusions [org.clojure/clojure]]]})
+
+
 (def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.4.0-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
+
+(def repl-utils-profile {:dependencies '[[ritz/ritz-repl-utils "0.4.0-SNAPSHOT"
+                                          :exclusions [org.clojure/clojure]]]})
 
 (def lein-project-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
 
@@ -47,6 +55,9 @@ project server."
                       (project/merge-profiles [ritz-profile]))
         vm-classpath (vec (get-classpath vm-project))
         user-classpath (vec (get-classpath user-project))
+        user-classpath-no-ritz (vec (get-classpath project))
+        extra-classpath (difference
+                         (set user-classpath) (set user-classpath-no-ritz))
         _ (require 'leiningen.ritz) ;; for add-hooks
         server-starting-form
         `(do
@@ -57,6 +68,7 @@ project server."
              :repl-port-path ~(str (io/file (:target-path project) "repl-port"))
              :classpath ~(vec user-classpath)
              :vm-classpath ~(vec vm-classpath)
+             :extra-classpath ~(vec extra-classpath)
              :middleware ~(vec (map #(list 'quote %) nrepl-middleware))
              :log-level ~log-level}))]
     (eval/eval-in-project
