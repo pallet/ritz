@@ -1,14 +1,13 @@
 (ns ritz.nrepl.project
   "Project.clj functions"
   (:require
-   [leiningen.core.classpath :as classpath]
-   [leiningen.core.eval :as eval]
    [leiningen.core.main :as main]
    [leiningen.core.project :as project]
    [leiningen.core.user :as user])
   (:use
    [clojure.string :only [join]]
    [leiningen.core.classpath :only [get-classpath]]
+   [leiningen.core.eval :only [eval-in]]
    [ritz.debugger.connection :only [vm-context]]
    [ritz.logging :only [trace]]))
 
@@ -18,10 +17,25 @@
   (ritz.jpda.jdi-clj/control-eval
    vm `(ritz.nrepl.exec/set-classpath! ~(vec classpath))))
 
+(defonce cache-classpath (atom {}))
+
+(defn project-classpath
+  [project]
+  (let [{:keys [project-hash classpath]} @cache-classpath
+        lookup-hash (hash project)]
+    (if (= project-hash lookup-hash)
+      classpath
+      (let [classpath (get-classpath project)]
+        (trace "classpath cache miss")
+        (reset!
+         cache-classpath
+         {:project-hash lookup-hash :classpath classpath})
+        classpath))))
+
 (defn reload
   [connection]
   (let [project (project/read)
-        classpath (get-classpath project)]
+        classpath (project-classpath project)]
     (trace "Resetting classpath to %s" (vec classpath))
     (set-classpath! (vm-context connection) classpath)))
 
@@ -43,8 +57,8 @@
      (in-ns '~'leiningen.core.main)
      ))
 
-(defmethod eval/eval-in ::vm [project form]
-  (let [classpath (classpath/get-classpath project)]
+(defmethod eval-in ::vm [project form]
+  (let [classpath (project-classpath project)]
     (ritz.jpda.jdi-clj/control-eval
      (::vm project)
      `(ritz.nrepl.exec/eval-with-classpath
