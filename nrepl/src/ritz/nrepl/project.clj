@@ -19,9 +19,13 @@
 
 (defonce cache-classpath (atom {}))
 
+(def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.4.2-SNAPSHOT"
+                                    :exclusions [org.clojure/clojure]]]})
+
 (defn project-classpath
   [project]
-  (let [{:keys [project-hash classpath]} @cache-classpath
+  (let [project (project/merge-profiles project [ritz-profile])
+        {:keys [project-hash classpath]} @cache-classpath
         lookup-hash (hash project)]
     (if (= project-hash lookup-hash)
       classpath
@@ -32,11 +36,21 @@
          {:project-hash lookup-hash :classpath classpath})
         classpath))))
 
+(defonce project-path (atom "project.clj"))
+
 (defn reload
   [connection]
-  (let [project (project/read)
+  (let [project (project/read @project-path)
         classpath (project-classpath project)]
     (trace "Resetting classpath to %s" (vec classpath))
+    (set-classpath! (vm-context connection) classpath)))
+
+(defn load-project
+  [connection project-file]
+  (let [project (project/read project-file)
+        classpath (project-classpath project)]
+    (reset! project-path project-file)
+    (trace "Setting classpath to %s" (vec classpath))
     (set-classpath! (vm-context connection) classpath)))
 
 (defn reset-namespaces

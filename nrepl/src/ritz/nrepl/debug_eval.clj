@@ -16,7 +16,7 @@
    [ritz.debugger.connection :only [bindings bindings-assoc!]]
    [ritz.logging :only [trace]]
    [ritz.nrepl.middleware :only [args-for-map read-when]]
-   [ritz.nrepl.project :only [reload reset-repl lein]]
+   [ritz.nrepl.project :only [load-project reload reset-repl lein]]
    [ritz.repl-utils.io :only [streams-for-out]]))
 
 (defn evaluate
@@ -132,6 +132,13 @@
       (let [f #(transport/send transport (response-for msg :status :done))]
         (reload connection)
         (trace "reload-project done")
+        (f))
+
+      (= "load-project" op)
+      (let [project-file (:project-file msg)
+            f #(transport/send transport (response-for msg :status :done))]
+        (load-project connection project-file)
+        (trace "load-project done")
         (f))
 
       (= "reset-repl" op)

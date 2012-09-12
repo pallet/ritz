@@ -593,6 +593,25 @@ are supported:
                        (nrepl-ritz-recreate-session))))
    `()))
 
+
+(defun nrepl-ritz-load-project (prompt-project)
+  "Reload project.clj."
+  (interactive "P")
+  (let ((dir (if prompt-project
+                 (ido-read-directory-name "Project: ")
+               (expand-file-name (locate-dominating-file buffer-file-name "src/")))))
+    (nrepl-ritz-send-op-strings
+     "load-project"
+     (nrepl-make-response-handler
+      (current-buffer)
+      (lambda (buffer description)
+        (message description))
+      (lambda (buffer out) (message out))
+      (lambda (buffer err) (message err))
+      (lambda (buffer) (with-current-buffer buffer
+                         (nrepl-ritz-recreate-session))))
+     `("project-file" ,(concat dir "/" "project.clj")))))
+
 ;;; # Minibuffer
 (defvar nrepl-ritz-minibuffer-map
   (let ((map (make-sparse-keymap)))
