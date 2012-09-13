@@ -43,12 +43,12 @@ to specific the full path to it. Localhost is assumed."
   "nrepl op for eval of forms.")
 (make-variable-buffer-local 'nrepl-eval-op)
 
-(defun nrepl-send-string (input ns callback)
-  (nrepl-send-request (list "op" nrepl-eval-op
-                            "session" (nrepl-current-session)
-                            "ns" ns
-                            "code" input)
-                      callback))
+(defun nrepl-eval-request (input &optional ns)
+  (append (if ns (list "ns" ns))
+          (list
+           "op" nrepl-eval-op
+           "session" (nrepl-current-session)
+           "code" input)))
 
 ;;; # General helpers
 (defun flatten-alist (alist)
@@ -301,12 +301,12 @@ are supported:
   (interactive)
   (nrepl-send-string
    "(require 'ritz.logging)"
-   (nrepl-current-ns)
-   (nrepl-make-response-handler (current-buffer) nil nil nil nil))
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   nrepl-buffer-ns)
   (nrepl-send-string
    "(ritz.logging/toggle-level :trace)"
-   (nrepl-current-ns)
-   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   nrepl-buffer-ns))
 
 
 ;;; jpda commands
@@ -488,13 +488,13 @@ are supported:
 
 ;;; undefine symbol
 (defun nrepl-ritz-undefine-symbol-handler (symbol-name)
-  "Browse undefine on the Java class at point."
+  "Undefine on the symbol at point."
   (when (not symbol-name)
     (error "No symbol given"))
   (nrepl-send-string
-   (format "(ns-unmap '%s '%s)" (nrepl-current-ns) symbol-name)
-   (nrepl-current-ns)
-   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+   (format "(ns-unmap '%s '%s)" nrepl-buffer-ns symbol-name)
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   nrepl-buffer-ns))
 
 (defun nrepl-ritz-undefine-symbol (query)
   "Undefine the symbol at point."
