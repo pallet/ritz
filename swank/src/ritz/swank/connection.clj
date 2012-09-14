@@ -72,7 +72,7 @@
                   (.. me getBuffer (delete 0 len))))))
      true)))
 
-(defn- ^java.io.StringWriter make-output-redirection
+(defn ^java.io.StringWriter make-output-redirection
   ([io-connection]
      (call-on-flush-stream
       #((:write-message io-connection) io-connection `(:write-string ~%)))))

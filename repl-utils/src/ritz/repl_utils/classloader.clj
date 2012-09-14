@@ -64,7 +64,7 @@ Returns a map with reset? and new-cl? flags."
          reset-required (or (seq removed-files) (not (seq @cl-files)))
          loader (if reset-required
                   (doto (#'classlojure.core/url-classloader
-                         (files-to-urls files)
+                         (files-to-urls file-set)
                          ext-classloader)
                     (.loadClass "clojure.lang.RT")
                     (eval-in* '(require 'clojure.main)))

@@ -634,7 +634,9 @@
                    connection (re-pattern (str location ".*")))
                   (continue-level connection thread-id)))))]
           (when-let [restarts (seq
-                               (swell-impl/available-restarts context thread))]
+                               (try
+                                 (swell-impl/available-restarts context thread)
+                                 (catch Exception _)))]
             (map
              #(make-restart
                :restart (str "RESTART " %)
@@ -1046,8 +1048,7 @@
               (when (break-for-exception? event connection)
                 (trace "Activating sldb")
                 (invoke-debugger connection event)))
-            ;; (trace "Not activating sldb (no connection)")
-            ))
+            (trace "Not activating sldb (no connection)")))
         (do
           (trace-str "@")
           ;; (trace

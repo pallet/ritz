@@ -1,6 +1,7 @@
 (ns ritz.swank.commands.basic
   (:refer-clojure :exclude [load-file])
   (:use
+   [ritz.logging :only [trace]]
    [ritz.swank.commands :only [defslimefn]]
    [ritz.repl-utils.compile :only [with-compiler-options load-file-location]]
    [ritz.repl-utils.find :only [find-source-path]]
@@ -37,6 +38,7 @@
 ;;;; Connection
 
 (defslimefn connection-info [connection]
+  (trace "conection-info")
   (messages/connection-info
     (sys/get-pid)
     (clojure-version)

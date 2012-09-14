@@ -13,6 +13,10 @@
   [level]
   (reset! log-level level))
 
+(defn current-log-level
+  []
+  @log-level)
+
 (defn toggle-level
   "Toggle log level between `level` and nil"
   [level]

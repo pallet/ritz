@@ -14,4 +14,7 @@
               :search-regex #"lein-ritz \"\d+\.\d+\.\d+\""}
              {:path "elisp/nrepl-ritz.el"
               :no-snapshot true
-              :search-regex #";; Version: \d+\.\d+\.\d+"}]}}}
+              :search-regex #";; Version: \d+\.\d+\.\d+"}
+             {:path "src/ritz/nrepl/project"
+              :no-snapshot true
+              :search-regex #"ritz/ritz-nrepl \"\d+\.\d+\.\d+\""}]}}}

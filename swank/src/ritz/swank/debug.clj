@@ -1,6 +1,7 @@
 (ns ritz.swank.debug
   "Debugger interaction for swank"
   (:use
+   [clojure.stacktrace :only [print-cause-trace]]
    [ritz.jpda.debug
     :only [step-request
            ignore-exception-type ignore-exception-message
@@ -12,7 +13,8 @@
    [ritz.logging :only [trace trace-str]]
    [ritz.debugger.connection
     :only [debug-context debug-assoc! debug-update-in! vm-context]]
-   [ritz.repl-utils.source-forms :only [source-form!]])
+   [ritz.repl-utils.source-forms :only [source-form!]]
+   [ritz.swank.rexec :only [rexec rread-msg]])
   (:require
    [clojure.string :as string]
    [ritz.debugger.break :as break]
@@ -59,79 +61,6 @@
    "Caught exception %s %s"
    (pr-str e)
    (helpers/stack-trace-string e)))
-
-
-;;; # VM Startup
-;;; debugee function for starting a thread that may be used from the debugger
-(defn- vm-swank-main
-  [options]
-  `(try
-     (require '~'ritz.swank.socket-server)
-     ((resolve '~'ritz.swank.socket-server/start) ~options)
-     (catch Exception e#
-       (spit (str (name 'ritz-startup-error)) e#)
-       (println e#)
-       (.printStackTrace e#))))
-
-;;; functions for acquiring the control thread in the proxy
-(defn launch-vm-with-swank
-  "Launch and configure the vm for the debugee."
-  [{:keys [port announce log-level classpath] :as options}]
-  (apply
-   jdi-vm/launch-vm
-   (or classpath (jdi-vm/current-classpath))
-   (vm-swank-main {:port port
-                   :announce announce
-                   :server-ns `(quote ritz.swank.repl)
-                   :log-level (keyword log-level)})
-   (mapcat identity options)))
-
-;; (defn launch-vm-without-swank
-;;   "Launch and configure the vm for the debugee."
-;;   [classpath {:as options}]
-;;   (trace "launch-vm-without-swank %s" classpath)
-;;   (jdi-vm/launch-vm classpath ))
-
-
-(defn connect-to-repl-on-vm [port]
-  (trace "debugger/connect-to-repl-on-vm port %s" port)
-  (Socket. "localhost" (int port)))
-
-(defn create-connection [options]
-  (trace "debugger/create-connection: connecting to proxied connection")
-  (->
-   (connect-to-repl-on-vm (:port options))
-   (rpc-socket-connection/create options)
-   (connection/create options)))
-
-(defn remote-swank-port
-  "Obtain the swank port on the remote vm"
-  [context]
-  (letfn [(get-port []
-            (try
-              (jdi-clj/control-eval
-               context
-               ;; NB very important that this doesn't throw
-               ;; as that can cause hangs in the startup
-               `(try
-                  (when (find-ns '~'ritz.swank.socket-server)
-                    (when-let [v# (ns-resolve
-                                   '~'ritz.swank.socket-server
-                                   '~'acceptor-port)]
-                      (when-let [a# (var-get v#)]
-                        (when (instance? clojure.lang.Atom a#)
-                          (deref a#)))))
-                  (catch Exception _#)))
-              (catch Exception _)))]
-    (loop []
-      (trace "debug/remote-swank-port: loop")
-      (if-let [port (get-port)]
-        port
-        (do
-          (trace "debug/remote-swank-port: no port yet ...")
-          (Thread/sleep 1000)
-          (recur))))))
-
 
 ;;; # SWANK message and reply forwarding
 
@@ -189,43 +118,54 @@ otherwise pass it on."
 (defn forward-command
   [handler]
   (fn [connection form buffer-package id f]
-    (let [proxied-connection (:proxy-to connection)]
-      (trace
-       "debugger/forward-command: forwarding %s to proxied connection"
-       (first form))
-      (trace
-       "VM threads:\n%s"
-       (string/join
-        "\n"
-        (map format-thread (threads (vm-context connection)))))
-      (break/clear-abort-for-current-level
-       connection (:request-thread connection))
-      (executor/execute-request
-       (partial
-        connection/send-to-emacs
-        proxied-connection (list :emacs-rex form buffer-package true id)))
-      :ritz.swank/pending)))
+    (trace
+     "debugger/forward-command: forwarding %s to proxied connection"
+     (first form))
+    (trace
+     "VM threads:\n%s"
+     (string/join
+      "\n"
+      (map format-thread (threads (vm-context connection)))))
+    (break/clear-abort-for-current-level
+     connection (:request-thread connection))
+    (executor/execute-request
+     (partial rexec connection (list :emacs-rex form buffer-package true id)))
+    :ritz.swank/pending))
 
 (defn forward-rpc
   [connection rpc]
   (let [proxied-connection (:proxy-to connection)]
     (trace
-     "debugger/forward-command: forwarding %s to proxied connection" rpc)
+     "debugger/forward-rpc: forwarding %s to proxied connection" rpc)
     (executor/execute-request
      (partial connection/send-to-emacs proxied-connection rpc))))
 
 (defn forward-reply
   [connection]
   (trace
-   "debugger/forward-command: waiting reply from proxied connection")
-  (let [proxied-connection (:proxy-to connection)]
-    (let [reply (connection/read-from-connection proxied-connection)
+   "debugger/forward-reply: waiting reply from proxied connection")
+  (try
+    (when-let [p @ritz.swank.exec/wait-for-reinit]
+      @p)
+    (let [vm-context (vm-context connection)
+          thread (:msg-pump-thread vm-context)
+          _ (assert thread)
+          _ (trace "debugger/forward-reply: thread %s" thread)
+          reply (rread-msg vm-context thread)
           id (last reply)]
-      (when (or (not (number? id)) (not (zero? id))) ; filter (= id 0)
+      (trace "debugger/forward-reply: reply received %s" reply)
+      (when (and
+             (not= '(:ritz/release-read-msg) reply)
+             (or (not (number? id))
+                 (not (zero? id)))) ; filter (= id 0)
         (executor/execute-request
          (partial connection/send-to-emacs connection reply))
         (trace "removing pending-id %s" id)
-        (connection/remove-pending-id connection id)))))
+        (connection/remove-pending-id connection id)))
+    (catch Exception e
+      (trace "debugger/forward-reply failed %s" e)
+      (trace "debugger/forward-reply %s" (print-cause-trace e))
+      (throw e))))
 
 ;;; # Breakpoints
 

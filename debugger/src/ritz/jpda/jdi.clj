@@ -277,21 +277,26 @@
   ;;  "jdi/invoke-method %s %s\nargs %s\noptions %s"
   ;;  class-or-object method (pr-str args) options)
   (logging/trace "jdi/invoke-method %s %s" method options)
-  (letfn [(invoke []
-            (let [args (java.util.ArrayList. (or args []))]
-                    (cond
-                      (instance? com.sun.jdi.ClassType class-or-object)
-                      (.invokeMethod
-                       ^ClassType class-or-object thread
-                       method args (int threading))
-                      (instance? com.sun.jdi.ObjectReference class-or-object)
-                      (.invokeMethod
-                       ^ObjectReference class-or-object thread
-                       method args (int threading)))))]
-    (if disable-exception-requests
-      (with-disabled-exception-requests [(.virtualMachine thread)]
-        (invoke))
-      (invoke))))
+  (try
+    (letfn [(invoke []
+              (let [args (java.util.ArrayList. (or args []))]
+                (cond
+                  (instance? com.sun.jdi.ClassType class-or-object)
+                  (.invokeMethod
+                   ^ClassType class-or-object thread
+                   method args (int threading))
+                  (instance? com.sun.jdi.ObjectReference class-or-object)
+                  (.invokeMethod
+                   ^ObjectReference class-or-object thread
+                   method args (int threading)))))]
+      (if disable-exception-requests
+        (with-disabled-exception-requests [(.virtualMachine thread)]
+          (invoke))
+        (invoke)))
+    (catch com.sun.jdi.InvocationException e
+      (logging/trace
+       "Exception in remote method invocation %s" (.exception e))
+      (throw e))))
 
 ;;; classpath
 (defn classpath

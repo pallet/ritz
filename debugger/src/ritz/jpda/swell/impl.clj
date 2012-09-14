@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as string]
    [ritz.jpda.jdi :as jdi]
-   [ritz.jpda.jdi-clj :as jdi-clj]))
+   [ritz.jpda.jdi-clj :as jdi-clj])
+  (:use
+   [ritz.logging :only [trace]]))
 
 (def ^{:dynamic true} *available-restarts* nil)
 (def ^{:dynamic true} *selected-restart* nil)
@@ -23,12 +25,18 @@
   [context thread]
   (when-let [s (jdi-clj/eval-to-string
                 context thread {:disable-exception-requests true}
-                `(when-let [v# (and
-                                (find-ns 'ritz.jpda.swell.impl)
-                                (ns-resolve
-                                 'ritz.jpda.swell.impl
-                                 '~'*available-restarts*))]
-                   (string/join "---" (map pr-str (var-get v#)))))]
+                `(try
+                   (when-let [v# (and
+                                  (find-ns 'ritz.jpda.swell.impl)
+                                  (ns-resolve
+                                   'ritz.jpda.swell.impl
+                                   '~'*available-restarts*))]
+                     (clojure.string/join "---" (map pr-str (var-get v#))))
+                   (catch Exception e#
+                     (trace "in available-restarts %s" e#)
+                     (trace "in available-restarts %s"
+                            (with-out-str
+                              (clojure.stacktrace/print-cause-trace e#))))))]
     (->>
      (string/split s #"---")
      (remove string/blank?)

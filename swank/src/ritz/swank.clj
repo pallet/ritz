@@ -3,7 +3,6 @@
   (:require
    [ritz.debugger.executor :as executor]
    [ritz.jpda.debug :as debug]
-   [ritz.logging :as logging]
    [ritz.repl-utils.helpers :as helpers]
    [ritz.swank.commands :as commands]
    [ritz.swank.connection :as connection]
@@ -17,7 +16,8 @@
     :rename {bindings connection-bindings}]
    [ritz.jpda.debug
     :only [add-connection-for-event-fn! add-all-connections-fn!]]
-   [ritz.jpda.swell :only [with-swell]])
+   [ritz.jpda.swell :only [with-swell]]
+   [ritz.logging :only [trace]])
   (:import
    java.io.InputStreamReader
    java.io.OutputStreamWriter
@@ -37,7 +37,7 @@
   (core/execute-slime-fn core/command-not-found))
 
 (defn eval-for-emacs [connection form buffer-package thread id]
-  (logging/trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
+  (trace "swank/eval-for-emacs: %s %s %s" form buffer-package id)
   (try
     (core/record-namespace-state!)
     (let [connection (connection/request connection buffer-package thread id)
@@ -57,18 +57,18 @@
          (messages/abort id (second result)))
         (connection/remove-pending-id
          connection id))
-       (= ::pending result) (logging/trace
+       (= ::pending result) (trace
                              "swank/eval-for-emacs: pending %s" id)
        :else (do
                (hooks/run core/pre-reply-hook connection)
                (connection/remove-pending-id connection id)
-               (logging/trace "swank/eval-for-emacs: result %s %s" result id)
+               (trace "swank/eval-for-emacs: result %s %s" result id)
                (connection/send-to-emacs connection (messages/ok result id)))))
     (catch Throwable t
       ;; Thread/interrupted clears this thread's interrupted status; if
       ;; Thread.stop was called on us it may be set and will cause an
       ;; InterruptedException in one of the send-to-emacs calls below
-      (logging/trace
+      (trace
        "swank/eval-for-emacs: exception %s %s"
        (pr-str t)
        (helpers/stack-trace-string t))
@@ -81,14 +81,14 @@
 (def forward-rpc nil)
 
 (defn emacs-interrupt [connection thread-id args]
-  (logging/trace "swank/interrupt: %s %s" thread-id args)
+  (trace "swank/interrupt: %s %s" thread-id args)
   (if forward-rpc
     (forward-rpc connection `(:emacs-interrupt ~thread-id ~@args)))
   (doseq [^Future future @repl-futures]
     (.cancel future true)))
 
 (defn emacs-return-string [connection thread-id tag value]
-  (logging/trace "swank/read-string: %s %s" thread-id tag value)
+  (trace "swank/read-string: %s %s" thread-id tag value)
   (if forward-rpc
     (forward-rpc connection `(:emacs-return-string ~thread-id ~tag ~value))
     (connection/write-to-input connection tag value)))
@@ -96,25 +96,26 @@
 (defn dispatch-event
   "Executes a message."
   [ev connection]
-  (logging/trace "swank/dispatch-event: %s" (pr-str ev))
+  (trace "swank/dispatch-event: %s" (pr-str ev))
   (let [[action & args] ev]
-    (logging/trace "swank/dispatch-event: %s -> %s" action (pr-str args))
+    (trace "swank/dispatch-event: %s -> %s" action (pr-str args))
     (case action
       :emacs-rex
-      (let [[form-string package thread id] args]
-        (logging/trace
+      (let [[form package thread id] args]
+        (trace
          "swank/dispatch-event: :emacs-rex %s %s %s %s"
-         form-string package thread id)
+         form package thread id)
         (try
           (with-bindings (connection-bindings connection)
+            (trace "swank/dispatch-event: with-bindings")
             (with-swell
-                (binding [*out* (:writer-redir connection)
-                          *in* (:input-redir connection)
-                          *ns* (:namespace connection)]
-                  (try
-                    (logging/trace "calling eval-for-emacs")
-                    (eval-for-emacs connection form-string package thread id)
-                    (finally (flush))))))
+              (binding [*out* (or (:writer-redir connection) *out*)
+                        *in* (or (:input-redir connection) *in*)
+                        *ns* (the-ns @(:namespace connection))]
+                (try
+                  (trace "calling eval-for-emacs on %s" form)
+                  (eval-for-emacs connection form package thread id)
+                  (finally (flush))))))
           (finally (flush))))
 
       :emacs-return-string
@@ -155,7 +156,7 @@
       ;;     (= thread :repl-thread) (.stop ^Thread @(connection :repl-thread)))))
       :else
       (do
-        (logging/trace "swank/dispatch-event: invalid command %s" action)
+        (trace "swank/dispatch-event: invalid command %s" action)
         nil))))
 
 
@@ -163,6 +164,7 @@
   "Respond and act as watchdog"
   [^Future future form connection]
   (try
+    (trace "response with timeout %s" (:timeout connection))
     (let [timeout (:timeout connection)
           result (if timeout
                    (.get future timeout TimeUnit/MILLISECONDS)
@@ -194,8 +196,9 @@
 (defn handle-message
   "Handle a message on a connection."
   [connection message]
-  (logging/trace "swank/handle-message %s" message)
+  (trace "swank/handle-message %s" message)
   (let [future (executor/execute-request #(dispatch-event message connection))]
+    (trace "swank/handle-message future started")
     (swap! repl-futures (fn [futures]
                           (conj (remove #(.isDone ^Future %) futures) future)))
     (executor/execute-request #(response future message connection))))

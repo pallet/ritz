@@ -2,10 +2,11 @@
   "Clojure execution over jdi. Uses a context map to to represent the vm."
   (:refer-clojure :exclude [eval assoc var-get clojure-version])
   (:require
-   [ritz.debugger.executor :as executor]
    [ritz.jpda.jdi :as jdi]
    [ritz.logging :as logging]
    [clojure.string :as string])
+  (:use
+   [clojure.stacktrace :only [print-cause-trace]])
   (:import
    com.sun.jdi.event.BreakpointEvent
    com.sun.jdi.event.ExceptionEvent
@@ -40,7 +41,7 @@
   "Evaluate a form, which must result in a string value. The string
    is return as a local value."
   [context thread options form]
-  (logging/trace "debug/eval-to-string %s" form)
+  (logging/trace "debug/eval-to-string")
   (when-let [rv (eval-to-value context thread options form)]
     (jdi/string-value rv)))
 
@@ -50,13 +51,18 @@
    on the remote machine is returned."
   [context thread options form]
   (let [s (eval-to-string
-           context thread options `(try (pr-str ~form) (catch Exception _#)))]
+           context thread options
+           `(try (pr-str ~form)
+                 (catch Exception e#
+                   (.println System/err e#)
+                   (.printStackTrace e#))))]
     (try
       (when s
         (read-string s))
       (catch com.sun.jdi.InvocationException e
         (logging/trace
          "Unexpected exception %s %s" e)
+        (print-cause-trace e)
         (throw e))
       (catch Exception e
         (if (and (.getMessage e) (re-find #"Unreadable form" (.getMessage e)))
