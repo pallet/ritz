@@ -385,16 +385,21 @@
 (defun slime-ritz-reload-project ()
   "Reload project.clj."
   (interactive)
-  (slime-eval-async `(swank:reload-project)))
+  (message "Reloading project.clj ...")
+  (slime-eval-async `(swank:reload-project)
+    (lambda (x) (message "Reload complete"))))
 
 (defun slime-ritz-load-project (prompt-project)
   "Reload project.clj."
   (interactive "P")
-  (let ((dir (if prompt-project
-                 (ido-read-directory-name "Project: ")
-               (expand-file-name
-                (locate-dominating-file buffer-file-name "src/")))))
-    (slime-eval-async `(swank:load-project ,(concat dir "project.clj")))))
+  (lexical-let* ((dir (if prompt-project
+                          (ido-read-directory-name "Project: ")
+                        (expand-file-name
+                         (locate-dominating-file buffer-file-name "src/"))))
+                 (file (concat dir "project.clj")))
+    (message "Loading %s ..." file)
+    (slime-eval-async `(swank:load-project ,file)
+      (lambda (x) (message "Load complete")))))
 
 (defun slime-ritz-reset-repl ()
   "Reset the repl."
