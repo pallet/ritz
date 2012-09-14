@@ -163,7 +163,8 @@
           (eval-clojure `(set-level ~level)))
         (when new-cl?
           (trace "set-classpath!/deliver wait-for-reinit")
-          (deliver @wait-for-reinit nil))))
+          (deliver @wait-for-reinit nil))
+        nil))
     (catch Exception e
       (trace "set-classpath! exception %s" e)
       (println e)

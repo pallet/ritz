@@ -535,7 +535,7 @@ are supported:
 
 ;;; Lein
 (defun nrepl-ritz-lein (arg-string)
-  "Reload project.clj."
+  "Run leiningen."
   (interactive "slein ")
   (nrepl-ritz-send-op
    "lein"

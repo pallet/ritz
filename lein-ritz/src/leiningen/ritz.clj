@@ -5,11 +5,12 @@
    [leiningen.core.eval :as eval]
    [leiningen.core.project :as project])
   (:use
-   [clojure.set :only [difference]]
+   [clojure.set :only [difference union]]
    [clojure.tools.cli :only [cli]]
    [leiningen.core.classpath :only [get-classpath]]
    [ritz.add-sources :only [add-source-artifacts]]
    [robert.hooke :only [add-hook]]))
+
 
 (defn opts-list [port host opts]
   (apply concat (merge {:host host :port (Integer. port)
@@ -19,23 +20,31 @@
 (def ritz-profile {:dependencies '[[ritz/ritz-swank "0.4.3-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
-(def lein-project-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
+(def lein-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
 
 (def classlojure-profile {:dependencies '[[classlojure "0.6.6"]]})
 
 (def clojure-profile {:dependencies '[[org.clojure/clojure "1.4.0"]]})
 
+(defn jpda-jars
+  []
+  (let [libdir (io/file (System/getProperty "java.home") ".." "lib")]
+    (for [j ["tools.jar" "sa-jdi.jar"]
+          :when (.exists (io/file libdir j))]
+      (.getCanonicalPath (io/file libdir j)))))
+
+
 (defn ritz-form [project port host {:keys [debug] :as opts}]
   (let [jpda-project (->
                       project
                       (project/merge-profiles
-                       [ritz-profile lein-project-profile]))
+                       [ritz-profile lein-profile]))
         vm-classes (io/file (:compile-path project) ".." "vm-classes")
         vm-project (->
                     project
                     (project/unmerge-profiles [:default])
                     (project/merge-profiles
-                     [ritz-profile classlojure-profile])
+                     [ritz-profile lein-profile classlojure-profile])
                     (dissoc :test-paths :source-paths :resource-paths)
                     (assoc :compile-path (.getAbsolutePath vm-classes)))
         user-project (->
@@ -44,8 +53,10 @@
         vm-classpath (get-classpath vm-project)
         user-classpath (get-classpath user-project)
         user-classpath-no-ritz (get-classpath project)
-        extra-classpath (difference
-                         (set user-classpath) (set user-classpath-no-ritz))
+        extra-classpath (union
+                         (difference
+                          (set user-classpath) (set user-classpath-no-ritz))
+                         (set (jpda-jars)))
         user-classpath (if (seq user-classpath)
                          user-classpath
                          (get-classpath
@@ -86,11 +97,7 @@
 (defn add-jpda-jars
   "JPDA is in the JDK's tools.jar and sa-jdi.jar. Add them to the classpath."
   [f project]
-  (let [libdir (io/file (System/getProperty "java.home") ".." "lib")
-        extra-cp (for [j ["tools.jar" "sa-jdi.jar"]
-                       :when (.exists (io/file libdir j))]
-                   (.getCanonicalPath (io/file libdir j)))]
-    (concat (f project) extra-cp)))
+  (concat (f project) (jpda-jars)))
 
 (defn add-ritz
   "JPDA is in the JDK's tools.jar and sa-jdi.jar. Add them to the classpath."
@@ -124,7 +131,7 @@
                             project
                             (project/unmerge-profiles [:default])
                             (project/merge-profiles
-                             [clojure-profile ritz-profile])
+                             [clojure-profile lein-profile ritz-profile])
                             (dissoc :test-paths :source-paths :resource-paths))
                            project)]
        (eval-in-project

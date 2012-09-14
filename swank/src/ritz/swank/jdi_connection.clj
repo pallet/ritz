@@ -46,4 +46,4 @@
 (defn release-queue
   "Send a reply message to unblock any reader."
   [connection]
-  (.offer ^LinkedBlockingQueue (:replies connection) '()))
+  (.offer ^LinkedBlockingQueue (:replies connection) '(:ritz/release-read-msg)))

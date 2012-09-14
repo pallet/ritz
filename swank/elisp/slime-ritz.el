@@ -376,6 +376,31 @@
           (browse-url url)
         (error "No javadoc url for %S" url)))))
 
+;;; leiningen
+(defun slime-ritz-lein (arg-string)
+  "Run leiningen."
+  (interactive "slein ")
+  (slime-eval-async `(swank:lein ,arg-string)))
+
+(defun slime-ritz-reload-project ()
+  "Reload project.clj."
+  (interactive)
+  (slime-eval-async `(swank:reload-project)))
+
+(defun slime-ritz-load-project (prompt-project)
+  "Reload project.clj."
+  (interactive "P")
+  (let ((dir (if prompt-project
+                 (ido-read-directory-name "Project: ")
+               (expand-file-name
+                (locate-dominating-file buffer-file-name "src/")))))
+    (slime-eval-async `(swank:load-project ,(concat dir "project.clj")))))
+
+(defun slime-ritz-reset-repl ()
+  "Reset the repl."
+  (interactive)
+  (slime-eval-async `(swank:reset-repl)))
+
 ;;; Initialization
 (defcustom slime-ritz-connected-hook nil
   "List of functions to call when SLIME connects to clojure."

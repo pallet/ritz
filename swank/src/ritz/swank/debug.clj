@@ -145,6 +145,8 @@ otherwise pass it on."
   (trace
    "debugger/forward-reply: waiting reply from proxied connection")
   (try
+    (when-let [p @ritz.swank.exec/wait-for-reinit]
+      @p)
     (let [vm-context (vm-context connection)
           thread (:msg-pump-thread vm-context)
           _ (assert thread)
@@ -152,7 +154,10 @@ otherwise pass it on."
           reply (rread-msg vm-context thread)
           id (last reply)]
       (trace "debugger/forward-reply: reply received %s" reply)
-      (when (or (not (number? id)) (not (zero? id))) ; filter (= id 0)
+      (when (and
+             (not= '(:ritz/release-read-msg) reply)
+             (or (not (number? id))
+                 (not (zero? id)))) ; filter (= id 0)
         (executor/execute-request
          (partial connection/send-to-emacs connection reply))
         (trace "removing pending-id %s" id)
