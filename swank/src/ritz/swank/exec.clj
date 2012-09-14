@@ -126,6 +126,10 @@
    :else (when @namespaces
              (namespaces-reset @namespaces))))
 
+(defn block-reply-loop
+  []
+  (reset! wait-for-reinit (promise)))
+
 (defn set-extra-classpath!
   [files]
   (ritz.repl-utils.classloader/set-extra-classpath! files))
@@ -134,11 +138,15 @@
   [files]
   (try
     (when (configurable-classpath?)
-      (let [{:keys [reset? new-cl?] :as flags} (requires-reset? files)]
+      (let [{:keys [reset? new-cl?] :as flags} (requires-reset? files)
+            contribs (when (has-classloader?)
+                       (eval-clojure
+                        `(deref ritz.swank.commands.contrib/loaded-contribs)))]
+        (trace "set-classpath!/loaded contribs %s" contribs)
         (trace "set-classpath!/release queue %s" flags)
         (when new-cl?
           (trace "set-classpath!/set wait-for-reinit")
-          (reset! wait-for-reinit (promise)))
+          (block-reply-loop))
         (when (and (has-classloader?) new-cl?)
           (eval-clojure `(when (current-connection)
                            (release-queue (current-connection)))))
@@ -153,14 +161,18 @@
                                 'ritz.swank.commands.inspector
                                 'ritz.swank.commands.completion
                                 'ritz.swank.commands.contrib))
+        (when-let [level (current-log-level)]
+          (eval-clojure `(set-level ~level)))
         (when reset?
           (trace "set-classpath!/set connection")
           (eval-clojure
-           `(set-connection! (setup-connection (make-connection {})))))
+           `(set-connection! (setup-connection (make-connection {}))))
+          (eval-clojure
+           `(ritz.swank.commands.contrib/swank-require
+             (current-connection)
+             ~(vec (map (fn [k] (list 'quote k)) contribs)))))
         (trace "set-classpath!/maybe set namespaces again")
         (maybe-set-namespaces!)
-        (when-let [level (current-log-level)]
-          (eval-clojure `(set-level ~level)))
         (when new-cl?
           (trace "set-classpath!/deliver wait-for-reinit")
           (deliver @wait-for-reinit nil))
@@ -168,7 +180,8 @@
     (catch Exception e
       (trace "set-classpath! exception %s" e)
       (println e)
-      (print-cause-trace e))))
+      (trace (with-out-str (print-cause-trace e)))
+      (throw e))))
 
 ;;; ## Execute arbitrary code in the controlled vm
 (defn eval-with-classpath

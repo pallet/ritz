@@ -28,7 +28,8 @@
     :only [acquire-thread launch-vm start-control-thread-body vm-resume]]
    [ritz.logging :only [trace]]
    [ritz.swank.connections :only [add-connection]]
-   [ritz.swank.rexec :only [rexec rread-msg]])
+   [ritz.swank.rexec :only [rexec rread-msg]]
+   [ritz.swank.exec :only [block-reply-loop]])
   (:import
    com.sun.jdi.VirtualMachine))
 
@@ -104,10 +105,10 @@ generate a name for the thread."
                                  (merge
                                   options
                                   {:swank-handler swank-pipeline}))]
+        (add-connection connection)
         (trace "proxy/connection-handler running")
         (executor/execute-loop
          (partial debug/forward-reply connection) :name "Reply pump")
-        (add-connection connection)
         (trace "proxy/connection-handler reply-pump running")
         (hooks/run core/new-connection-hook connection)
         (trace "proxy/connection-handler new-connection-hook ran")))))
