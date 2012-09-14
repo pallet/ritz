@@ -132,7 +132,9 @@
                             (project/unmerge-profiles [:default])
                             (project/merge-profiles
                              [clojure-profile lein-profile ritz-profile])
-                            (dissoc :test-paths :source-paths :resource-paths))
+                            (dissoc :test-paths :source-paths :resource-paths)
+                            (assoc :jvm-opts ["-Djava.awt.headless=true"
+                                              "-XX:+TieredCompilation"]))
                            project)]
        (eval-in-project
         start-project

@@ -73,7 +73,8 @@ generate a name for the thread."
                    (dissoc :announce)
                    (merge {:port 0 :join true :server-ns 'ritz.repl}))
           cp (pr-str (join ":" vm-classpath))
-          vm (launch-vm cp `@(promise))
+          vm (apply launch-vm cp `@(promise)
+                    (apply concat (select-keys options [:jvm-opts])))
           msg-thread (start-remote-thread vm "msg-pump")
           vm (assoc vm :msg-pump-thread msg-thread)
           options (assoc options :vm-context vm)]

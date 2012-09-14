@@ -73,6 +73,7 @@
            option-args (.get arguments "options")
            args (str " -cp '" classpath "' clojure.main -e '" expr "'")]
        (logging/trace "jdi/launch %s" args)
+       (logging/trace "jdi/launch options %s" (string/join " " options))
        (.setValue quote-args "'")
        (.setValue main-args args)
        (.setValue option-args (string/join " " options))
