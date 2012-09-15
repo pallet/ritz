@@ -18,7 +18,7 @@
    [ritz.repl-utils.doc :as doc]
    [ritz.swank.debug :as debug]
    [ritz.swank.messages :as messages]
-   [ritz.swank.project :as project]))
+   [ritz.nrepl.project :as project]))
 
 ;;; Breakpoints
 (defslimefn line-breakpoint
