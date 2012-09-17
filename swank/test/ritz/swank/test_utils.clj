@@ -23,7 +23,8 @@
     :indent-cache-hash (atom nil)
     :indent-cache (ref {})
     :request-id 1
-    :inspector (atom {})}
+    :inspector (atom {})
+    :namespace (atom 'user)}
    m))
 
 (defn split-indentation-response

@@ -9,4 +9,6 @@
                   :exclusions [org.clojure/clojure]]
                  [org.clojure/tools.macro "0.1.1"
                   :exclusions [org.clojure/clojure]]
-                 [ritz/ritz-debugger "0.4.3-SNAPSHOT"]])
+                 [ritz/ritz-debugger "0.4.3-SNAPSHOT"]]
+  :profiles {:dev {:dependencies [[leiningen "2.0.0-preview10"]
+                                  [org.clojure/clojure "1.4.0"]]}})

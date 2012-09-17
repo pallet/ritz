@@ -8,7 +8,7 @@
 (deftest connection-info-test
   (test-utils/eval-for-emacs-test
    `(~'swank/connection-info)
-   #"0000[abc][0-9a-f]\(:return \(:ok \(:pid \"\d+\" :style :spawn :lisp-implementation \(:type \"Clojure\" :name \"clojure\" :version \"1.[23].[0-1]([a-zA-Z-]+)?\"\) :package \(:name \"user\" :prompt \"user\"\) :version \"20101113\"\)\) 1\)"))
+   #"0000[abc][0-9a-f]\(:return \(:ok \(:pid \"\d+\" :style :spawn :lisp-implementation \(:type \"Clojure\" :name \"clojure\" :version \"1.[2345].[0-1]([a-zA-Z-]+)?\"\) :package \(:name \"user\" :prompt \"user\"\) :version \"20101113\"\)\) 1\)"))
 
 (deftest pprint-eval-test
   (test-utils/eval-for-emacs-test
