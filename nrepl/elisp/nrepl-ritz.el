@@ -573,7 +573,7 @@ are supported:
     (message "Requesting new session completed")
     (nrepl-dbind-response response (id new-session)
       (cond (new-session
-             (message "Reloaded.")
+             (message "Loaded project.")
              (setq nrepl-session new-session))))))
 
 (defun nrepl-ritz-recreate-session ()
@@ -599,9 +599,12 @@ are supported:
 (defun nrepl-ritz-load-project (prompt-project)
   "Reload project.clj."
   (interactive "P")
-  (let ((dir (if prompt-project
+  (let* ((dir (if prompt-project
                  (ido-read-directory-name "Project: ")
-               (expand-file-name (locate-dominating-file buffer-file-name "src/")))))
+               (expand-file-name
+                (locate-dominating-file buffer-file-name "src/"))))
+         (file (concat dir "project.clj")))
+    (message "Loading %s..." file)
     (nrepl-ritz-send-op-strings
      "load-project"
      (nrepl-make-response-handler
@@ -612,7 +615,7 @@ are supported:
       (lambda (buffer err) (message err))
       (lambda (buffer) (with-current-buffer buffer
                          (nrepl-ritz-recreate-session))))
-     `("project-file" ,(concat dir "/" "project.clj")))))
+     `("project-file" ,file))))
 
 ;;; # Minibuffer
 (defvar nrepl-ritz-minibuffer-map
