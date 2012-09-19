@@ -15,6 +15,6 @@
              {:path "elisp/nrepl-ritz.el"
               :no-snapshot true
               :search-regex #";; Version: \d+\.\d+\.\d+"}
-             {:path "src/ritz/nrepl/project"
-              :no-snapshot true
-              :search-regex #"ritz/ritz-nrepl \"\d+\.\d+\.\d+\""}]}}}
+             {:path "src/ritz/nrepl/project.clj"
+              :search-regex
+              #"ritz/ritz-nrepl \"\d+\.\d+\.\d+(-SNAPSHOT)?\""}]}}}

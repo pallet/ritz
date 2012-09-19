@@ -34,6 +34,7 @@ $EDITOR project.clj
 
 $EDITOR lein-ritz/project.clj
 $EDITOR lein-ritz/src/leiningen/ritz.clj
+$EDITOR lein-ritz/src/leiningen/ritz_nrepl.clj
 $EDITOR lein-ritz/README.md
 
 $EDITOR repl-utils/project.clj
