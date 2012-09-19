@@ -17,7 +17,7 @@
                         :repl-out-root true :block true}
                        (apply hash-map (map read-string opts)))))
 
-(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.5.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.5.1-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
 (def lein-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
@@ -105,7 +105,7 @@
   (update-in project [:dependencies]
              conj ['ritz/ritz-swank
                    (or (System/getenv "RITZ_VERSION")
-                       (System/getProperty "ritz.version" "0.5.0"))]))
+                       (System/getProperty "ritz.version" "0.5.1-SNAPSHOT"))]))
 
 (defn ritz
   "Launch ritz server for Emacs to connect. Optionally takes PORT and HOST.

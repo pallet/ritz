@@ -25,10 +25,10 @@
                                      :exclusions [org.clojure/clojure]]]})
 
 
-(def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.5.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.5.1-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
-(def repl-utils-profile {:dependencies '[[ritz/ritz-repl-utils "0.5.0"
+(def repl-utils-profile {:dependencies '[[ritz/ritz-repl-utils "0.5.1-SNAPSHOT"
                                           :exclusions [org.clojure/clojure]]]})
 
 (def lein-project-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})

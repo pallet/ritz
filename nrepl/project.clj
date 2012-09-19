@@ -1,4 +1,4 @@
-(defproject ritz/ritz-nrepl "0.5.0"
+(defproject ritz/ritz-nrepl "0.5.1-SNAPSHOT"
   :description "nREPL server using ritz"
   :url "https://github.com/pallet/ritz"
   :scm {:url "git@github.com:pallet/ritz.git"}
@@ -6,4 +6,4 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/tools.nrepl "0.2.0-beta9"
                   :exclusions [org.clojure/clojure]]
-                 [ritz/ritz-debugger "0.5.0"]])
+                 [ritz/ritz-debugger "0.5.1-SNAPSHOT"]])
