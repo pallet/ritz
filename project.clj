@@ -11,5 +11,4 @@
             "deploy" ["sub" "deploy"]
             "test" ["sub" "with-profile" "default,jdk1.7" "test"]
             "doc" ["sub" "with-profile" "codox,jdk1.7" "doc"]
-            "set-version" ["do" "set-version,"
-                           "sub" "with-profile" "release" "set-version"]})
+            "set-sub-version" ["sub" "with-profile" "release" "set-version"]})

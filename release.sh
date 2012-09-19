@@ -22,6 +22,9 @@ git flow release start $version || exit 1
 lein set-version ${version} :previous-version ${previous_version} \
   || { echo "set version failed" >2 ; exit 1; }
 
+lein set-sub-version ${version} :previous-version ${previous_version} \
+  || { echo "set sub-version failed" >2 ; exit 1; }
+
 echo ""
 echo ""
 echo "Changes since $previous_version"
@@ -68,7 +71,8 @@ echo -n "commiting project.clj, release notes and readme.  enter to continue:" \
 && curl -X POST -F "name=${MARMALADE_USER}" -F "token=${MARMALADE_TOKEN}" -F 'package=@nrepl/elisp/nrepl-ritz.el' ${MARMALADE}/v1/packages \
 && echo "Setting project to ${next_version} for next cycle. enter to continue:" \
 && read x \
-&& lein set-version ${next_version} \
+&& lein set-version ${next_version} :previous-version ${version} \
+&& lein set-sub-version ${next_version} :previous-version ${version} \
 && git add -u \
 && git st \
 && git commit -m "Updated version for next release cycle" \
