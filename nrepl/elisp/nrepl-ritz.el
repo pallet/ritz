@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.4.2
+;; Version: 0.5.0
 ;; Package-Requires: ((nrepl "0.1.4"))
 ;; License: EPL
 
@@ -14,8 +14,8 @@
 (defcustom nrepl-ritz-server-command
   (if (or (locate-file nrepl-lein-command exec-path)
           (locate-file (format "%s.bat" nrepl-lein-command) exec-path))
-      (format "%s ritz-nrepl :headless" nrepl-lein-command)
-    (format "echo \"%s ritz-nrepl :headless\" | $SHELL -l" nrepl-lein-command))
+      (format "%s ritz-nrepl" nrepl-lein-command)
+    (format "echo \"%s ritz-nrepl\" | $SHELL -l" nrepl-lein-command))
   "The command used to start the nREPL via nrepl-ritz-jack-in.
 For a remote nREPL server lein must be in your PATH.  The remote
 proc is launched via sh rather than bash, so it might be necessary
@@ -43,12 +43,12 @@ to specific the full path to it. Localhost is assumed."
   "nrepl op for eval of forms.")
 (make-variable-buffer-local 'nrepl-eval-op)
 
-(defun nrepl-send-string (input ns callback)
-  (nrepl-send-request (list "op" nrepl-eval-op
-                            "session" (nrepl-current-session)
-                            "ns" ns
-                            "code" input)
-                      callback))
+(defun nrepl-eval-request (input &optional ns)
+  (append (if ns (list "ns" ns))
+          (list
+           "op" nrepl-eval-op
+           "session" (nrepl-current-session)
+           "code" input)))
 
 ;;; # General helpers
 (defun flatten-alist (alist)
@@ -301,12 +301,12 @@ are supported:
   (interactive)
   (nrepl-send-string
    "(require 'ritz.logging)"
-   (nrepl-current-ns)
-   (nrepl-make-response-handler (current-buffer) nil nil nil nil))
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   nrepl-buffer-ns)
   (nrepl-send-string
    "(ritz.logging/toggle-level :trace)"
-   (nrepl-current-ns)
-   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   nrepl-buffer-ns))
 
 
 ;;; jpda commands
@@ -364,7 +364,7 @@ are supported:
       (car strlst))))
 
 ;; If the version of nrepl.el has nrepl-completion-fn, enable this using:
-;; (setq nrepl-completion-fn 'nrepl-completion-complete-op-fn)
+(setq nrepl-completion-fn 'nrepl-completion-complete-op-fn)
 
 ;;; apropos
 (defun nrepl-ritz-call-describe (arg)
@@ -488,13 +488,13 @@ are supported:
 
 ;;; undefine symbol
 (defun nrepl-ritz-undefine-symbol-handler (symbol-name)
-  "Browse undefine on the Java class at point."
+  "Undefine on the symbol at point."
   (when (not symbol-name)
     (error "No symbol given"))
   (nrepl-send-string
-   (format "(ns-unmap '%s '%s)" (nrepl-current-ns) symbol-name)
-   (nrepl-current-ns)
-   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+   (format "(ns-unmap '%s '%s)" nrepl-buffer-ns symbol-name)
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   nrepl-buffer-ns))
 
 (defun nrepl-ritz-undefine-symbol (query)
   "Undefine the symbol at point."
@@ -504,6 +504,8 @@ are supported:
 
 (define-key
   nrepl-interaction-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
+(define-key
+  nrepl-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
 
 (defun nrepl-ritz-compile-expression (&optional prefix)
   "Compile the current toplevel form."
@@ -533,13 +535,45 @@ are supported:
 (define-key
   nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-ritz-compile-expression)
 
+;;; Lein
+(defun nrepl-ritz-lein (arg-string)
+  "Run leiningen."
+  (interactive "slein ")
+  (nrepl-ritz-send-op
+   "lein"
+   (nrepl-make-response-handler
+    (nrepl-popup-buffer "*nREPL lein*" t)
+    (lambda (buffer description)
+      (message description))
+    'nrepl-emit-into-popup-buffer
+    'nrepl-emit-into-popup-buffer
+    (lambda (buffer) (message "lein done")))
+   `(args ,(split-string arg-string " "))))
+
+
+;;; Reset repl
+(defun nrepl-ritz-reset-repl ()
+  "Reload project.clj."
+  (interactive)
+  (nrepl-ritz-send-op-strings
+   "reset-repl"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer description)
+      (message description))
+    (lambda (buffer out) (message out))
+    (lambda (buffer err) (message err))
+    nil)
+   `()))
+
+
 ;;; Reload project.clj
 (defun nrepl-ritz-recreate-session-handler ()
   (lambda (response)
     (message "Requesting new session completed")
     (nrepl-dbind-response response (id new-session)
       (cond (new-session
-             (message "Reloaded.")
+             (message "Loaded project.")
              (setq nrepl-session new-session))))))
 
 (defun nrepl-ritz-recreate-session ()
@@ -560,6 +594,28 @@ are supported:
     (lambda (buffer) (with-current-buffer buffer
                        (nrepl-ritz-recreate-session))))
    `()))
+
+
+(defun nrepl-ritz-load-project (prompt-project)
+  "Reload project.clj."
+  (interactive "P")
+  (let* ((dir (if prompt-project
+                 (ido-read-directory-name "Project: ")
+               (expand-file-name
+                (locate-dominating-file buffer-file-name "src/"))))
+         (file (concat dir "project.clj")))
+    (message "Loading %s..." file)
+    (nrepl-ritz-send-op-strings
+     "load-project"
+     (nrepl-make-response-handler
+      (current-buffer)
+      (lambda (buffer description)
+        (message description))
+      (lambda (buffer out) (message out))
+      (lambda (buffer err) (message err))
+      (lambda (buffer) (with-current-buffer buffer
+                         (nrepl-ritz-recreate-session))))
+     `("project-file" ,file))))
 
 ;;; # Minibuffer
 (defvar nrepl-ritz-minibuffer-map

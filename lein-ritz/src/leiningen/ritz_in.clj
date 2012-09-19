@@ -57,4 +57,4 @@ use the ritz-in task, rather than jack-in."
     (println "(run-hooks 'slime-load-hook) ; on port" port)
     (println ";;; Done bootstrapping.")
     (ritz/ritz project port "localhost" ":colors?" (str colors?)
-               ":message" "\";;; proceed to jack in\"")))
+               "--message" "\";;; proceed to jack in\"")))

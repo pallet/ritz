@@ -253,7 +253,7 @@ generate a name for the thread."
 
 (defn start-jpda-server
   [{:keys [host port ack-port repl-port-path classpath vm-classpath
-           middleware log-level]}]
+           middleware log-level extra-classpath]}]
   (when log-level
     (set-level log-level))
   (let [server (start-server
@@ -272,6 +272,8 @@ generate a name for the thread."
       (ritz.jpda.jdi-clj/control-eval vm `(ritz.logging/set-level ~log-level)))
     (ritz.jpda.jdi-clj/control-eval
      vm `(ritz.nrepl.exec/set-middleware! ~(vec middleware)))
+    (ritz.jpda.jdi-clj/control-eval
+     vm `(ritz.nrepl.exec/set-extra-classpath! ~(vec extra-classpath)))
     (ritz.jpda.jdi-clj/control-eval
      vm `(ritz.nrepl.exec/set-classpath! ~(vec classpath)))
     (when log-level

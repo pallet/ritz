@@ -11,4 +11,7 @@
               :search-regex #"lein-ritz \"\d+\.\d+\.\d+\""}
              {:path "elisp/slime-ritz.el"
               :no-snapshot true
-              :search-regex #";; Version: \d+\.\d+\.\d+"}]}}}
+              :search-regex #";; Version: \d+\.\d+\.\d+"}
+             {:path "src/ritz/swank/project.clj"
+              :search-regex
+              #"ritz/ritz-swank \"\d+\.\d+\.\d+(-SNAPSHOT)?\""}]}}}

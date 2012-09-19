@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.4.2
+;; Version: 0.5.0
 ;; License: EPL
 
 (define-slime-contrib slime-ritz
@@ -375,6 +375,36 @@
       (if url
           (browse-url url)
         (error "No javadoc url for %S" url)))))
+
+;;; leiningen
+(defun slime-ritz-lein (arg-string)
+  "Run leiningen."
+  (interactive "slein ")
+  (slime-eval-async `(swank:lein ,arg-string)))
+
+(defun slime-ritz-reload-project ()
+  "Reload project.clj."
+  (interactive)
+  (message "Reloading project.clj ...")
+  (slime-eval-async `(swank:reload-project)
+    (lambda (x) (message "Reload complete"))))
+
+(defun slime-ritz-load-project (prompt-project)
+  "Reload project.clj."
+  (interactive "P")
+  (lexical-let* ((dir (if prompt-project
+                          (ido-read-directory-name "Project: ")
+                        (expand-file-name
+                         (locate-dominating-file buffer-file-name "src/"))))
+                 (file (concat dir "project.clj")))
+    (message "Loading %s ..." file)
+    (slime-eval-async `(swank:load-project ,file)
+      (lambda (x) (message "Load complete")))))
+
+(defun slime-ritz-reset-repl ()
+  "Reset the repl."
+  (interactive)
+  (slime-eval-async `(swank:reset-repl)))
 
 ;;; Initialization
 (defcustom slime-ritz-connected-hook nil

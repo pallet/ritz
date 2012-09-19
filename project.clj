@@ -1,4 +1,4 @@
-(defproject ritz "0.4.2"
+(defproject ritz "0.5.0"
   :description "Another swank server for clojure in SLIME"
   :url "https://github.com/pallet/ritz"
   :license {:name "Eclipse Public License"
@@ -11,4 +11,5 @@
             "deploy" ["sub" "deploy"]
             "test" ["sub" "with-profile" "default,jdk1.7" "test"]
             "doc" ["sub" "with-profile" "codox,jdk1.7" "doc"]
-            "set-version" ["sub" "with-profile" "release" "set-version"]})
+            "set-version" ["do" "set-version,"
+                           "sub" "with-profile" "release" "set-version"]})

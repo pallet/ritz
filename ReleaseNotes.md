@@ -1,9 +1,48 @@
 # Release Notes
 
-Current release is 0.4.1.
+Current release is 0.5.0.
+
+## 0.5.0
+
+### Features
+
+- Add slime commands for lein, load-project, and reload-project
+  These functions work with the lein project.clj file. slime-ritz-lein lets
+  you run lein in the debug vm. slime-ritz-load-project will switch to
+  using the project for the current buffer. slime-ritz-reload-project will
+  reload the current projects dependencies.
+
+- Add nrepl-ritz-load-project
+  Adds the ability to switch between projects.
+
+- Add nrepl-ritz-lein
+  Allow running lein tasks in the debug vm.
+
+- Add nrepl-ritz-reset-repl
+  Command to wipe out user namespaces.
+
+- Add nrepl-ritz-undefine-symbol to nrepl repl mode map
+  Bound to C-c C-u.
+
+### Fixes
+
+- Use nrepl completion op by default
+
+- Fix nrepl-ritz-server-command
+  Hadn't been updated to new cli flags in lein task
+
+- Remove :jpda profile from lein ritz-nrepl
+
+- Ensure :jvm-opts are passed to the debug vm
+  The controlling debugger vm is now also started with fixed :jvm-opts
+
+- Use JDI to talk to debug vm
+  Removes the swank server in the debug vm.
+
+- Fix ritz-in task for new arg processing in ritz task
+  Fixes #41
 
 ## 0.4.2
-
 
 ### Fixes
 

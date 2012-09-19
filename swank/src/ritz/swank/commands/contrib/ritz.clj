@@ -1,6 +1,7 @@
 (ns ritz.swank.commands.contrib.ritz
   "Contrib for providing ritz specific functions"
   (:use
+   [clojure.string :only [blank? split]]
    [ritz.debugger.connection :only [debug-context vm-context]]
    [ritz.debugger.exception-filters
     :only [spit-exception-filters exception-filters exception-filter-kill!
@@ -16,7 +17,8 @@
    [ritz.logging :as logging]
    [ritz.repl-utils.doc :as doc]
    [ritz.swank.debug :as debug]
-   [ritz.swank.messages :as messages]))
+   [ritz.swank.messages :as messages]
+   [ritz.swank.project :as project]))
 
 ;;; Breakpoints
 (defslimefn line-breakpoint
@@ -130,6 +132,25 @@ corresponding attribute values per thread."
   "Reset the repl to an initial state"
   [connection]
   (reset-namespaces))
+
+;;; ## Leiningen
+
+(defslimefn lein
+  "Run lein on the current project."
+  [connection arg-string]
+  (project/lein connection (remove blank? (split arg-string #" "))))
+
+;;; ### Loading of project.clj
+(defslimefn reload-project
+  "Reload the current project, adjusting the classpath as necessary."
+  [connection]
+  (project/reload connection))
+
+(defslimefn load-project
+  "Load the specified project, adjusting the classpath as necessary."
+  [connection project-file]
+  (project/load-project connection project-file))
+
 
 ;;; list repl source forms
 (defslimefn list-repl-source-forms

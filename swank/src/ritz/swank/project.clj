@@ -1,4 +1,4 @@
-(ns ritz.nrepl.project
+(ns ritz.swank.project
   "Project.clj functions"
   (:require
    [leiningen.core.main :as main]
@@ -15,11 +15,11 @@
 (defn set-classpath!
   [vm classpath]
   (ritz.jpda.jdi-clj/control-eval
-   vm `(ritz.nrepl.exec/set-classpath! ~(vec classpath))))
+   vm `(ritz.swank.exec/set-classpath! ~(vec classpath))))
 
 (defonce cache-classpath (atom {}))
 
-(def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.5.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.5.0"
                                     :exclusions [org.clojure/clojure]]]})
 
 (defn project-classpath
@@ -43,19 +43,22 @@
   (let [project (project/read @project-path)
         classpath (project-classpath project)]
     (trace "Resetting classpath to %s" (vec classpath))
-    (set-classpath! (vm-context connection) classpath)))
+    (set-classpath! (vm-context connection) classpath)
+    nil))
 
 (defn load-project
   [connection project-file]
   (let [project (project/read project-file)
         classpath (project-classpath project)]
     (reset! project-path project-file)
-    (trace "Setting classpath to %s" (vec classpath))
-    (set-classpath! (vm-context connection) classpath)))
+    (trace "load-project/Setting classpath to %s" (vec classpath))
+    (set-classpath! (vm-context connection) classpath)
+    (trace "load-project/Setting classpath done")
+    nil))
 
 (defn reset-namespaces
   [vm]
-  (ritz.jpda.jdi-clj/control-eval vm `(ritz.nrepl.exec/reset-namespaces!)))
+  (ritz.jpda.jdi-clj/control-eval vm `(ritz.swank.exec/reset-namespaces!)))
 
 (defn reset-repl
   [connection]
@@ -75,7 +78,7 @@
   (let [classpath (project-classpath project)]
     (ritz.jpda.jdi-clj/control-eval
      (::vm project)
-     `(ritz.nrepl.exec/eval-with-classpath
+     `(ritz.swank.exec/eval-with-classpath
         ~(vec classpath)
         ~form))))
 

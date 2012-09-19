@@ -1,67 +1,68 @@
-(ns ritz.nrepl.exec
-  "Execute commands using nrepl"
+(ns ritz.swank.exec
+  "Execute commands using swankx"
   (:use
-   [clojure.tools.nrepl.server :only [handle*]]
    [clojure.stacktrace :only [print-cause-trace]]
-   [ritz.nrepl.handler :only [default-handler]]
-   [ritz.nrepl.transport :only [make-transport read-sent release-queue]]
    [ritz.repl-utils.classloader
     :only [configurable-classpath? eval-clojure has-classloader?
            requires-reset? files-to-urls]]
    [ritz.repl-utils.clojure :only [feature-cond]]
    [ritz.repl-utils.namespaces :only [namespaces-reset namespace-state]]
-   [ritz.logging :only [set-level trace]]))
+   [ritz.swank :only [handle-message setup-connection]]
+   [ritz.swank.jdi-connection :only [make-connection read-sent release-queue]]
+   [ritz.logging :only [current-log-level set-level trace]]))
 
 ;;; ## basic execution
-(defonce transport (atom nil))
-(defonce middleware (atom nil))
-(defonce handler (atom nil))
+(defonce connection (atom nil))
 (defonce namespaces (atom nil))
-
-(defn set-handler!
-  [handler-fn]
-  (reset! handler handler-fn))
-
-(defn set-transport!
-  [t]
-  (reset! transport t))
-
-(defn current-transport
-  [] @transport)
-
-(defn exec
-  "Execute an nREPL message, using the current handler and transport."
-  [msg]
-  (trace "exec handle %s" msg)
-  (handle* msg @handler @transport))
-
-(defn read-msg
-  "Read a message from the reply queue in the current connection."
-  []
-  (if @transport
-    (read-sent @transport)
-    (Thread/sleep 1000)))
-
-;;; ## classloader aware execution
 (defonce wait-for-reinit (atom nil))
 
-(defn msg->cl
-  [msg]
+(defn set-connection!
+  [t]
+  (reset! connection t))
+
+(defn current-connection
+  [] @connection)
+
+(defn exec
+  "Execute a swank message, using the current connection."
+  [fwd-connection message]
+  (trace "exec handle %s" message)
+  (handle-message (merge @connection fwd-connection) message))
+
+(defn read-msg
+  []
+  (trace "read-msg")
+  (if @connection
+    (read-sent @connection)
+    (Thread/sleep 1000)))
+
+(defn connection->cl
+  [connection]
   (let [cl-kw (fn [kw] (keyword (.getName kw)))]
-    (zipmap (map cl-kw (keys msg)) (vals msg))))
+    (zipmap (map cl-kw (keys connection)) (vals connection))))
 
 (defn exec-using-classloader
-  "Execute a msg using the classloader specified classpath if possible."
-  [msg]
+  "Execute a message using the classloader specified classpath if possible."
+  [connection message]
+  (trace "exec-using-classloader %s" (fnext message))
   (feature-cond
    (configurable-classpath?)
    (if (has-classloader?)
-     (eval-clojure
-      `(fn [msg#] (exec (msg->cl msg#))) msg)
+     (try
+       (eval-clojure
+        `(fn [connection# message#]
+           (exec (connection->cl connection#) (read-string message#)))
+        connection (pr-str message))
+       (catch Exception e
+         (trace "exec-using-classloader failed %s" e)
+         (trace "exec-using-classloader %s"
+                (with-out-str (print-cause-trace e)))
+         (.println System/err e)
+         (.printStackTrace e)))
      (do
        (trace "exec-using-classloader No classloader yet")
        (Thread/sleep 1000)))
-   :else (exec msg)))
+   :else (exec connection message)))
 
 (defn read-msg-using-classloader
   "Read a message using the classloader specified classpath if possible."
@@ -96,34 +97,6 @@
        (Thread/sleep 1000)))
    :else (eval form)))
 
-(defn set-middleware!
-  [mw]
-  (reset! middleware mw))
-
-(defn reset-middleware!
-  []
-  (if (configurable-classpath?)
-    (do
-      (eval-clojure
-         `(do
-            (require 'ritz.nrepl.handler 'ritz.nrepl.exec)
-            (doseq [ns# ~(vec
-                          (map
-                           #(list `quote (symbol (namespace %)))
-                           @middleware))]
-              (require ns#))
-            nil))
-      (eval-clojure
-       `(do
-          (set-handler! (default-handler ~@@middleware))
-          nil)))
-    (do
-      (require 'ritz.nrepl.handler 'ritz.nrepl.exec)
-      (doseq [ns (map (comp ns-name namespace) @middleware)]
-        (require ns))
-      (set-handler! (apply default-handler (map resolve @middleware)))
-      nil)))
-
 
 (defn maybe-set-namespaces!
   []
@@ -153,6 +126,10 @@
    :else (when @namespaces
              (namespaces-reset @namespaces))))
 
+(defn block-reply-loop
+  []
+  (reset! wait-for-reinit (promise)))
+
 (defn set-extra-classpath!
   [files]
   (ritz.repl-utils.classloader/set-extra-classpath! files))
@@ -161,40 +138,50 @@
   [files]
   (try
     (when (configurable-classpath?)
-      (let [{:keys [reset? new-cl?] :as flags} (requires-reset? files)]
+      (let [{:keys [reset? new-cl?] :as flags} (requires-reset? files)
+            contribs (when (has-classloader?)
+                       (eval-clojure
+                        `(deref ritz.swank.commands.contrib/loaded-contribs)))]
+        (trace "set-classpath!/loaded contribs %s" contribs)
         (trace "set-classpath!/release queue %s" flags)
         (when new-cl?
           (trace "set-classpath!/set wait-for-reinit")
-          (reset! wait-for-reinit (promise)))
+          (block-reply-loop))
         (when (and (has-classloader?) new-cl?)
-          (eval-clojure `(when (current-transport)
-                           (release-queue (current-transport)))))
+          (eval-clojure `(when (current-connection)
+                           (release-queue (current-connection)))))
         (trace "set-classpath!/maybe set namespaces")
         (maybe-set-namespaces!)
         (when reset?
           (reset-namespaces!))
         (trace "set-classpath!/set classpath")
         (ritz.repl-utils.classloader/set-classpath! files)
-        (eval-clojure '(require 'ritz.nrepl.exec 'ritz.logging))
+        (eval-clojure '(require 'ritz.swank.exec 'ritz.logging
+                                'ritz.swank.commands.basic
+                                'ritz.swank.commands.inspector
+                                'ritz.swank.commands.completion
+                                'ritz.swank.commands.contrib))
+        (when-let [level (current-log-level)]
+          (eval-clojure `(set-level ~level)))
         (when reset?
-          (trace "set-classpath!/set middleware")
-          (reset-middleware!)
-          (trace "set-classpath!/set transport")
-          (eval-clojure `(set-transport! (make-transport {}))))
+          (trace "set-classpath!/set connection")
+          (eval-clojure
+           `(set-connection! (setup-connection (make-connection {}))))
+          (eval-clojure
+           `(ritz.swank.commands.contrib/swank-require
+             (current-connection)
+             ~(vec (map (fn [k] (list 'quote k)) contribs)))))
         (trace "set-classpath!/maybe set namespaces again")
         (maybe-set-namespaces!)
         (when new-cl?
           (trace "set-classpath!/deliver wait-for-reinit")
-          (deliver @wait-for-reinit nil))))
+          (deliver @wait-for-reinit nil))
+        nil))
     (catch Exception e
       (trace "set-classpath! exception %s" e)
       (println e)
-      (print-cause-trace e))))
-
-(defn set-log-level
-  [level]
-  (set-level level)
-  (eval-clojure `(set-level ~level)))
+      (trace (with-out-str (print-cause-trace e)))
+      (throw e))))
 
 ;;; ## Execute arbitrary code in the controlled vm
 (defn eval-with-classpath
