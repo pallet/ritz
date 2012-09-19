@@ -323,7 +323,7 @@
 
 (def
   ^{:doc "Each element is:
-             [opcode nemonic description args opstack-pop opstack-push"}
+             [opcode mnemonic description args opstack-pop opstack-push"}
   opcodes
   [[0 :nop "Do nothing"]
    [1 :aconst_null "Push null" [] [] [:null]]
