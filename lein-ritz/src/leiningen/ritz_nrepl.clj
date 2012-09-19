@@ -44,7 +44,7 @@ project server."
   (let [jpda-project (->
                       project
                       (project/merge-profiles
-                       [ritz-profile lein-project-profile :jpda]))
+                       [ritz-profile lein-project-profile]))
         vm-project (->
                       project
                       (dissoc :test-paths :source-paths :dependencies)
