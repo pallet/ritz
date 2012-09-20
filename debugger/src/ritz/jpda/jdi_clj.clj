@@ -93,6 +93,7 @@
   `(try
      ~@body
      (catch com.sun.jdi.InternalException e#
+       (logging/trace "w-c-j-e: Caught %s" e#)
        (logging/trace "w-c-j-e: Caught %s" (.getMessage e#)))))
 
 (defn exception-message

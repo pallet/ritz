@@ -42,35 +42,51 @@
                                          *report-counters*
                                          *testing-contexts*
                                          *stack-trace-depth*]}]))
+(def one-shot-error (atom nil))
+
+(defn reset-one-shot-error
+  [] (reset! one-shot-error nil))
+
+(defn one-shot-error?
+  [] @one-shot-error)
 
 (defmethod jdi/handle-event ExceptionEvent
   [^Event event context]
   (logging/trace "test handler EVENT %s" event)
+  (logging/trace "test handler %s" (.exception event))
   (try
     (let [thread (jdi/event-thread event)]
       (logging/trace "test handler has thread")
-      (if-let [[f options] (@handlers (.name thread))]
-        (if-let [f-atom (:atom options)]
-          (if (compare-and-set! f-atom false true)
-            (do
-              (logging/trace "invoking one-shot")
-              (jdi/suspend-event-threads event)
-              (let [[out err in test-out report-counters testing-contexts
-                     stack-trace-depth] (:bindings options)]
-                (doto
-                    (Thread.
-                     (fn []
-                       (binding [*out* out *err* err *in* in
-                                 *test-out* test-out
-                                 *report-counters* report-counters
-                                 *testing-contexts* testing-contexts
-                                 *stack-trace-depth* stack-trace-depth]
-                         (f event context))))
-                  (.start))))
-            (logging/trace "test handler already invoked one-shot"))
-          (do
-            (logging/trace "test handler invoking")
-            (f event context)))
-        (logging/trace "No debug handler for %s" event)))
+      (let [exception (str event)]
+        (when (not (or (.contains exception "java.net.URLClassLoader")
+                       (.contains exception "java.lang.ClassLoader")
+                       (.contains exception "clojure.lang.AFn")))
+          (logging/trace
+           "test handler handling exception %s" (.exception event))
+          (if-let [[f options] (@handlers (.name thread))]
+            (if-let [f-atom (:atom options)]
+              (if (compare-and-set! f-atom false true)
+                (do
+                  (logging/trace "invoking one-shot")
+                  (jdi/suspend-event-threads event)
+                  (let [[out err in test-out report-counters testing-contexts
+                         stack-trace-depth] (:bindings options)]
+                    (doto
+                        (Thread.
+                         (fn []
+                           (binding [*out* out *err* err *in* in
+                                     *test-out* test-out
+                                     *report-counters* report-counters
+                                     *testing-contexts* testing-contexts
+                                     *stack-trace-depth* stack-trace-depth]
+                             (f event context))))
+                      (.start))))
+                (do
+                  (logging/trace "test handler already invoked one-shot")
+                  (reset! one-shot-error true)))
+              (do
+                (logging/trace "test handler invoking")
+                (f event context)))
+            (logging/trace "No debug handler for %s" event)))))
     (catch java.lang.Exception e
       (logging/trace "test handler %s" e))))

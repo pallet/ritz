@@ -21,10 +21,11 @@
    (com.sun.jdi
     Value BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
     LongValue ShortValue))
-  (:use clojure.test))
+  (:use
+   clojure.test
+   [clojure.stacktrace :only [print-cause-trace]]))
 
 ;; (logging/set-level :trace)
-
 
 (deftest inspect-test
   (let [context (debug/launch-vm
@@ -129,11 +130,15 @@
       (let [thread (.thread event)]
         (eval-in-frame-test context thread)
         (pprint-eval-in-frame-test context thread))
+      (deliver test-finished true)
+      (catch Exception e
+        (print-cause-trace e)
+        (deliver test-finished nil))
       (finally
-       (jdi/resume-event-threads event)
-       (deliver test-finished nil))))
+       (jdi/resume-event-threads event))))
 
   (deftest frame-test
+    (logging/trace "frame-test")
     (let [context (debug/launch-vm {:main `(deref (promise))})
           context (assoc context :current-thread (:control-thread context))
           vm (:vm context)]
@@ -158,6 +163,50 @@
             ;; prevent local clearing before the exception
             [~'a ~'m ~'i ~'d ~'n ~'v ~'s])
          {:name "frame-test"})
-        @test-finished
+        (is @test-finished)
+        (is (not (jdi-test-handler/one-shot-error?)))
+        (jdi/disable-exception-request-states vm)
         (finally
          (jdi/shutdown context))))))
+
+(let [test-finished (promise)]
+  (defn handler-for-backtrace-test [^ExceptionEvent event context]
+    (try
+      (logging/trace "handler-for-backtrace-test %s" event)
+      (logging/trace
+       "handler-for-backtrace-test exception %s" (.exception event))
+      (let [thread (.thread event)
+            bt (vec (debug/build-backtrace thread))]
+        (deliver test-finished (seq bt)))
+      (catch Exception e
+        (logging/trace e)
+        (is (not e))
+        (deliver test-finished nil))
+      (finally
+       (jdi/resume-event-threads event))))
+
+  (deftest build-backtrace-test
+    (logging/trace "build-backtrace-test")
+    (jdi-test-handler/reset-one-shot-error)
+    (let [context (debug/launch-vm {:main `(deref (promise))})
+          context (assoc context :current-thread (:control-thread context))
+          vm (:vm context)]
+      (debug/add-exception-event-request context)
+      (.resume (:vm context))
+
+      (try
+        (jdi-test-handler/add-one-shot-event-handler
+         handler-for-backtrace-test "backtrace-test")
+        (jdi/enable-exception-request-states (:vm context))
+        (jdi-clj/remote-thread
+         context (:control-thread context) jdi/invoke-single-threaded
+         `(let [~'a 1]
+            (throw (Exception. "go do handler-for-frame-test"))
+            ;; prevent local clearing before the exception
+            ~'a)
+         {:name "backtrace-test"})
+        (is @test-finished)
+        (is (not (jdi-test-handler/one-shot-error?)))
+        (jdi/disable-exception-request-states vm)
+        (finally
+          (jdi/shutdown context))))))
