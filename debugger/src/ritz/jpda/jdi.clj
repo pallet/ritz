@@ -629,18 +629,13 @@
    (mapcat #(class-line-locations % line))
    (map #(breakpoint vm suspend-policy %))))
 
-;;; from cdt
 (defn clojure-frame?
-  "Predicate to test if a frame is a clojure frame. Checks the for the extension
-   of the frame location's source name, or for the presence of well know clojure
-   field prefixes."
+  "Predicate to test if a frame is a clojure frame. Uses the declaring type's
+default stratum to decide."
   [^StackFrame frame fields]
-  (let [^String source-path (location-source-path (.location frame))]
-    (or (and source-path (.endsWith source-path ".clj"))
-        (and
-         (some #{"__meta"} (map #(.name ^Field %) fields))
-         ;;(or (nil? source-path) (not (.endsWith source-path ".java")))
-         ))))
+  (let [^Location location (.location frame)
+        ^String stratum (.. location declaringType defaultStratum)]
+    (= "Clojure" stratum)))
 
 (def clojure-implementation-regex
   #"(^const__\d*$|^__meta$|^__var__callsite__\d*$|^__site__\d*__$|^__thunk__\d*__$)")
@@ -694,7 +689,11 @@
     {:field field
      :name field-name
      :unmangled-name (unmunge-clojure field-name)
-     :value value}))
+     :value value
+     :synthetic (.isSynthetic field)
+     :static (.isStatic field)
+     :final (.isFinal field)
+     :type (.typeName field)}))
 
 (defn local-maps
   "Returns a sequence of maps representing unmangled clojure locals."
@@ -704,7 +703,9 @@
     {:local local
      :name local-name
      :unmangled-name (if unmangle? (unmunge-clojure local-name) local-name)
-     :value value}))
+     :value value
+     :type (.typeName local)
+     :argument (.isArgument local)}))
 
 (defn unmangled-frame-locals
   "Return a sequence of maps, representing the fields and locals in a frame.
@@ -744,18 +745,19 @@
         method (location-method-name location)
         line (location-line-number location)
         ^String source-name (or (location-source-name location) "UNKNOWN")
-        ^String source-path (or (location-source-path location) "UNKNOWN")]
-    (if (and (= method "invoke") source-name
-             (or (.endsWith source-name ".clj")
-                 (.startsWith source-name "SOURCE_FORM_")))
+        ^String source-path (or (location-source-path location) "UNKNOWN")
+        ^String stratum (.. location declaringType defaultStratum)]
+    (if (= stratum "Clojure")
       {:function (and declaring-type (unmunge-clojure declaring-type))
        :source source-name
        :source-path source-path
-       :line line}
+       :line line
+       :stratum stratum}
       {:function (format "%s.%s" declaring-type method)
        :source source-name
        :source-path source-path
-       :line line})))
+       :line line
+       :stratum stratum})))
 
 (defn exception-message
   "Provide a string with the details of the exception"

@@ -101,7 +101,7 @@ From slime-goto-source-location docstring:
    #(list
      %1
      (format "%s (%s:%s)" (:function %2) (:source %2) (:line %2))
-     (list :restartable (:restartable %2)))
+     (list :restartable (:restartable %2) :stratum (:stratum %2)))
    (iterate inc start)
    frames))
 
