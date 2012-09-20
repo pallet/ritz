@@ -37,8 +37,13 @@ Then in emacs, `M-x nrepl` and enter the port printed by the previous command.
 * **C-c C-b**: display javadoc for class at point
 * **C-c C-u**: undefine symbol at point
 * **C-c C-c**: compile top-level expression at point
+* nrepl-ritz-break-on-exception : enable debugger on exceptions
+* nrepl-ritz-reload-project : re-read classpath from project.clj
+* nrepl-ritz-load-project: Use the project.clj for the current buffer
+* nrepl-ritz-lein: Run a lein task on the current project
 
-* M-x nrepl-ritz-break-on-exception : enable debugger on exceptions
+See [SLDB](http://common-lisp.net/project/slime/doc/html/Debugger.html) for help
+on using the debugger.
 
 ## nREPL general middleware usage
 

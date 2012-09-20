@@ -162,7 +162,13 @@ To run with a maven project:
 * **C-c C-c**: compile top-level expression at point
 * **C-c C-x b**: break on exception (turn it off with a prefix)
 * **C-c C-x C-b**: set breakpoint at line
-* nrepl-ritz-reload-project: re-read classpath from project.clj
+* slime-break-on-exception: break on exception
+* slime-ritz-reload-project: re-read classpath from project.clj
+* slime-ritz-load-project: Use the project.clj for the current buffer
+* slime-ritz-lein: Run a lein task on the current project
+
+See [SLDB](http://common-lisp.net/project/slime/doc/html/Debugger.html) for help
+on using the debugger.
 
 ### Breakpoints
 
