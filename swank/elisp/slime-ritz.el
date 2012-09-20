@@ -361,16 +361,20 @@
    `(swank:resume-vm)))
 
 ;;; javadoc browsing
+(defvar slime-ritz-javadoc-local-paths nil
+  "A list of paths to local javadoc")
+
 (defun slime-javadoc-local-paths (local-paths)
-  "Require JavaDoc namespace, adding a list of local paths."
-  (slime-eval-async `(swank:javadoc-local-paths ,@local-paths)))
+  "Set the list of local paths. This is provided for backward compatibility."
+  (setq slime-ritz-javadoc-local-paths local-paths))
 
 (defun slime-javadoc (symbol-name)
   "Browse javadoc on the Java class at point."
   (interactive (list (slime-read-symbol-name "Javadoc for: ")))
   (when (not symbol-name)
     (error "No symbol given"))
-  (slime-eval-async `(swank:javadoc-url ,symbol-name)
+  (slime-eval-async
+      `(swank:javadoc-url ,symbol-name ,slime-ritz-javadoc-local-paths)
     (lambda (url)
       (if url
           (browse-url url)

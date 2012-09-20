@@ -5,6 +5,8 @@
    [clojure.java.javadoc :as javadoc]
    [clojure.java.io :as io]
    [clojure.string :as string])
+  (:use
+   [ritz.logging :only [trace]])
   (:import
    java.io.File))
 
@@ -142,6 +144,7 @@ that symbols accessible in the current namespace go first."
   {:tag String
    :added "1.2"}
   [^String classname ns]
+  (trace "javadoc-url %s %s" classname ns)
   (let [field (second (re-find #".+/(.*)$" classname))
         classname (-> classname
                       (string/replace #"\.$" "")
