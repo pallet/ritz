@@ -19,10 +19,11 @@
    (define-key java-mode-map "\C-c\C-x\C-b" 'slime-java-line-breakpoint)))
 
 (defun slime-break-on-exception (flag)
-  "Set a breakpoint at the current line"
-  (interactive "p")
+  "Break when an exception is thrown.
+With prefix argument FLAG, do not break on exception"
+  (interactive "P")
   (slime-eval-with-transcript
-   `(swank:break-on-exception ,(if flag "true" "false"))))
+   `(swank:break-on-exception ,(not flag))))
 
 (defun slime-line-breakpoint ()
   "Set a breakpoint at the current line"
