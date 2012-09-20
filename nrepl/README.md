@@ -38,6 +38,7 @@ Then in emacs, `M-x nrepl` and enter the port printed by the previous command.
 * **C-c C-u**: undefine symbol at point
 * **C-c C-c**: compile top-level expression at point
 
+* M-x nrepl-ritz-break-on-exception : enable debugger on exceptions
 
 ## nREPL general middleware usage
 
