@@ -1030,9 +1030,10 @@
   [^ExceptionEvent event context]
   (let [exception (.exception event)
         thread (.thread event)
-        silent? (jdi/silent-event? event)]
+        silent? (jdi/silent-event? event)
+        control-thread (:control-thread context)]
     (when (and
-           (:control-thread context)
+           control-thread
            (:RT context))
       (if (not silent?)
         ;; (trace "EXCEPTION %s" event)
@@ -1043,11 +1044,19 @@
           ;; would like to print this, but can cause hangs
           ;;    (jdi-clj/exception-message context event)
           (if-let [connection (connection-for-event event)]
-            (if (break/aborting-level? connection (.uniqueID thread))
-              (trace "Not activating sldb (aborting)")
-              (when (break-for-exception? event connection)
-                (trace "Activating sldb")
-                (invoke-debugger connection event)))
+            (let [control-threads (set
+                                   (filter
+                                    #(instance? ThreadReference %)
+                                    (vals (vm-context connection))))]
+              (trace "thread %s" thread)
+              (trace "control-threads %s" control-threads)
+              (if (control-threads thread)
+                (trace "Not activating sldb (control thread)")
+                (if (break/aborting-level? connection (.uniqueID thread))
+                  (trace "Not activating sldb (aborting)")
+                  (when (break-for-exception? event connection)
+                    (trace "Activating sldb")
+                    (invoke-debugger connection event)))))
             (trace "Not activating sldb (no connection)")))
         (do
           (trace-str "@")
