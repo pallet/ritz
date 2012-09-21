@@ -195,6 +195,13 @@ Assumes all insertions are made at point."
   "Insert all ARGS and then add text-PROPS to the inserted text."
   (nrepl-propertize-region props (apply #'insert args)))
 
+(defun nrepl-ritz-property-bounds (prop)
+  "Return the positions of the previous and next changes to PROP.
+PROP is the name of a text property."
+  (assert (get-text-property (point) prop))
+  (let ((end (next-single-char-property-change (point) prop)))
+    (list (previous-single-char-property-change end prop) end)))
+
 ;;; # Goto source locations
 (defun nrepl-ritz-show-buffer-position (position &optional recenter)
   "Ensure sure that the POSITION in the current buffer is visible."
@@ -1059,7 +1066,7 @@ Called on the `point-entered' text-property hook."
        (get-text-property (point) 'details-visible-p)))
 
 (defun nrepl-dbg-frame-region ()
-  (slime-property-bounds 'frame))
+  (nrepl-ritz-property-bounds 'frame))
 
 (defun nrepl-dbg-frame-forward ()
   (goto-char (next-single-char-property-change (point) 'frame)))
