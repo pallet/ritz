@@ -223,6 +223,26 @@ the browser you have set up in emacs.
 If you use slime with multiple lisps, you can isolate clojure specific
 setup by using `ritz-connected-hook` and `ritz-repl-mode-hook`.
 
+
+## Embedding
+
+You can embed Ritz in your project, start the server from within your own code,
+and connect via Emacs to that instance:
+
+```clj
+(ns my-app
+  (:use [ritz.swank.socket-server :only [start]]))
+
+(ritz.swank/start-server {:server-ns 'ritz.swank.repl})
+ ;; optionally takes :host/:port keyword args
+```
+
+The `:server-ns` keyword is used to select the server without the built in
+debugger (which starts an extra VM, and probably shouldn't be used embedded).
+
+To make this work in production, ritz-swank needs to be in :dependencies in
+project.clj in addition to being installed as a user-level plugin.
+
 ## Open Problems
 
 Recompilation of clojure code creates new classes, with the same location as the
