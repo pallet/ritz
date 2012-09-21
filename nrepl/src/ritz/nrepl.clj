@@ -35,9 +35,8 @@ processes."
     :only [add-pending-connection connection-for-session
            promote-pending-connection rename-connection]]
    [ritz.nrepl.debug-eval :only [debug-eval]]
-   [ritz.nrepl.exec :only [read-msg-using-classloader]]
    [ritz.nrepl.middleware.tracking-eval :only [wrap-source-forms]]
-   [ritz.nrepl.rexec :only [rexec]]
+   [ritz.nrepl.rexec :only [rexec rread-msg]]
    [ritz.nrepl.simple-eval :only [simple-eval]])
   (:require
    [clojure.java.io :as io]
@@ -211,9 +210,7 @@ connection is found in the connections map based on the session id."
   [vm thread]
   (loop []
     (try
-      (let [reply (jdi-clj/eval
-                   vm thread invoke-single-threaded
-                   `(read-msg-using-classloader))]
+      (let [reply (rread-msg vm thread)]
         (cond
           (nil? reply) (do
                          (trace "reply-pump returned nil message")
@@ -232,7 +229,6 @@ connection is found in the connections map based on the session id."
   [server vm]
   (let [thread (:msg-pump-thread vm)]
     (assert thread)
-    (jdi-clj/eval vm thread invoke-single-threaded `(require 'ritz.nrepl.exec))
     (doto (Thread. ^clojure.lang.IFn (partial reply-pump vm thread))
       (.setName "Ritz-reply-msg-pump")
       (.setDaemon false)

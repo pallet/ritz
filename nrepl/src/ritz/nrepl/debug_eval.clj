@@ -73,11 +73,15 @@
       (ritz.nrepl.debug/break-on-exception connection (or (:enable msg) true))
 
       (= "debugger-info" op)
-      (do
-        (ritz.nrepl.debug/invoke-restart
-         connection (read-string (:thread-id msg))
-         (read-when (:restart-number msg))
-         (read-when (:restart-name msg)))
+      (let [value
+            (ritz.nrepl.debug/debugger-info
+             connection
+             (read-string (:thread-id msg))
+             (read-when (:level msg))
+             (read-when (:frame-min msg))
+             (read-when (:frame-max msg)))]
+        (transport/send transport
+                        (response-for msg :value (args-for-map value)))
         (transport/send transport (response-for msg :status :done)))
 
       (= "invoke-restart" op)

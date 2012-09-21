@@ -692,6 +692,8 @@ reading input.  The result is a string (\"\" if no input was given)."
  (defvar nrepl-dbg-thread-id nil
   "Thread associated with a buffer"))
 
+(defvar nrepl-dbg-show-java-frames t
+  "Whether to show java frames or not")
 
 (defmacro define-nrepl-dbg-faces (&rest faces)
   "Define the set of faces used in the debugger.
@@ -809,7 +811,7 @@ Full list of commands:
   ("<"    'nrepl-dbg-beginning-of-stacktrace)
   (">"    'nrepl-dbg-end-of-stacktrace)
   ("t"    'nrepl-dbg-toggle-details)
-  ("r"    'nrepl-dbg-restart-frame)
+  ("j"    'nrepl-dbg-toggle-java-frames)
   ("I"    'nrepl-dbg-invoke-named-restart)
   ("c"    'nrepl-dbg-continue)
   ("s"    'nrepl-dbg-step-into)
@@ -856,21 +858,18 @@ Full list of commands:
         (let ((name (format "*nrepl-dbg %s*" thread)))
           (with-current-buffer (generate-new-buffer name)
             (setq nrepl-session session
-                  nrepl-dbg-thread thread)
+                  nrepl-dbg-thread-id thread)
             (current-buffer))))))
 
 
-(defun nrepl-dbg-setup (thread level exception restarts frames)
+(defun nrepl-dbg-setup (thread level exception restarts frames &optional force)
   "Setup a new NREPL-DBG buffer.
 EXCEPTION is a string describing the exception being debugged.
 RESTARTS is a list of strings (NAME DESCRIPTION) for each available restart.
 FRAMES is a list (NUMBER DESCRIPTION &optional PLIST) describing the initial
 portion of the stacktrace. Frames are numbered from 0."
-  (message "nrepl-dbg-setup")
   (with-current-buffer (nrepl-dbg-get-buffer thread)
-    (message "nrepl-dbg-setup 1")
-    (unless (equal nrepl-dbg-level level)
-      (message "nrepl-dbg-setup 2")
+    (unless (and (equal nrepl-dbg-level level) (not force))
       (let ((inhibit-read-only t))
         (nrepl-dbg-mode)
         (setq nrepl-dbg-thread-id thread)
@@ -913,9 +912,9 @@ If LEVEL isn't the same as in the buffer reinitialize the buffer."
     (lambda (buffer value)
       (lexical-let ((v (nrepl-keywordise value)))
         (destructuring-bind (&key thread-id level exception restarts frames) v
-          (nrepl-dbg-setup thread-id level exception restarts frames))))
+          (nrepl-dbg-setup thread-id level exception restarts frames t))))
     nil nil nil)
-   `("thread" ,thread "level" ,level "frame-min"  0 "frame-max" 10)))
+   `(thread-id ,thread level ,level frame-min  0 frame-max 10)))
 
 (defun nrepl-dbg-exit (thread _level &optional stepping)
   "Exit from the debug level LEVEL."
@@ -1004,14 +1003,18 @@ If MORE is non-nil, more frames are on the Lisp stack."
 If FACE is nil, `nrepl-dbg-frame-line-face' is used."
   (setq face (or face 'nrepl-dbg-frame-line-face))
   (let ((number (nrepl-dbg-frame.number frame))
-        (string (nrepl-dbg-frame.string frame)))
-    (nrepl-propertize-region
-        `(frame ,frame nrepl-dbg-default-action nrepl-dbg-toggle-details)
-      (nrepl-propertize-region '(mouse-face highlight)
-        (insert " " (nrepl-dbg-in-face frame-label (format "%2d:" number)) " ")
-        (nrepl-ritz-insert-indented
-         (nrepl-ritz-add-face face string)))
-      (insert "\n"))))
+        (string (nrepl-dbg-frame.string frame))
+        (stratum (lax-plist-get (nrepl-dbg-frame.plist frame) "stratum")))
+    (when (or nrepl-dbg-show-java-frames
+              (not (equal stratum "Java")))
+      (nrepl-propertize-region
+          `(frame ,frame nrepl-dbg-default-action nrepl-dbg-toggle-details)
+        (nrepl-propertize-region '(mouse-face highlight)
+          (insert
+           " " (nrepl-dbg-in-face frame-label (format "%2d:" number)) " ")
+          (nrepl-ritz-insert-indented
+           (nrepl-ritz-add-face face string)))
+        (insert "\n")))))
 
 (defun nrepl-dbg-fetch-frames (thread-id from to)
   (nrepl-ritz-send-op
@@ -1263,6 +1266,13 @@ VAR should be a plist with the keys :name, :id, and :value."
         (delete-region start end)
         (nrepl-propertize-region '(details-visible-p nil)
           (nrepl-dbg-insert-frame frame))))))
+
+
+(defun nrepl-dbg-toggle-java-frames ()
+  "Show or hide java frames"
+  (interactive)
+  (setq nrepl-dbg-show-java-frames (not nrepl-dbg-show-java-frames))
+  (nrepl-dbg-reinitialize nrepl-dbg-thread-id nrepl-dbg-level))
 
 (defun nrepl-dbg-disassemble ()
   "Disassemble the code for the current frame."

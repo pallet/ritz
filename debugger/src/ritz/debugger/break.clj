@@ -29,7 +29,7 @@ the break stack."
   [connection thread-id]
   (when-let [levels (seq (-> connection
                              break-context (get thread-id) :break-levels))]
-    [(last levels) (count levels)]))
+    [(last levels) (dec (count levels))]))
 
 (defn break-level-infos
   "Obtain the all level-infos."

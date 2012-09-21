@@ -1,8 +1,8 @@
 (ns ritz.nrepl.exec
   "Execute commands using nrepl"
   (:use
-   [clojure.tools.nrepl.server :only [handle*]]
    [clojure.stacktrace :only [print-cause-trace]]
+   [clojure.tools.nrepl.server :only [handle*]]
    [ritz.nrepl.handler :only [default-handler]]
    [ritz.nrepl.transport :only [make-transport read-sent release-queue]]
    [ritz.repl-utils.classloader
@@ -39,7 +39,9 @@
   "Read a message from the reply queue in the current connection."
   []
   (if @transport
-    (read-sent @transport)
+    (let [reply (read-sent @transport)]
+      (trace "read-msg read %s" reply)
+      reply)
     (Thread/sleep 1000)))
 
 ;;; ## classloader aware execution
@@ -66,23 +68,31 @@
 (defn read-msg-using-classloader
   "Read a message using the classloader specified classpath if possible."
   []
-  (feature-cond
-   (configurable-classpath?)
-   (if (has-classloader?)
-     (do
-       (when-let [p @wait-for-reinit]
-         (trace "read-msg waiting for re-init")
-         @p
-         (trace "read-msg re-init received")
-         (reset! wait-for-reinit nil)) ; this helps debugging but intros a race
-       (eval-clojure `(try
-                        (read-msg)
-                        (catch Exception e#
-                          (trace "Exception in read-msg %s" e#)))))
-     (do
-       (trace "read-msg-using-classloader No classloader yet")
-       (Thread/sleep 1000)))
-   :else (read-msg)))
+  (try
+    (feature-cond
+     (configurable-classpath?)
+     (if (has-classloader?)
+       (do
+         (when-let [p @wait-for-reinit]
+           (trace "read-msg waiting for re-init")
+           @p
+           (trace "read-msg re-init received")
+           (reset! wait-for-reinit nil)) ; this helps debugging but is a race
+         (trace "read-msg-using-classloader calling eval-clojure")
+         (eval-clojure `(try
+                          (read-msg)
+                          (catch Exception e#
+                            (trace "Exception in read-msg %s" e#)
+                            {:exception
+                             (with-out-str (print-cause-trace e#))}))))
+       (do
+         (trace "read-msg-using-classloader No classloader yet")
+         (Thread/sleep 1000)))
+     :else (read-msg))
+    (catch Exception e
+      (trace "read-msg-using-classloader exception %s"
+             (with-out-str (print-cause-trace e)))
+      (throw e))))
 
 (defn eval-using-classloader
   "Eval a form using the classloader specified classpath if possible."
