@@ -24,12 +24,11 @@ processes."
            read-exception-filters default-exception-filters]]
    [ritz.jpda.debug
     :only [add-exception-event-request add-connection-for-event-fn!
-           add-all-connections-fn!]]
+           add-all-connections-fn! launch-vm]]
    [ritz.jpda.jdi
     :only [connector connector-args invoke-single-threaded collected?]]
    [ritz.jpda.jdi-clj :only [control-eval]]
-   [ritz.jpda.jdi-vm
-    :only [acquire-thread launch-vm start-control-thread-body vm-resume]]
+   [ritz.jpda.jdi-vm :only [acquire-thread start-control-thread-body vm-resume]]
    [ritz.logging :only [set-level trace]]
    [ritz.nrepl.connections
     :only [add-pending-connection connection-for-session
@@ -249,21 +248,23 @@ generate a name for the thread."
 
 (defn start-jpda-server
   [{:keys [host port ack-port repl-port-path classpath vm-classpath
-           middleware log-level extra-classpath]}]
+           middleware log-level extra-classpath] :as options}]
   (when log-level
     (set-level log-level))
   (let [server (start-server
                 :bind "localhost" :port 0 :ack-port ack-port
                 :handler (debug-handler host port))
-        vm (launch-vm (join ":" vm-classpath) `@(promise))
+        vm (launch-vm (merge
+                       {:classpath (join ":" vm-classpath) :main `@(promise)}
+                       (select-keys options [:jvm-opts])))
         msg-thread (start-remote-thread vm "msg-pump")
         vm (assoc vm :msg-pump-thread msg-thread)
         _ (set-vm vm)
         port (-> server deref ^java.net.ServerSocket (:ss) .getLocalPort)]
-    (add-exception-event-request vm)
     (vm-resume vm)
     (ritz.jpda.jdi-clj/control-eval
-     vm `(require 'ritz.nrepl.exec 'ritz.logging))
+     vm `(require 'ritz.nrepl.exec 'ritz.logging)
+     {:disable-exception-requests true})
     (when log-level
       (ritz.jpda.jdi-clj/control-eval vm `(ritz.logging/set-level ~log-level)))
     (ritz.jpda.jdi-clj/control-eval
@@ -276,6 +277,7 @@ generate a name for the thread."
       (ritz.jpda.jdi-clj/control-eval
        vm `(ritz.nrepl.exec/set-log-level ~log-level)))
     (start-reply-pump server vm)
+    (add-exception-event-request vm)
     (deliver server-ready nil)
     (println "nREPL server started on port" port)
     (when repl-port-path

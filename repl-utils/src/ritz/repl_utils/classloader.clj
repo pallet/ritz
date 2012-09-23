@@ -25,7 +25,7 @@ This depends on having classlojure on the classpath."
 
 (defn has-classloader?
   []
-  @cl)
+  (boolean @cl))
 
 (defn absolute-filename [filename]
   (.getPath (file filename)))

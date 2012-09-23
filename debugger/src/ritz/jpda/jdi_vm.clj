@@ -13,6 +13,7 @@
    com.sun.jdi.event.ExceptionEvent
    com.sun.jdi.event.VMDeathEvent
    com.sun.jdi.request.ExceptionRequest
+   com.sun.jdi.ThreadReference
    com.sun.jdi.VirtualMachine))
 
 ;;; VM resume
@@ -153,64 +154,24 @@
      ~(start-control-thread-body control-thread-name)
      ~cmd))
 
-(def ^{:private true}
-  var-signature "(Ljava/lang/String;Ljava/lang/String;)Lclojure/lang/Var;")
-
-(defn vm-rt
-  "Lookup clojure runtime."
-  [context]
-  (logging/trace "vm-rt")
-  (if-not (:RT context)
-    (if-let [rt (first (jdi/classes (:vm context) "clojure.lang.RT"))]
-      (let [vm (:vm context)
-            compiler (first (jdi/classes vm "clojure.lang.Compiler"))
-            var (first (jdi/classes vm "clojure.lang.Var"))
-            throwable (first (jdi/classes vm "java.lang.Throwable"))
-            deref (first (jdi/classes vm "clojure.lang.IDeref"))
-            context (clojure.core/assoc
-                     context
-                     :RT rt
-                     :Compiler compiler
-                     :Var var
-                     :Throwable throwable
-                     :Deref deref)]
-        (logging/trace "vm-rt: classes found")
-        (clojure.core/assoc
-         context
-         :read-string (first (jdi/methods rt "readString"))
-         :var (first (jdi/methods rt "var" var-signature))
-         :eval (first (jdi/methods compiler "eval"))
-         :get (first (jdi/methods var "get"))
-         :deref (first (jdi/methods deref "deref"))
-         :assoc (first (jdi/methods rt "assoc"))
-         :swap-root (first (jdi/methods var "swapRoot"))
-         :exception-message (first (jdi/methods throwable "getMessage"))))
-      (do
-        (logging/trace "vm-rt: RT not found")
-        (throw (Exception. "No clojure runtime found in vm"))))
-    context))
-
 (defn launch-vm
   "Launch a vm and provide a control thread. Returns a context map.
    The vm is in a suspended state when returned."
-  [classpath cmd & {:as options}]
+  [classpath cmd {:as options}]
   (logging/trace
    "launch-vm %s\n%s" classpath (with-out-str (pprint/pprint cmd)))
   (let [vm (jdi/launch classpath (wrap-launch-cmd cmd) (:jvm-opts options))
         connected (atom true)
         context {:vm vm :connected connected}
-        context (merge (jdi/vm-stream-daemons vm options) context)]
-    (let [thread (acquire-thread context control-thread-name nil)
-          context (if thread
-                    (assoc context :control-thread thread)
-                    context)]
-      (if @(:connected context)
-        (let [context (vm-rt context)
-              context (merge
-                       (jdi/vm-event-daemon vm connected context)
-                       context)]
-         context)
-        context))))
+        context (merge (jdi/vm-stream-daemons vm options) context)
+        context (if-let [thread (acquire-thread
+                                 context control-thread-name nil)]
+                  (assoc context :control-thread thread)
+                  context)]
+    context))
+
+
+
 
 ;;; Classpath Helpers
 (defn- format-classpath-url [^java.net.URL url]

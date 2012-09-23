@@ -6,8 +6,8 @@
    [ritz.debugger.inspect :as inspect]
    [ritz.jpda.jdi :as jdi]
    [ritz.jpda.jdi-clj :as jdi-clj]
-   [ritz.jpda.jdi-test-handler :as jdi-test-handler] ;; after jpda.debug
    [ritz.jpda.jdi-vm :as jdi-vm]
+   [ritz.jpda.jdi-test-handler :as jdi-test-handler]
    [clojure.string :as string])
   (:import
    com.sun.jdi.event.BreakpointEvent
@@ -23,6 +23,7 @@
     LongValue ShortValue))
   (:use
    clojure.test
+   [bultitude.core :only [classpath-files]]
    [clojure.stacktrace :only [print-cause-trace]]))
 
 ;; (logging/set-level :trace)
@@ -68,12 +69,16 @@
 
 (defn eval-in-frame-test [context thread]
   (testing "atomic eval"
+    (logging/trace "eval-in-frame-test")
+    (debug/eval-string-in-frame nil context thread "a" 0)
     (is (re-matches
          #"#<Atom@[0-9a-f]+: \{:a 1\}>"
          (debug/eval-string-in-frame nil context thread "a" 0)))
     (is (= "{:m 2}"
            (debug/eval-string-in-frame nil context thread "m" 0)))
-    (is (= "1" (debug/eval-string-in-frame nil context thread "i" 0)))
+    (is (= "1" (let [i (debug/eval-string-in-frame nil context thread "i" 0)]
+                 (logging/trace "i %s" (pr-str i))
+                 i)))
     (is (= "1.0" (debug/eval-string-in-frame nil context thread "d" 0)))
     (is (= "nil" (debug/eval-string-in-frame nil context thread "n" 0)))
     (is (= "#'clojure.core/slurp"
@@ -142,27 +147,90 @@
     (let [context (debug/launch-vm {:main `(deref (promise))})
           context (assoc context :current-thread (:control-thread context))
           vm (:vm context)]
+      (is @(:connected context))
       (debug/add-exception-event-request context)
       (.resume (:vm context))
 
       (try
+        (jdi-test-handler/reset-handlers!)
         (jdi-test-handler/add-one-shot-event-handler
          handler-for-frame-test "frame-test")
         (jdi/enable-exception-request-states (:vm context))
         (jdi-clj/remote-thread
-         context (:control-thread context) jdi/invoke-single-threaded
-         `(let [~'a (atom {:a 1})
-                ~'m {:m 2}
-                ~'i 1
-                ~'d 1.0
-                ~'n nil
-                ~'v #'clojure.core/slurp ; arbitrary var
-                ~'s "a string"
-                ~'w-dash 1]
-            (throw (Exception. "go do handler-for-frame-test"))
-            ;; prevent local clearing before the exception
-            [~'a ~'m ~'i ~'d ~'n ~'v ~'s])
+         context (:control-thread context) {}
+         `(try
+            (let [~'a (atom {:a 1})
+                     ~'m {:m 2}
+                     ~'i 1
+                     ~'d 1.0
+                     ~'n nil
+                     ~'v #'clojure.core/slurp ; arbitrary var
+                     ~'s "a string"
+                     ~'w-dash 1]
+                 (throw (ex-info "go do handler-for-frame-test" {}))
+                 ;; prevent local clearing before the exception
+                 [~'a ~'m ~'i ~'d ~'n ~'v ~'s])
+            ;; prevent propogation to other try/rethrow blocks
+            (catch clojure.lang.ExceptionInfo ~'_))
          {:name "frame-test"})
+        (is @test-finished)
+        (is (not (jdi-test-handler/one-shot-error?)))
+        (jdi/disable-exception-request-states vm)
+        (finally
+         (jdi/shutdown context))))))
+
+(let [test-finished (promise)]
+  (defn handler-for-cl-frame-test [^ExceptionEvent event context]
+    (try
+      (logging/trace "handler-for-cl-frame-test")
+      (let [thread (.thread event)]
+        (eval-in-frame-test context thread)
+        (pprint-eval-in-frame-test context thread))
+      (deliver test-finished true)
+      (catch Exception e
+        (print-cause-trace e)
+        (deliver test-finished nil))
+      (finally
+       (jdi/resume-event-threads event))))
+
+  (deftest cl-frame-test
+    (logging/trace "cl-frame-test")
+    (let [cp-files (->> (classpath-files)
+                        (map #(.getAbsolutePath %))
+                        (filter #(re-find #"org/clojure/clojure" %)))
+          context (debug/launch-vm {:main `(deref (promise))})
+          context (assoc context :current-thread (:control-thread context))
+          vm (:vm context)]
+      (is @(:connected context))
+      (debug/add-exception-event-request context)
+      (.resume (:vm context))
+
+      (try
+        (jdi-test-handler/reset-handlers!)
+        (jdi-test-handler/add-one-shot-event-handler
+         handler-for-cl-frame-test "cl-frame-test")
+        (jdi/enable-exception-request-states (:vm context))
+        (jdi-clj/control-eval context `(require 'ritz.repl-utils.classloader))
+        (jdi-clj/remote-thread
+         context (:control-thread context) {}
+         `(do
+            (ritz.repl-utils.classloader/set-classpath! [~@cp-files])
+            (ritz.repl-utils.classloader/eval-clojure
+             '(try
+                (let [~'a (atom {:a 1})
+                      ~'m {:m 2}
+                      ~'i 1
+                      ~'d 1.0
+                      ~'n nil
+                      ~'v #'clojure.core/slurp ; arbitrary var
+                      ~'s "a string"
+                      ~'w-dash 1]
+                  (throw (ex-info "go do handler-for-cl-frame-test" {}))
+                  ;; prevent local clearing before the exception
+                  [~'a ~'m ~'i ~'d ~'n ~'v ~'s])
+                ;; prevent propogation to other try/rethrow blocks
+                (catch clojure.lang.ExceptionInfo ~'_))))
+         {:name "cl-frame-test"})
         (is @test-finished)
         (is (not (jdi-test-handler/one-shot-error?)))
         (jdi/disable-exception-request-states vm)
@@ -191,20 +259,23 @@
     (let [context (debug/launch-vm {:main `(deref (promise))})
           context (assoc context :current-thread (:control-thread context))
           vm (:vm context)]
-      (debug/add-exception-event-request context)
+      (is @(:connected context))
+      (is (:control-thread context))
       (.resume (:vm context))
+      (debug/add-exception-event-request context)
 
       (try
+        (jdi-test-handler/reset-handlers!)
         (jdi-test-handler/add-one-shot-event-handler
          handler-for-backtrace-test "backtrace-test")
         (jdi/enable-exception-request-states (:vm context))
         (jdi-clj/remote-thread
-         context (:control-thread context) jdi/invoke-single-threaded
-         `(let [~'a 1]
-            (throw (Exception. "go do handler-for-frame-test"))
-            ;; prevent local clearing before the exception
-            ~'a)
+         context (:control-thread context) {}
+         `(try (throw (ex-info "go do handler-for-backtrace-test" {}))
+               ;; prevent propogation to other try/rethrow blocks
+               (catch clojure.lang.ExceptionInfo ~'_))
          {:name "backtrace-test"})
+        (logging/trace "build-backtrace-test blocking for completion")
         (is @test-finished)
         (is (not (jdi-test-handler/one-shot-error?)))
         (jdi/disable-exception-request-states vm)

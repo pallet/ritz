@@ -1308,7 +1308,7 @@ VAR should be a plist with the keys :name, :id, and :value."
          (insert result))))
    'frame-number frame
    'code string
-   'pprint "true"))
+   'pprint t))
 
 (defun nrepl-dbg-read-form-for-frame (prompt)
   (lexical-let ((frame (nrepl-dbg-frame-number-at-point)))
@@ -1450,10 +1450,9 @@ frame move command."
    (nrepl-make-response-handler
     (current-buffer)
     (lambda (buffer value)
-      (message "b-o-e")
       (lexical-let ((v (nrepl-keywordise value)))
         (destructuring-bind (&key thread-id level exception restarts frames) v
-          (message "b-o-e calling")
+          (message "b-o-e calling %s %s" thread-id level)
           (nrepl-dbg-setup thread-id level exception restarts frames))))
     nil nil nil)
    `("enable" ,(if flag "true" "false"))))

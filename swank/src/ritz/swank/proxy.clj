@@ -22,10 +22,11 @@
    ritz.swank.commands.contrib.ritz)
   (:use
    [clojure.string :only [join]]
+   [ritz.jpda.debug :only [launch-vm]]
    [ritz.jpda.jdi :only [invoke-single-threaded]]
    [ritz.jpda.jdi-clj :only [control-eval]]
    [ritz.jpda.jdi-vm
-    :only [acquire-thread launch-vm start-control-thread-body vm-resume]]
+    :only [acquire-thread start-control-thread-body vm-resume]]
    [ritz.logging :only [trace]]
    [ritz.swank.connections :only [add-connection]]
    [ritz.swank.rexec :only [rexec rread-msg]]
@@ -73,8 +74,9 @@ generate a name for the thread."
                    (dissoc :announce)
                    (merge {:port 0 :join true :server-ns 'ritz.repl}))
           cp (pr-str (join ":" vm-classpath))
-          vm (apply launch-vm cp `@(promise)
-                    (apply concat (select-keys options [:jvm-opts])))
+          vm (launch-vm
+              (merge {:classpath cp :main `@(promise)}
+                     (select-keys options [:jvm-opts])))
           msg-thread (start-remote-thread vm "msg-pump")
           vm (assoc vm :msg-pump-thread msg-thread)
           options (assoc options :vm-context vm)]

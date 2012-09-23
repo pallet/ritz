@@ -21,7 +21,10 @@
    [ritz.debugger.exception-filters
     :only [exception-filters exception-filter-add!]]
    [ritz.debugger.inspect :only [reset-inspector value-as-string]]
-   [ritz.logging :only [trace trace-str]])
+   [ritz.logging :only [trace trace-str]]
+   [ritz.repl-utils.classloader
+    :only [configurable-classpath? eval-clojure has-classloader?]]
+   [ritz.repl-utils.clojure :only [feature-cond]])
   (:import
    java.io.File
    java.net.Socket
@@ -56,29 +59,14 @@
                                "REPL" "Accept loop"
                                "Connection dispatch loop :repl"]}))
 
-;; (defn request-events
-;;   "Add event requests that should be set before resuming the vm."
-;;   [context]
-;;   (let [req (doto (jdi/exception-request (:vm context) nil true true)
-;;               (jdi/suspend-policy :suspend-event-thread)
-;;               (.enable))]
-;;     (swap! context assoc :exception-request req)))
-
 (defn launch-vm
   "Launch and configure the vm for the debugee."
   [{:keys [classpath main] :as options}]
-  (jdi-vm/launch-vm (or classpath (jdi-vm/current-classpath)) main))
-
-;; (defn stop-vm
-;;   [context]
-;;   (when context
-;;     (.exit (:vm context) 0)
-;;     (reset! (:continue-handling context) nil)
-;;     nil))
-
+  (jdi/vm-event-daemon
+   (jdi-clj/vm-rt
+    (jdi-vm/launch-vm (or classpath (jdi-vm/current-classpath)) main options))))
 
 ;;; # Threads
-
 (defn threads
   "Return a sequence containing a thread reference for each remote thread."
   [context]
@@ -116,10 +104,6 @@
      thread
      (jdi-clj/control-eval-to-value
       vm-context `(new java.lang.Throwable "Stopped by swank")))))
-
-;; (defn level-info-thread-id
-;;   [level-info]
-;;   (.uniqueID ^ThreadReference (:thread level-info)))
 
 (defn user-threads
   "Return the user threads."
@@ -256,7 +240,9 @@
       (if (compare-and-set!
            remote-condition-printer-sym-value
            nil
-           (jdi-clj/eval context thread {} `(gensym "swank")))
+           (jdi-clj/eval
+            context thread {:disable-exception-requests true}
+            `(gensym "swank")))
         (let [s (name @remote-condition-printer-sym-value)
               c `(do
                    (require '~'clojure.pprint)
@@ -331,7 +317,7 @@
                    (~(symbol s) (Exception. "")))]
           (trace "remote-condition-printer code %s" c)
           (trace "remote-condition-printer set sym %s" (pr-str s))
-          (jdi-clj/eval context thread {} c)
+          (jdi-clj/eval context thread {:disable-exception-requests true} c)
           (trace "remote-condition-printer defined fn")
           (reset!
            remote-condition-printer-fn
@@ -385,8 +371,6 @@
   (request [_] nil))
 
 ;;; # Restarts
-
-
 
 ;;; ## JPDA restarts
 (defn resume
@@ -449,9 +433,6 @@
     (doseq [level-info level-infos]
       (resume-break-level connection level-info))))
 
-
-
-
 (defn step-request
   [thread size depth]
   (doto (jdi/step-request thread size depth)
@@ -487,9 +468,7 @@
   (exception-filter-add! connection {:location catch-location :enabled true}))
 
 
-
-
-;;; Restarts
+;;; # Restarts
 (defn make-restart
   "Make a restart map.
    Contains
@@ -724,7 +703,7 @@
   (let [{:keys [thread-id] :as level-info} (debugger-event-info
                                             connection event)
         debug-context (break/break-level-add! connection thread-id level-info)
-        level (-> debug-context :break-levels count)]
+        [_ level] (break/break-level-info connection thread-id)]
     (display-break-level connection level-info level)
     ;; The handler resumes threads, so make sure we suspend them again
     ;; first. The restart from the sldb buffer will resume these threads.
@@ -755,39 +734,39 @@
 
 (defn local-bindings
   "Create a lexical environment with the specified values"
-  [map-sym locals]
+  [map-sym locals locals-map]
   (mapcat
    (fn [local]
      (let [local (:unmangled-name local)]
-       `[~(symbol local) ((var-get (ns-resolve '~'user '~map-sym)) ~local)]))
+       `[~(symbol local) (~locals-map ~local ::not-found)]))
    locals))
 
 (defn with-local-bindings-form
   "Create a form setting up local bindings around the given expr"
   [map-sym locals expr]
-  `(let [~@(local-bindings map-sym locals)] ~expr))
-
-(def ^{:private true
-       :doc "A symbol generated on the debuggee, naming a var for our use"}
-  remote-map-sym-value (atom nil))
+  (let [m (gensym "locals-map")]
+    `(let [~m (var-get (ns-resolve '~'user '~map-sym))
+           ~@(local-bindings map-sym locals m)]
+       ~expr)))
 
 (defn remote-map-sym
   "Return the remote symbol for a var to use in swank"
   [context thread]
-  (or @remote-map-sym-value
-      (reset! remote-map-sym-value
-              (symbol (jdi-clj/eval context thread {} `(gensym "swank"))))))
-
-(def ^{:private true
-       :doc "An empty map"}
-  remote-empty-map-value (atom nil))
+  (trace "remote-map-sym")
+  (symbol
+               (jdi-clj/eval
+                context thread
+                {:disable-exception-requests true}
+                `(gensym "swank"))))
 
 (defn remote-empty-map
   "Return a remote empty map for use in resetting the swank remote var"
   [context thread]
-  (or @remote-empty-map-value
-      (reset! remote-empty-map-value
-              (jdi-clj/eval-to-value context thread {} `(hash-map)))))
+  (trace "remote-empty-map")
+  (jdi-clj/eval-to-value
+              context thread
+              {:disable-exception-requests true}
+              `(hash-map)))
 
 (def stm-types #{"clojure.lang.Atom"})
 
@@ -795,15 +774,12 @@
   (stm-types (.. object-reference referenceType name)))
 
 (defn invoke-option-for [object-reference]
-  (trace "invoke-option-for %s" object-reference)
-  (if (and (instance? ObjectReference object-reference)
-           (stm-type? object-reference))
-    jdi/invoke-multi-threaded
-    jdi/invoke-single-threaded))
+  jdi/invoke-single-threaded)
 
 (defn assoc-local
-  "Assoc a local variable into a remote var"
+  "Assoc a local variable into a remote var."
   [context thread map-var local]
+  (trace "assoc-local %s %s %s" (:unmangled-name local) local map-var)
   (jdi-clj/remote-call
    context thread {:threading (invoke-option-for (:value local))}
    `assoc map-var
@@ -814,16 +790,19 @@
 (defn set-remote-values
   "Build a map in map-var of name to value for all the locals"
   [context thread map-var locals]
+  (trace "set-remote-values")
   (jdi-clj/swap-root
    context thread {}
    map-var
    (reduce
     (fn [v local] (assoc-local context thread v local))
-    (jdi-clj/var-get context thread {} map-var)
+    (jdi-clj/var-get context thread {:disable-exception-requests true} map-var)
     locals)))
 
 (defn clear-remote-values
   [context thread map-var]
+  {:pre [context thread map-var]}
+  (trace "clear-remote-values")
   (jdi-clj/swap-root
    context thread {}
    map-var (remote-empty-map context thread)))
@@ -831,21 +810,25 @@
 (defn eval-string-in-frame
   "Eval the string `expr` in the context of the specified `frame-number`."
   [connection context ^ThreadReference thread expr frame-number]
+  (trace "eval-string-in-frame")
   (try
     (let [_ (assert (.isSuspended thread))
           locals (jdi/unmangled-frame-locals
                   (nth (.frames thread) frame-number))
           map-sym (remote-map-sym context thread)
           map-var (jdi-clj/eval-to-value
-                   context thread {} `(intern '~'user '~map-sym {}))
+                   context thread {:disable-exception-requests true}
+                   `(intern '~'user '~map-sym {}))
           form (with-local-bindings-form map-sym locals (read-string expr))]
       (locking remote-map-sym
         (try
           (set-remote-values context thread map-var locals)
           (let [v (jdi-clj/eval-to-value context thread {} form)]
+            (trace "eval-string-in-frame v %s" (pr-str v))
             (value-as-string (assoc context :current-thread thread) v))
           (finally
-           (clear-remote-values context thread map-var)))))
+           (clear-remote-values context thread map-var)
+           (trace "eval-string-in-frame done")))))
     (catch com.sun.jdi.InvocationException e
       (if connection
         (let [event (InvocationExceptionEvent. (.exception e) thread)
@@ -853,7 +836,7 @@
                                                   connection event)
               debug-context (break/break-level-add!
                              connection thread-id level-info)
-              level (-> debug-context :break-levels count)]
+              [_ level] (break/break-level-info connection thread-id)]
           (display-break-level connection level-info level))
         (do
           (println (.exception e))
@@ -870,18 +853,21 @@
                   (nth (.frames thread) frame-number))
           map-sym (remote-map-sym context thread)
           map-var (jdi-clj/eval-to-value
-                   context thread {} `(intern '~'user '~map-sym {}))
-          form `(with-out-str
+                   context thread {:disable-exception-requests true}
+                   `(intern '~'user '~map-sym {}))
+          form `(do
                   (require 'clojure.pprint)
-                  ((resolve 'clojure.pprint/pprint)
-                   ~(with-local-bindings-form
-                      map-sym locals (read-string expr))))]
+                  (with-out-str
+                    ((resolve 'clojure.pprint/pprint)
+                     ~(with-local-bindings-form
+                        map-sym locals (read-string expr)))))]
       (locking remote-map-sym
         (try
           (set-remote-values context thread map-var locals)
           (jdi-clj/eval-to-string context thread {} form)
           (finally
-           (clear-remote-values context thread map-var)))))
+           (clear-remote-values context thread map-var)
+           (trace "pprint-eval-string-in-frame done")))))
     (catch com.sun.jdi.InvocationException e
       (if connection
         (let [event (InvocationExceptionEvent. (.exception e) thread)
@@ -889,7 +875,7 @@
                                                   connection event)
               debug-context (break/break-level-add!
                              connection thread-id level-info)
-              level (-> debug-context :break-levels count)]
+              [_ level] (break/break-level-info connection thread-id)]
           (display-break-level connection level-info level))
         (do
           (println (.exception e))

@@ -115,9 +115,11 @@ the events can be delivered back."
   [{:keys [transport] :as connection}
    {:keys [thread thread-id condition event restarts] :as level-info}
    level]
+  (trace "display-break-level: thread-id %s level %s" thread-id level)
   (when-let [msg (-> (debug-context connection) :breakpoint :msg)]
     (let [value (debugger-data level-info level 0 100)]
       (trace "display-break-level: reply to %s" msg)
+      (trace "display-break-level: reply %s" value)
       (transport/send transport (response-for msg :value value))
       (trace "display-break-level: sent message"))))
 
@@ -129,9 +131,10 @@ the events can be delivered back."
 
 (defn frame-eval
   [connection thread-id frame-number code pprint]
-  (trace "invoke-restart %s" thread-id)
+  (trace "frame-eval %s %s %s" thread-id (pr-str code) (pr-str pprint))
   (let [[level-info level] (break/break-level-info connection thread-id)
         thread (:thread level-info)]
+    (trace "frame-eval level-info %s" level-info)
     {:result (if pprint
                (pprint-eval-string-in-frame
                 connection (vm-context connection) thread code frame-number)

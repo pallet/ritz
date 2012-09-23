@@ -17,7 +17,8 @@
     ObjectReference StringReference
     ThreadReference ThreadGroupReference
     ReferenceType Locatable Location StackFrame
-    Field LocalVariable Method ClassType Value)
+    Field LocalVariable Method ClassType Value Mirror
+    ClassLoaderReference)
    (com.sun.jdi.connect
     Connector)
    (com.sun.jdi.event
@@ -192,14 +193,19 @@
 (defn vm-event-daemon
   "Runs a thread to dispatch the vm events
    `connected` is an atom to to allow clean loop shutdown"
-  [vm connected context]
-  (logging/trace "vm-event-daemons")
-  {:vm-ev (executor/daemon-thread
-           "vm-events"
-           (run-events vm connected context handle-event)
-           (logging/trace "vm-events: exit"))})
+  [context]
+  (logging/trace "vm-event-daemon")
+  (assoc context
+    :vm-ev (executor/daemon-thread
+            "vm-events"
+            (run-events (:vm context) (:connected context) context handle-event)
+            (logging/trace "vm-events: exit"))))
 
 ;;; low level wrappers
+(defn ^VirtualMachine virtual-machine
+  [^Mirror m]
+  (.virtualMachine m))
+
 (defn classes
   "Return the class references for the class name from the vm."
   [^VirtualMachine vm ^String class-name]
@@ -274,10 +280,12 @@
     :or {threading invoke-single-threaded disable-exception-requests false}
     :as options}
    class-or-object ^Method method args]
+  {:pre [thread class-or-object method]}
   ;; (logging/trace
   ;;  "jdi/invoke-method %s %s\nargs %s\noptions %s"
   ;;  class-or-object method (pr-str args) options)
-  (logging/trace "jdi/invoke-method %s %s" method options)
+  (logging/trace
+   "jdi/invoke-method %s arg count %s options %s" method (count args) options)
   (try
     (letfn [(invoke []
               (let [args (java.util.ArrayList. (or args []))]
@@ -464,6 +472,12 @@
   [threads]
   (doseq [^ThreadReference thread threads]
     (.resume thread)))
+
+(defn ^ClassLoaderReference thread-classloader
+  "Return the classloader used by the current thread. This works by finding the
+classloader for the current frame's declaring type."
+  [^ThreadReference thread]
+  (.. (first (.frames thread)) location declaringType classLoader))
 
 ;;; Event Requests
 (def

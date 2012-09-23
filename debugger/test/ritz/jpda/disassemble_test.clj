@@ -105,7 +105,9 @@
                         (try
                           (Thread/sleep 5000)
                           (catch Exception _#))
-                        (recur))))
+                        (recur)))
+                 {})
+        context (jdi-clj/vm-rt context)
         context (assoc context :current-thread (:control-thread context))
         vm (:vm context)]
     (try

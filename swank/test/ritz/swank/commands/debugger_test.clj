@@ -2,6 +2,7 @@
   (:use clojure.test)
   (:require
    [ritz.jpda.jdi :as jdi]
+   [ritz.jpda.jdi-clj :as jdi-clj]
    [ritz.jpda.jdi-vm :as jdi-vm]
    [ritz.logging :as logging]
    [ritz.repl-utils.utils :as utils]
@@ -16,7 +17,8 @@
                            (fn [] (loop [] (Thread/sleep 1000) (recur))))
                       (.setName (str '~'debugger-test-thread))
                       (.start)))
-                 :out *out*)]
+                 {:out *out*})
+        context (jdi-clj/vm-rt context)]
     (.resume (:vm context))
     (Thread/sleep 1000)
     (let [connection (test-utils/eval-for-emacs-test

@@ -3,7 +3,8 @@
   (:require
    [ritz.logging :as logging]
    [ritz.jpda.jdi :as jdi]
-   [clojure.string :as string])
+   [clojure.string :as string]
+   ritz.jpda.debug)                  ; ensure we clobber the debug event handler
   (:import
    com.sun.jdi.event.BreakpointEvent
    com.sun.jdi.event.ExceptionEvent
@@ -50,17 +51,23 @@
 (defn one-shot-error?
   [] @one-shot-error)
 
+(defn reset-handlers!
+  []
+  (reset! handlers {})
+  (reset-one-shot-error))
+
 (defmethod jdi/handle-event ExceptionEvent
   [^Event event context]
-  (logging/trace "test handler EVENT %s" event)
-  (logging/trace "test handler %s" (.exception event))
   (try
     (let [thread (jdi/event-thread event)]
-      (logging/trace "test handler has thread")
-      (let [exception (str event)]
-        (when (not (or (.contains exception "java.net.URLClassLoader")
-                       (.contains exception "java.lang.ClassLoader")
-                       (.contains exception "clojure.lang.AFn")))
+      (let [event-str (str event)]
+        (when (not (or (.contains event-str "java.net.URLClassLoader")
+                       (.contains event-str "java.lang.ClassLoader")
+                       (.contains event-str "clojure.lang.AFn")
+                       (.contains event-str "clojure.lang.Util")
+                       (.contains (str (.exception event))
+                                  "java.lang.ClassNotFoundException")))
+          (logging/trace "test handler EVENT %s" event)
           (logging/trace
            "test handler handling exception %s" (.exception event))
           (if-let [[f options] (@handlers (.name thread))]
@@ -83,10 +90,14 @@
                       (.start))))
                 (do
                   (logging/trace "test handler already invoked one-shot")
+                  (binding [*out* *err*]
+                    (println "Test handler already invoked. Received"
+                             (str event) (str (.exception event))))
                   (reset! one-shot-error true)))
               (do
                 (logging/trace "test handler invoking")
                 (f event context)))
-            (logging/trace "No debug handler for %s" event)))))
+            (logging/trace
+             "No debug handler for %s on thread %s" event (.name thread))))))
     (catch java.lang.Exception e
       (logging/trace "test handler %s" e))))

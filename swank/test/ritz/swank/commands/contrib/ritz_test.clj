@@ -15,7 +15,7 @@
                  `(do
                     (require '~'ritz.swank.commands.contrib.ritz-test)
                     (println (str '~'hi)))
-                 :out *out*)]
+                 {:out *out*})]
     (Thread/sleep 1000)
     (->>
      {:vm-context context}
