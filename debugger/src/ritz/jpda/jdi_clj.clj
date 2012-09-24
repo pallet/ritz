@@ -11,7 +11,7 @@
    (com.sun.jdi
     Value BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
     LongValue ShortValue ThreadReference ObjectReference ClassLoaderReference
-    VirtualMachine)
+    StringReference VirtualMachine)
    (com.sun.jdi.event
     BreakpointEvent ExceptionEvent StepEvent VMStartEvent VMDeathEvent)
    com.sun.jdi.request.ExceptionRequest
@@ -238,14 +238,14 @@ the specified thread."
     (jdi/exception-message context event)))
 
 ;;; Mirroring of values
-(defn remote-str
+(defn ^StringReference remote-str
   "Create a remote string"
   [context s]
   (jdi/mirror-of (:vm context) s))
 
 (defprotocol RemoteObject
   "Protocol for obtaining a remote object reference"
-  (remote-object [value context thread]))
+  (^ObjectReference remote-object [value context thread]))
 
 (let [st {}]
   (extend-protocol RemoteObject

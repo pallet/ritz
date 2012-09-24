@@ -780,12 +780,20 @@
   "Assoc a local variable into a remote var."
   [context thread map-var local]
   (trace "assoc-local %s %s %s" (:unmangled-name local) local map-var)
-  (jdi-clj/remote-call
-   context thread {:threading (invoke-option-for (:value local))}
-   `assoc map-var
-   (jdi-clj/remote-str context (:unmangled-name local))
-   (when-let [value (:value local)]
-     (jdi-clj/remote-object value context thread))))
+  (let [local-name (jdi-clj/remote-str context (:unmangled-name local))]
+    (try
+      (.disableCollection local-name)
+      (let [local-value (when-let [value (:value local)]
+                          (jdi-clj/remote-object value context thread))]
+        (try
+          (when local-value (.disableCollection local-value))
+          (jdi-clj/remote-call
+           context thread {:threading (invoke-option-for (:value local))}
+           `assoc map-var local-name local-value)
+          (finally
+           (when local-value (.enableCollection local-value)))))
+      (finally
+       (.enableCollection local-name)))))
 
 (defn set-remote-values
   "Build a map in map-var of name to value for all the locals"
@@ -818,17 +826,20 @@
           map-sym (remote-map-sym context thread)
           map-var (jdi-clj/eval-to-value
                    context thread {:disable-exception-requests true}
-                   `(intern '~'user '~map-sym {}))
-          form (with-local-bindings-form map-sym locals (read-string expr))]
-      (locking remote-map-sym
-        (try
-          (set-remote-values context thread map-var locals)
-          (let [v (jdi-clj/eval-to-value context thread {} form)]
-            (trace "eval-string-in-frame v %s" (pr-str v))
-            (value-as-string (assoc context :current-thread thread) v))
-          (finally
-           (clear-remote-values context thread map-var)
-           (trace "eval-string-in-frame done")))))
+                   `(intern '~'user '~map-sym {}))]
+      (try
+        (.disableCollection map-var)
+        (set-remote-values context thread map-var locals)
+        (let [v (jdi-clj/eval-to-value
+                 context thread {}
+                 (with-local-bindings-form
+                   map-sym locals (read-string expr)))]
+          (trace "eval-string-in-frame v %s" (pr-str v))
+          (value-as-string (assoc context :current-thread thread) v))
+        (finally
+         (.enableCollection map-var)
+         (clear-remote-values context thread map-var)
+         (trace "eval-string-in-frame done"))))
     (catch com.sun.jdi.InvocationException e
       (if connection
         (let [event (InvocationExceptionEvent. (.exception e) thread)
@@ -854,20 +865,22 @@
           map-sym (remote-map-sym context thread)
           map-var (jdi-clj/eval-to-value
                    context thread {:disable-exception-requests true}
-                   `(intern '~'user '~map-sym {}))
-          form `(do
-                  (require 'clojure.pprint)
-                  (with-out-str
-                    ((resolve 'clojure.pprint/pprint)
-                     ~(with-local-bindings-form
-                        map-sym locals (read-string expr)))))]
-      (locking remote-map-sym
-        (try
-          (set-remote-values context thread map-var locals)
-          (jdi-clj/eval-to-string context thread {} form)
-          (finally
-           (clear-remote-values context thread map-var)
-           (trace "pprint-eval-string-in-frame done")))))
+                   `(intern '~'user '~map-sym {}))]
+      (try
+        (.disableCollection map-var)
+        (set-remote-values context thread map-var locals)
+        (jdi-clj/eval-to-string
+         context thread {}
+         `(do
+            (require 'clojure.pprint)
+            (with-out-str
+              ((resolve 'clojure.pprint/pprint)
+               ~(with-local-bindings-form
+                  map-sym locals (read-string expr))))))
+        (finally
+         (.enableCollection map-var)
+         (clear-remote-values context thread map-var)
+         (trace "pprint-eval-string-in-frame done"))))
     (catch com.sun.jdi.InvocationException e
       (if connection
         (let [event (InvocationExceptionEvent. (.exception e) thread)

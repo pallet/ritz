@@ -121,13 +121,13 @@ corresponding attribute values per thread."
 
 ;;; stepping
 (defslimefn sldb-step [connection frame]
-  (invoke-named-restart connection :step-into))
+  (invoke-named-restart connection (:request-thread connection) :step-into))
 
 (defslimefn sldb-next [connection frame]
-  (invoke-named-restart connection :step-next))
+  (invoke-named-restart connection (:request-thread connection) :step-next))
 
 (defslimefn sldb-out [connection frame]
-  (invoke-named-restart connection :step-out))
+  (invoke-named-restart connection (:request-thread connection) :step-out))
 
 ;; eval
 (defslimefn eval-string-in-frame [connection expr n]
