@@ -106,10 +106,27 @@ the break stack."
   "Predicate to check if the current break-level is being aborted."
   [connection thread-id]
   (let [break-context (get (break-context connection) thread-id)]
-    (trace "aborting-level? %s" thread-id)
+    (trace
+     "aborting-level? %s count %s abort-to %s"
+     thread-id
+     (count (:break-levels break-context))
+     (:abort-to-level break-context))
     (if-let [abort-to-level (:abort-to-level break-context)]
       (>= (count (:break-levels break-context)) abort-to-level)
       (trace "aborting-level? no abort in progress"))))
+
+(defn abort-level-not-reached?
+  "If the current break level has been reached."
+  [connection thread-id]
+  (let [break-context (get (break-context connection) thread-id)]
+    (trace
+     "abort-level-reached? %s count %s abort-to %s"
+     thread-id
+     (count (:break-levels break-context))
+     (:abort-to-level break-context))
+    (if-let [abort-to-level (:abort-to-level break-context)]
+      (> (count (:break-levels break-context)) (inc abort-to-level))
+      (trace "abort-level-reached? no abort in progress"))))
 
 (defn break-exception-message!
   "Set abort to level."

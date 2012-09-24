@@ -372,6 +372,17 @@
 
 ;;; # Restarts
 
+;;; ## UI restarts
+(defmulti display-break-level
+  "Display any UI for the break level"
+  (fn [connection level-info level]
+    (:type connection)))
+
+(defmulti dismiss-break-level
+  "Dismiss any UI displaying the break level"
+  (fn [connection level-info level]
+    (:type connection)))
+
 ;;; ## JPDA restarts
 (defn resume
   [^ThreadReference thread-ref suspend-policy]
@@ -384,18 +395,25 @@
   "Resume a break level."
   [connection {:keys [event user-threads] :as level-info}]
   (when-not (instance? InvocationExceptionEvent event)
+    (trace "resuming threads %s" (vec user-threads))
     (jdi/resume-threads user-threads)))
 
-;;; ## UI restarts
-(defmulti display-break-level
-  "Display any UI for the break level"
-  (fn [connection level-info level]
-    (:type connection)))
-
-(defmulti dismiss-break-level
-  "Dismiss any UI displaying the break level"
-  (fn [connection level-info level]
-    (:type connection)))
+(defn resume-thread-level-if-aborting
+  "Check to see if there are any thread levels remaining for thread, and
+resume the top level if there is one. This function should be called at the end
+of any debug function that uses a user thread."
+  [connection thread-id]
+  (trace "resume-thread-level-if-aborting")
+  (if (break/abort-level-not-reached? connection thread-id)
+    (if-let [[level-info level] (break/break-level-info connection thread-id)]
+      (do
+        (trace "resume-thread-level-if-aborting resuming level %s" level)
+        (break/break-drop-level! connection thread-id)
+        (resume-break-level connection level-info))
+      (trace "resume-thread-level-if-aborting no level info"))
+    (when-let [[level-info level] (break/break-level-info connection thread-id)]
+      (trace "resume-thread-level-if-aborting display break level %s" level)
+      (display-break-level connection level-info level))))
 
 ;;; ## Restart functions
 (defn continue-level
@@ -414,7 +432,7 @@
   (let [[level-info level] (break/break-level-info connection thread-id)]
     (trace "quit-level: :thread-id %s :level %s" thread-id level)
     (break/break-drop-level! connection thread-id)
-    (break/break-abort-to-level! connection thread-id (dec level))
+    (break/break-abort-to-level! connection thread-id level)
     (dismiss-break-level connection thread-id level)
     (resume-break-level connection level-info))
   nil)
@@ -424,14 +442,16 @@
   (let [level-infos (break/break-level-infos connection thread-id)
         level-infos (reverse
                      (map #(assoc %1 :level %2) level-infos (iterate inc 0)))]
-    (trace "abort-all-levels: :thread-id %s :level %s"
+    (trace "abort-all-levels: :thread-id %s :levels %s"
       thread-id (count level-infos))
-    (break/break-drop-levels! connection thread-id)
-    (break/break-abort-to-level! connection thread-id 0)
+    (break/break-drop-level! connection thread-id)
+    (break/break-abort-to-level! connection thread-id -1)
     (doseq [level-info level-infos]
       (dismiss-break-level connection thread-id (:level level-info)))
-    (doseq [level-info level-infos]
-      (resume-break-level connection level-info))))
+    ;; The other levels should be resumed by calls to
+    ;; resume-thread-level-if-aborting, in the functions that
+    ;; use a user thread.
+    (resume-break-level connection (first level-infos))))
 
 (defn step-request
   [thread size depth]
@@ -694,7 +714,8 @@
   (trace "debugger-event-info")
   (let [{:keys [thread-id] :as level-info} (event-break-info connection event)
         [_ level] (break/break-level-info connection thread-id)]
-    (merge level-info (restart-info connection event (or level 0)))))
+    (merge level-info
+           (restart-info connection event (or (and level (inc level)) 0)))))
 
 (defn invoke-debugger
   "Calculate debugger information and invoke"
@@ -841,18 +862,11 @@
          (clear-remote-values context thread map-var)
          (trace "eval-string-in-frame done"))))
     (catch com.sun.jdi.InvocationException e
-      (if connection
-        (let [event (InvocationExceptionEvent. (.exception e) thread)
-              {:keys [thread-id] :as level-info} (debugger-event-info
-                                                  connection event)
-              debug-context (break/break-level-add!
-                             connection thread-id level-info)
-              [_ level] (break/break-level-info connection thread-id)]
-          (display-break-level connection level-info level))
-        (do
-          (println (.exception e))
-          (println e)
-          (.printStackTrace e))))))
+      (throw (RuntimeException.
+              (jdi/exception-message context (.exception e) thread)
+              e)))
+    (finally
+     (resume-thread-level-if-aborting connection (.uniqueID thread)))))
 
 (defn pprint-eval-string-in-frame
   "Eval the string `expr` in the context of the specified `frame-number`
@@ -882,18 +896,11 @@
          (clear-remote-values context thread map-var)
          (trace "pprint-eval-string-in-frame done"))))
     (catch com.sun.jdi.InvocationException e
-      (if connection
-        (let [event (InvocationExceptionEvent. (.exception e) thread)
-              {:keys [thread-id] :as level-info} (debugger-event-info
-                                                  connection event)
-              debug-context (break/break-level-add!
-                             connection thread-id level-info)
-              [_ level] (break/break-level-info connection thread-id)]
-          (display-break-level connection level-info level))
-        (do
-          (println (.exception e))
-          (println e)
-          (.printStackTrace e))))))
+      (throw (RuntimeException.
+              (jdi/exception-message context (.exception e) thread)
+              e)))
+    (finally
+     (resume-thread-level-if-aborting connection (.uniqueID thread)))))
 
 ;;; Source location
 (defn frame-source-location

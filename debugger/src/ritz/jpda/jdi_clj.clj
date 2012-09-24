@@ -235,7 +235,7 @@ the specified thread."
   "Returns a local string containing the remote exception's message."
   [context event]
   (with-caught-jdi-exceptions
-    (jdi/exception-message context event)))
+    (jdi/exception-event-message context event)))
 
 ;;; Mirroring of values
 (defn ^StringReference remote-str

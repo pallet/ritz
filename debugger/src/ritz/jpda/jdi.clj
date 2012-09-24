@@ -775,14 +775,19 @@ default stratum to decide."
 
 (defn exception-message
   "Provide a string with the details of the exception"
-  [context ^ExceptionEvent event]
-  (with-disabled-exception-requests [(:vm context)]
+  [context ^ObjectReference exception ^ThreadReference thread]
+  (with-disabled-exception-requests [(.virtualMachine thread)]
     (when-let [msg (invoke-method
-                    (event-thread event)
+                    thread
                     {:disable-exception-requests true}
-                    (.exception event)
+                    exception
                     (:exception-message context) [])]
       (string-value msg))))
+
+(defn exception-event-message
+  "Provide a string with the details of the exception"
+  [context ^ExceptionEvent event]
+  (exception-message context (.exception event) (event-thread event)))
 
 (defn exception-event-string
   "Provide a string with the details of the exception"
@@ -790,7 +795,7 @@ default stratum to decide."
   (format
    "%s\n%s\n%s\n%s"
    (.. event exception referenceType name)
-   (exception-message context event)
+   (exception-event-message context event)
    (.. event exception toString)
    (string/join
     \newline
