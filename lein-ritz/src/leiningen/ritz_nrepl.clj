@@ -9,33 +9,16 @@
   (:use
    [clojure.tools.cli :only [cli]]
    [clojure.set :only [difference]]
-   [leiningen.core.classpath :only [get-classpath]]))
+   [leiningen.core.classpath :only [get-classpath]]
+   [ritz.plugin-helpers
+    :only [classlojure-profile clojure-profile lein-profile]]))
 
-(def nrepl-version "0.2.0-beta9")
-
-(def profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
-                               :exclusions [org.clojure/clojure]]
-                              [clojure-complete "0.2.1"
-                               :exclusions [org.clojure/clojure]]]})
-
-(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
+(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.0-beta9"
                                      :exclusions [org.clojure/clojure]]]})
-
-(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
-                                     :exclusions [org.clojure/clojure]]]})
-
 
 (def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.5.1-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
-(def repl-utils-profile {:dependencies '[[ritz/ritz-repl-utils "0.5.1-SNAPSHOT"
-                                          :exclusions [org.clojure/clojure]]]})
-
-(def lein-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
-
-(def classlojure-profile {:dependencies '[[classlojure "0.6.6"]]})
-
-(def clojure-profile {:dependencies '[[org.clojure/clojure "1.4.0"]]})
 
 (defn- start-jpda-server
   "Start the JPDA nrepl server. The JPDA nrepl server will start the user

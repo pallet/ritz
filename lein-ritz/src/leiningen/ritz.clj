@@ -8,38 +8,15 @@
    [clojure.set :only [difference union]]
    [clojure.tools.cli :only [cli]]
    [leiningen.core.classpath :only [get-classpath]]
-   [ritz.add-sources :only [add-source-artifacts]]
-   [robert.hooke :only [add-hook]]))
+   [ritz.plugin-helpers
+    :only [classlojure-profile clojure-profile lein-profile jpda-jars]]))
 
-
-(defn opts-list [port host opts]
-  (apply concat (merge {:host host :port (Integer. port)
-                        :repl-out-root true :block true}
-                       (apply hash-map (map read-string opts)))))
 
 (def ritz-profile {:dependencies '[[ritz/ritz-swank "0.5.1-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
-(def lein-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
-
-(def classlojure-profile {:dependencies '[[classlojure "0.6.6"]]})
-
-(def clojure-profile {:dependencies '[[org.clojure/clojure "1.4.0"]]})
-
-(defn jpda-jars
-  []
-  (let [libdir (io/file (System/getProperty "java.home") ".." "lib")]
-    (for [j ["tools.jar" "sa-jdi.jar"]
-          :when (.exists (io/file libdir j))]
-      (.getCanonicalPath (io/file libdir j)))))
-
-
 (defn ritz-form [project port host {:keys [debug] :as opts}]
-  (let [jpda-project (->
-                      project
-                      (project/merge-profiles
-                       [ritz-profile lein-profile]))
-        vm-classes (io/file (:compile-path project) ".." "vm-classes")
+  (let [vm-classes (io/file (:compile-path project) ".." "vm-classes")
         vm-project (->
                     project
                     (project/unmerge-profiles [:default])
@@ -94,19 +71,6 @@
                      (catch java.io.FileNotFoundException _)))]
     (apply eip args)))
 
-(defn add-jpda-jars
-  "JPDA is in the JDK's tools.jar and sa-jdi.jar. Add them to the classpath."
-  [f project]
-  (concat (f project) (jpda-jars)))
-
-(defn add-ritz
-  "JPDA is in the JDK's tools.jar and sa-jdi.jar. Add them to the classpath."
-  [project]
-  (update-in project [:dependencies]
-             conj ['ritz/ritz-swank
-                   (or (System/getenv "RITZ_VERSION")
-                       (System/getProperty "ritz.version" "0.5.1-SNAPSHOT"))]))
-
 (defn ritz
   "Launch ritz server for Emacs to connect. Optionally takes PORT and HOST.
 
@@ -139,22 +103,3 @@
        (eval-in-project
         start-project
         (ritz-form project (or port 0) (or host "localhost") opts)))))
-
-(defmacro add-hooks
-  []
-  (if (and
-       (find-ns 'leiningen.core.classpath)
-       (ns-resolve 'leiningen.core.classpath 'get-classpath))
-    `(do
-       (add-hook
-        #'leiningen.core.classpath/get-classpath add-jpda-jars)
-       (add-hook
-        #'leiningen.core.classpath/get-classpath add-source-artifacts))
-    `(do
-       (require 'leiningen.classpath)
-       (add-hook
-        #'leiningen.classpath/get-classpath add-jpda-jars)
-       (add-hook
-        #'leiningen.classpath/get-classpath add-source-artifacts))))
-
-(add-hooks)
