@@ -68,65 +68,88 @@
 
 
 (defn eval-in-frame-test [context thread]
-  (testing "atomic eval"
-    (logging/trace "eval-in-frame-test")
-    (debug/eval-string-in-frame nil context thread "a" 0)
-    (assert (re-matches
-         #"#<Atom@[0-9a-f]+: \{:a 1\}>"
-         (debug/eval-string-in-frame nil context thread "a" 0)))
-    (assert (= "{:m 2}"
-           (debug/eval-string-in-frame nil context thread "m" 0)))
-    (assert (= "1" (let [i (debug/eval-string-in-frame nil context thread "i" 0)]
-                 (logging/trace "i %s" (pr-str i))
-                 i)))
-    (assert (= "1.0" (debug/eval-string-in-frame nil context thread "d" 0)))
-    (assert (= "nil" (debug/eval-string-in-frame nil context thread "n" 0)))
-    (assert (= "#'clojure.core/slurp"
-           (debug/eval-string-in-frame nil context thread "v" 0)))
-    (assert (= "\"a string\""
-           (debug/eval-string-in-frame nil context thread "s" 0)))
-    (assert (= "1"
-           (debug/eval-string-in-frame nil context thread "w-dash" 0))))
-  (testing "form eval"
-    (assert (= "{:m 3}"
-           (debug/eval-string-in-frame
-            nil context thread
-            "(zipmap (keys m) (map inc (vals m)))" 0)))
-    (assert (= "2"
-           (debug/eval-string-in-frame nil context thread "(inc i)" 0)))
-    (assert (= "2.0"
-           (debug/eval-string-in-frame nil context thread "(inc d)" 0)))
-    (assert (= "2"
-           (debug/eval-string-in-frame nil context thread "(inc w-dash)" 0)))))
+  (let [connection {:break (atom {})}]
+    (testing "atomic eval"
+      (logging/trace "eval-in-frame-test")
+      (assert (re-matches
+               #"#<Atom@[0-9a-f]+: \{:a 1\}>"
+               (debug/eval-string-in-frame connection context thread "a" 0)))
+      (assert (= "{:m 2}"
+                 (debug/eval-string-in-frame connection context thread "m" 0)))
+      (assert
+       (= "1"
+          (let [i (debug/eval-string-in-frame connection context thread "i" 0)]
+            (logging/trace "i %s" (pr-str i))
+            i)))
+      (assert
+       (= "1.0" (debug/eval-string-in-frame connection context thread "d" 0)))
+      (assert
+       (= "nil" (debug/eval-string-in-frame connection context thread "n" 0)))
+      (assert
+       (= "#'clojure.core/slurp"
+          (debug/eval-string-in-frame connection context thread "v" 0)))
+      (assert
+       (= "\"a string\""
+          (debug/eval-string-in-frame connection context thread "s" 0)))
+      (assert
+       (= "1"
+          (debug/eval-string-in-frame connection context thread "w-dash" 0))))
+    (testing "form eval"
+      (assert (= "{:m 3}"
+                 (debug/eval-string-in-frame
+                  connection context thread
+                  "(zipmap (keys m) (map inc (vals m)))" 0)))
+      (assert
+       (= "2"
+          (debug/eval-string-in-frame connection context thread "(inc i)" 0)))
+      (assert
+       (= "2.0"
+          (debug/eval-string-in-frame connection context thread "(inc d)" 0)))
+      (assert
+       (= "2"
+          (debug/eval-string-in-frame
+           connection context thread "(inc w-dash)" 0))))))
 
 (defn pprint-eval-in-frame-test [context thread]
-  (testing "atomic eval"
-    (assert (re-matches
-         #"#<Atom@[0-9a-f]+: \{:a 1\}>\n"
-         (debug/pprint-eval-string-in-frame nil context thread "a" 0)))
-    (assert (= "{:m 2}\n"
-           (debug/pprint-eval-string-in-frame nil context thread "m" 0)))
-    (assert (= "1\n"
-           (debug/pprint-eval-string-in-frame nil context thread "i" 0)))
-    (assert (= "1.0\n"
-           (debug/pprint-eval-string-in-frame nil context thread "d" 0)))
-    (assert (= "nil\n"
-           (debug/pprint-eval-string-in-frame nil context thread "n" 0)))
-    (assert (re-matches
-         #"#<Var@[0-9a-f]+: #<core\$slurp clojure.core\$slurp@[0-9a-f]+>>\n"
-         (debug/pprint-eval-string-in-frame nil context thread "v" 0)))
-    (assert (= "\"a string\"\n"
-           (debug/pprint-eval-string-in-frame nil context thread "s" 0))))
-  (testing "form eval"
-    (assert (= "{:m 3}\n"
-           (debug/pprint-eval-string-in-frame
-            nil context thread
-            "(zipmap (keys m) (map inc (vals m)))" 0)))
-    (assert (= "2\n"
-           (debug/pprint-eval-string-in-frame nil context thread "(inc i)" 0)))
-    (assert (= "2.0\n"
-           (debug/pprint-eval-string-in-frame
-            nil context thread "(inc d)" 0)))))
+  (let [connection {:break (atom {})}]
+    (testing "atomic eval"
+      (assert
+       (re-matches
+        #"#<Atom@[0-9a-f]+: \{:a 1\}>\n"
+        (debug/pprint-eval-string-in-frame connection context thread "a" 0)))
+      (assert
+       (= "{:m 2}\n"
+          (debug/pprint-eval-string-in-frame connection context thread "m" 0)))
+      (assert
+       (= "1\n"
+          (debug/pprint-eval-string-in-frame connection context thread "i" 0)))
+      (assert
+       (= "1.0\n"
+          (debug/pprint-eval-string-in-frame connection context thread "d" 0)))
+      (assert
+       (= "nil\n"
+          (debug/pprint-eval-string-in-frame connection context thread "n" 0)))
+      (assert
+       (re-matches
+        #"#<Var@[0-9a-f]+: #<core\$slurp clojure.core\$slurp@[0-9a-f]+>>\n"
+        (debug/pprint-eval-string-in-frame connection context thread "v" 0)))
+      (assert
+       (= "\"a string\"\n"
+          (debug/pprint-eval-string-in-frame
+           connection context thread "s" 0))))
+    (testing "form eval"
+      (assert (= "{:m 3}\n"
+                 (debug/pprint-eval-string-in-frame
+                  connection context thread
+                  "(zipmap (keys m) (map inc (vals m)))" 0)))
+      (assert
+       (= "2\n"
+          (debug/pprint-eval-string-in-frame
+           connection context thread "(inc i)" 0)))
+      (assert
+       (= "2.0\n"
+          (debug/pprint-eval-string-in-frame
+           connection context thread "(inc d)" 0))))))
 
 (let [test-finished (promise)]
   (defn handler-for-frame-test [^ExceptionEvent event context]
