@@ -31,9 +31,11 @@
 (def repl-utils-profile {:dependencies '[[ritz/ritz-repl-utils "0.5.1-SNAPSHOT"
                                           :exclusions [org.clojure/clojure]]]})
 
-(def lein-project-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
+(def lein-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
 
 (def classlojure-profile {:dependencies '[[classlojure "0.6.6"]]})
+
+(def clojure-profile {:dependencies '[[org.clojure/clojure "1.4.0"]]})
 
 (defn- start-jpda-server
   "Start the JPDA nrepl server. The JPDA nrepl server will start the user
@@ -44,12 +46,15 @@ project server."
   (let [jpda-project (->
                       project
                       (project/merge-profiles
-                       [ritz-profile lein-project-profile]))
+                       [clojure-profile lein-profile ritz-profile])
+                      (dissoc :test-paths :source-paths :resource-paths)
+                      (assoc :jvm-opts ["-Djava.awt.headless=true"
+                                        "-XX:+TieredCompilation"]))
         vm-project (->
-                      project
-                      (dissoc :test-paths :source-paths :dependencies)
-                      (project/merge-profiles
-                       [ritz-profile classlojure-profile]))
+                    project
+                    (dissoc :test-paths :source-paths :dependencies)
+                    (project/merge-profiles
+                     [ritz-profile classlojure-profile]))
         user-project (->
                       project
                       (project/merge-profiles [ritz-profile]))
