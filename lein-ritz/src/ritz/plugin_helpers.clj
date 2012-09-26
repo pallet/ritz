@@ -6,7 +6,15 @@
    [robert.hooke :only [add-hook]]))
 
 ;;; Dependencies used in vms and classloaders
-(def lein-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
+(def lein-profile
+  {:dependencies '[[leiningen "2.0.0-preview10"
+                    ;; these are bits of lein we are not interested in
+                    :exclusions [org.clojure/clojure
+                                 reply
+                                 clj-http
+                                 org.apache.maven.indexer/indexer-core
+                                 org.clojure/data.xml]]]})
+
 (def classlojure-profile {:dependencies '[[classlojure "0.6.6"]]})
 (def clojure-profile {:dependencies '[[org.clojure/clojure "1.4.0"]]})
 
