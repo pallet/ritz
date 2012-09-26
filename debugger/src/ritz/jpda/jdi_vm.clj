@@ -72,8 +72,9 @@
             [true thread])
           (do
             (logging/trace
-             "jdi-vm/handle-acquire-event: unexpected exception %s"
-             (jdi/exception-event-string context event))
+             "jdi-vm/handle-acquire-event: unexpected exception %s %s"
+             (.exception event)
+             (vec (jdi/field-values (.exception event))))
             [true nil])))
 
       (instance? VMDeathEvent event)

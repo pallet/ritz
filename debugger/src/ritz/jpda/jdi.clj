@@ -232,6 +232,13 @@
   [^ObjectReference obj-ref]
   (format "ObjectReference %s" (.. obj-ref referenceType name)))
 
+(defn field-values
+  "Returns a sequence of Field name and Value pairs."
+  [^ObjectReference obj-ref]
+  (map
+   (juxt #(.name %) #(.getValue obj-ref %))
+   (.. obj-ref referenceType allFields)))
+
 
 (defn save-exception-request-states
   [^VirtualMachine vm]
