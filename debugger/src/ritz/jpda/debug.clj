@@ -62,6 +62,7 @@
 (defn launch-vm
   "Launch and configure the vm for the debugee."
   [{:keys [classpath main] :as options}]
+  (trace "debug/launch-vm")
   (jdi/vm-event-daemon
    (jdi-clj/vm-rt
     (jdi-vm/launch-vm (or classpath (jdi-vm/current-classpath)) main options))))

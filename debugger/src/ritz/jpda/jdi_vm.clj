@@ -150,6 +150,8 @@
 
 ;;; VM Control
 (defn wrap-launch-cmd
+  "Returns a form that starts a thread for use as the control thread, and then
+executes the provided `cmd`."
   [cmd]
   `(do
      ~(start-control-thread-body control-thread-name)
@@ -157,7 +159,8 @@
 
 (defn launch-vm
   "Launch a vm and provide a control thread. Returns a context map.
-   The vm is in a suspended state when returned."
+   The vm is in a suspended state when returned. Threads are started
+   to copy the vm's in out and err streams."
   [classpath cmd {:as options}]
   (logging/trace
    "launch-vm %s\n%s" classpath (with-out-str (pprint/pprint cmd)))
