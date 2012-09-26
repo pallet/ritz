@@ -233,7 +233,7 @@ and connect via Emacs to that instance:
 (ns my-app
   (:use [ritz.swank.socket-server :only [start]]))
 
-(ritz.swank/start-server {:server-ns 'ritz.swank.repl})
+(start {:server-ns 'ritz.swank.repl})
  ;; optionally takes :host/:port keyword args
 ```
 
