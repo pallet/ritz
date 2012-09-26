@@ -33,7 +33,7 @@
                     ;; Not sure why timing is an issue here, as events should
                     ;; just be queued.
                     (Thread/sleep 1000)
-                    (throw (Exception. (str '~(symbol thread-name))))
+                    (throw (Exception. ~thread-name))
                     ;; (try
                     ;;   (throw (Exception.
                     ;;           (str '~(symbol thread-name))))
