@@ -73,7 +73,7 @@ generate a name for the thread."
                    options
                    (dissoc :announce)
                    (merge {:port 0 :join true :server-ns 'ritz.repl}))
-          cp (pr-str (join ":" vm-classpath))
+          cp (join java.io.File/pathSeparatorChar vm-classpath)
           vm (launch-vm
               (merge {:classpath cp :main `@(promise)}
                      (select-keys options [:jvm-opts])))
