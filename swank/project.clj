@@ -11,4 +11,5 @@
                   :exclusions [org.clojure/clojure]]
                  [ritz/ritz-debugger "0.5.1-SNAPSHOT"]]
   :profiles {:dev {:dependencies [[leiningen "2.0.0-preview10"]
-                                  [org.clojure/clojure "1.4.0"]]}})
+                                  [org.clojure/clojure "1.4.0"]]
+                   :plugins [[lein-jdk-tools "0.1.0"]]}})
