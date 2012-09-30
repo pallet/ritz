@@ -5,10 +5,10 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :scm {:url "git@github.com:pallet/ritz.git"}
   :sub ["repl-utils" "debugger" "nrepl" "swank" "lein-ritz"]
-  :plugins [[lein-sub "0.2.2"]]
+  :plugins [[lein-sub "0.2.3"]]
   :aliases {"clean" ["sub" "clean"]
             "install" ["sub" "install"]
             "deploy" ["sub" "deploy"]
-            "test" ["sub" "with-profile" "default,jdk1.7" "test"]
+            "test" ["sub" "test"]
             "doc" ["sub" "with-profile" "codox,jdk1.7" "doc"]
             "set-sub-version" ["sub" "with-profile" "release" "set-version"]})
