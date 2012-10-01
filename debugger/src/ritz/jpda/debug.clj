@@ -27,23 +27,14 @@
    [ritz.repl-utils.clojure :only [feature-cond]])
   (:import
    java.io.File
-   java.net.Socket
-   java.net.InetSocketAddress
-   java.net.InetAddress
-   com.sun.jdi.event.BreakpointEvent
-   com.sun.jdi.event.ExceptionEvent
-   com.sun.jdi.event.StepEvent
-   com.sun.jdi.event.Event
-   com.sun.jdi.request.ExceptionRequest
-   com.sun.jdi.request.BreakpointRequest
-   com.sun.jdi.event.VMStartEvent
-   com.sun.jdi.event.VMDeathEvent
-   com.sun.jdi.Method
-   com.sun.jdi.VirtualMachine
-   com.sun.jdi.ObjectReference
-   com.sun.jdi.ThreadReference
-   com.sun.jdi.StackFrame
+   (java.net Socket InetSocketAddress InetAddress)
+   (com.sun.jdi.request
+    ExceptionRequest BreakpointRequest)
+   (com.sun.jdi.event
+    BreakpointEvent ExceptionEvent StepEvent Event VMStartEvent VMDeathEvent
+    VMDisconnectEvent)
    (com.sun.jdi
+    Method VirtualMachine ObjectReference ThreadReference StackFrame
     BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
     LongValue ShortValue StringReference Value)))
 

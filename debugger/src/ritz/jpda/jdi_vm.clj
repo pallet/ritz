@@ -174,9 +174,6 @@ executes the provided `cmd`."
                   context)]
     context))
 
-
-
-
 ;;; Classpath Helpers
 (defn- format-classpath-url [^java.net.URL url]
   (if (= "file" (.getProtocol url))
