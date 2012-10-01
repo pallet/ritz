@@ -15,6 +15,10 @@ environments and for debuggers.
       <td>nREPL server.</td>
     </tr>
     <tr>
+      <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl">ritz-nrepl-hornetq</a></td>
+      <td>nREPL server and client for running over HornetQ</td>
+    </tr>
+    <tr>
       <td><a href="https://github.com/pallet/ritz/tree/develop/debugger">ritz-debugger</a></td>
       <td>A library for using the JVM JPDA debugger in clojure.</td>
     </tr>
