@@ -15,7 +15,7 @@
 (def ritz-profile {:dependencies '[[ritz/ritz-swank "0.5.1-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
-(defn ritz-form [project port host {:keys [debug] :as opts}]
+(defn ritz-form [project ^String port host {:keys [debug] :as opts}]
   (let [vm-classes (io/file (:compile-path project) ".." "vm-classes")
         vm-project (->
                     project
@@ -41,7 +41,7 @@
                            user-project [clojure-profile])))]
     (.mkdirs vm-classes)
     `(do (binding [*compile-path* ~(.getAbsolutePath
-                                    (java.io.File.
+                                    (io/file
                                      (or (:compile-path project)
                                          "./classes")))]
            (when-let [is# ~(:repl-init-script project)]
@@ -81,7 +81,7 @@
      (let [[{:keys [debug] :as opts} [port host]]
            (cli args
                 ["-d" "--[no-]debug" :default true]
-                ["-b" "--backlog" :parse-fn #(Integer. %) :default 0]
+                ["-b" "--backlog" :parse-fn #(Integer. ^String %) :default 0]
                 ["-l" "--log-level" :default nil]
                 ["-m" "--message"]
                 ["-f" "--port-file"])
