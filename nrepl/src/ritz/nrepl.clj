@@ -47,7 +47,7 @@ processes."
  ritz.nrepl.connections/connection-for-event)
 
 (add-all-connections-fn!
- (ritz.nrepl.connections/all-connections))
+ ritz.nrepl.connections/all-connections)
 
 
 (defonce vm (atom nil))

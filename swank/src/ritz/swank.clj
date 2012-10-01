@@ -31,7 +31,7 @@
  ritz.swank.connections/connection-for-event)
 
 (add-all-connections-fn!
- (ritz.swank.connections/all-connections))
+ ritz.swank.connections/all-connections)
 
 (def default-pipeline
   (core/execute-slime-fn core/command-not-found))

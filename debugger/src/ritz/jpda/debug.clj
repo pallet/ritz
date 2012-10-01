@@ -1009,8 +1009,8 @@ of any debug function that uses a user thread."
 ;;                  :id (jdi-clj/read-arg context thread id)}))))
 ;;         (.frames thread)))
 
-(def ^{:private true} connection-for-event-fns (atom nil))
-(def ^{:private true} all-connections-fns (atom nil))
+(def ^{:private true} connection-for-event-fns (atom []))
+(def ^{:private true} all-connections-fns (atom []))
 
 (defn add-connection-for-event-fn! [f]
   (swap! connection-for-event-fns conj f))
@@ -1094,6 +1094,14 @@ of any debug function that uses a user thread."
 (defmethod jdi/handle-event VMDeathEvent
   [event context]
   (doseq [connection (all-connections)]
+    (trace "Closing connection")
+    (connection-close connection))
+  (System/exit 0))
+
+(defmethod jdi/handle-event VMDisconnectEvent
+  [event context]
+  (doseq [connection (all-connections)]
+    (trace "Closing connection")
     (connection-close connection))
   (System/exit 0))
 
