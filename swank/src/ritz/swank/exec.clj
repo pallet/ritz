@@ -31,7 +31,7 @@
 
 (defn read-msg
   []
-  (trace "read-msg")
+  (trace "swank/read-msg")
   (if @connection
     (read-sent @connection)
     (Thread/sleep 1000)))

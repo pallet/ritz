@@ -46,7 +46,9 @@
     core/protocol-version))
 
 (defslimefn quit-lisp [connection]
+  (trace "shutting down agents")
   (shutdown-agents)
+  (trace "exiting")
   (System/exit 0))
 
 (defslimefn toggle-debug-on-swank-error [connection]
