@@ -99,7 +99,7 @@
                             (dissoc :test-paths :source-paths :resource-paths)
                             (assoc :jvm-opts ["-Djava.awt.headless=true"
                                               "-XX:+TieredCompilation"]))
-                           project)]
+                           (project/merge-profiles project [ritz-profile]))]
        (eval-in-project
         start-project
         (ritz-form project (or port 0) (or host "localhost") opts)))))
