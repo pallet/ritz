@@ -23,7 +23,8 @@
   (:import [java.io File FilenameFilter]
            [java.util StringTokenizer]
            [java.util.jar JarFile JarEntry]
-           [java.util.regex Pattern]))
+           [java.util.regex Pattern])
+  (:require [dynapath.core :as dp]))
 
 ;;; Class file naming, categorization
 
@@ -119,7 +120,9 @@
 (defn classpath-urls
   "Return the classpath URL's for the current clojure classloader."
   []
-  (.getURLs ^java.net.URLClassLoader (.getClassLoader clojure.lang.RT)))
+  (let [cl (.getClassLoader clojure.lang.RT)]
+    (when (dp/readable-classpath? cl)
+      (dp/classpath-urls cl))))
 
 (defn classpath
   "Return the classpath File's for the current clojure classloader."

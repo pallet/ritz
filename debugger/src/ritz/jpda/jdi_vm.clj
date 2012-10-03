@@ -5,6 +5,7 @@
   (:require
    [ritz.jpda.jdi :as jdi]
    [ritz.logging :as logging]
+   [ritz.repl-utils.class-browse :as class-browse]
    [clojure.pprint :as pprint]
    [clojure.string :as string])
   (:import
@@ -185,4 +186,4 @@ executes the provided `cmd`."
    ":"
    (map
     format-classpath-url
-    (.getURLs ^java.net.URLClassLoader (.getClassLoader clojure.lang.RT)))))
+    (class-browse/classpath-urls))))
