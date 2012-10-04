@@ -54,7 +54,7 @@
             '~(merge
                (select-keys project [:jvm-opts :properties])
                opts
-               {:port (Integer. port)
+               {:port port
                 :host host
                 :classpath (vec user-classpath)
                 :vm-classpath (vec vm-classpath)
