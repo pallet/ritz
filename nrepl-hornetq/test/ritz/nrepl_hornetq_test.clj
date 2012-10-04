@@ -23,7 +23,7 @@
 
 (defonce use-slf4 (or (install-slf4j-bridge) 1))
 
- (set-level :trace)
+;; (set-level :trace)
 
 (defonce ^{:defonce true} server
   (doto (hornetq-server {:in-vm true :netty 55445}) .start))
