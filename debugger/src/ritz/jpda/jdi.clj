@@ -11,6 +11,8 @@
   (:use
    [clojure.stacktrace :only [print-cause-trace]])
   (:import
+   (java.io
+    File)
    (com.sun.jdi
     VirtualMachine PathSearchingVirtualMachine
     Bootstrap VMDisconnectedException
@@ -72,7 +74,10 @@
            quote-args (.get arguments "quote")
            main-args (.get arguments "main")
            option-args (.get arguments "options")
-           args (str " -cp '" classpath "' clojure.main -e '" expr "'")]
+           init-file (File/createTempFile "ritz-init" ".clj")
+           args (str " -cp '" classpath "' clojure.main -i " (.getCanonicalPath init-file))]
+       (.deleteOnExit init-file)
+       (spit init-file expr)
        (logging/trace "jdi/launch %s" args)
        (logging/trace "jdi/launch options %s" (string/join " " options))
        (.setValue quote-args "'")
