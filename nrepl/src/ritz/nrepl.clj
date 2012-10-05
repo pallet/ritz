@@ -255,7 +255,7 @@ generate a name for the thread."
                 :bind "localhost" :port 0 :ack-port ack-port
                 :handler (debug-handler host port))
         vm (launch-vm (merge
-                       {:classpath (join ":" vm-classpath) :main `@(promise)}
+                       {:classpath (join java.io.File/pathSeparatorChar vm-classpath) :main `@(promise)}
                        (select-keys options [:jvm-opts])))
         msg-thread (start-remote-thread vm "msg-pump")
         vm (assoc vm :msg-pump-thread msg-thread)
