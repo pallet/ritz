@@ -102,4 +102,4 @@
                            (project/merge-profiles project [ritz-profile]))]
        (eval-in-project
         start-project
-        (ritz-form project (or port 0) (or host "localhost") opts)))))
+        (ritz-form project (if port (Integer. port) 0) (or host "localhost") opts)))))
