@@ -195,12 +195,7 @@ connection is found in the connections map based on the session id."
                  :err new-session (:transport connection))]
         (trace "jpda session %s" s)
         (bindings-merge! connection s {#'*out* out #'*err* err})))
-    (let [transport (:transport connection)
-          msg (if (and (:ops msg) (:versions msg))
-                (do
-                  ;; assume this is a reply to the "describe" op
-                  )
-                msg)]
+    (let [transport (:transport connection)]
       (assert transport)
       (transport/send transport msg)))
   (trace "Reply forwarded"))
