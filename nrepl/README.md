@@ -45,40 +45,6 @@ Then in emacs, `M-x nrepl` and enter the port printed by the previous command.
 See [SLDB](http://common-lisp.net/project/slime/doc/html/Debugger.html) for help
 on using the debugger.
 
-## nREPL general middleware usage
-
-Add `ritz-nrepl` to your `:dev` `:dependencies` vector, and add the middleware
-to `:nrepl-middleware` under `:repl-options` in `project.clj.
-
-```clj
-:dependencies [[ritz/ritz-nrepl "0.5.0"]]
-:repl-options {:nrepl-middleware [ritz.nrepl.middleware.javadoc/wrap-javadoc]}
-```
-
-## Provided nREPL ops
-
-["javadoc"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.javadoc.html)
-: Returns a url of the javadoc for the specified symbol
-
-["apropos"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.apropos.html)
-: Returns a description of each function matching a partial symbol
-
-
-["doc"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.doc.html)
-: Returns the doc string for the specified symbol
-
-["describe-symbol"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.describe-symbol.html)
-: Returns a description of the specified symbol
-
-["complete"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.simple-complete.html)
-: Simple completion
-
-["complete"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.fuzzy-complete.html)
-: Fuzzy completion
-
-["eval"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.tracking-eval.html)
-: eval with source form tracking
-
 [API Docs](http://palletops.com/ritz/0.4/nrepl/api/)
 
 ## License
