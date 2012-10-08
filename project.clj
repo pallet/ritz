@@ -4,7 +4,8 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :scm {:url "git@github.com:pallet/ritz.git"}
-  :sub ["repl-utils" "debugger" "nrepl" "nrepl-hornetq" "swank" "lein-ritz"]
+  :sub ["repl-utils" "debugger" "nrepl-middleware" "nrepl" "nrepl-hornetq"
+        "swank" "lein-ritz"]
   :plugins [[lein-sub "0.2.3"]]
   :aliases {"clean" ["sub" "clean"]
             "install" ["sub" "install"]
