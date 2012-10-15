@@ -15,6 +15,14 @@ environments and for debuggers.
       <td>nREPL server.</td>
     </tr>
     <tr>
+      <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl-middleware">ritz-nrepl-middleware</a></td>
+      <td>nREPL middleware.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl-project>ritz-nrepl-project</a></td>
+      <td>nREPL project middleware.</td>
+    </tr>
+    <tr>
       <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl">ritz-nrepl-hornetq</a></td>
       <td>nREPL server and client for running over HornetQ</td>
     </tr>
