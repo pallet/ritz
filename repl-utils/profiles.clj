@@ -1,9 +1,7 @@
 {:dev {:dependencies [[com.cemerick/pomegranate "0.0.13"
                        :exclusions [org.slf4j/slf4j-api org.clojure/clojure]]
                       [classlojure "0.6.6"
-                       :exclusions [org.slf4j/slf4j-api org.clojure/clojure]]]
-       :repositories {"sonatype"
-                      "https://oss.sonatype.org/content/repositories/releases/"}}
+                       :exclusions [org.slf4j/slf4j-api org.clojure/clojure]]]}
  :codox {:codox {:writer codox-md.writer/write-docs
                  :output-dir "../doc/0.4/repl-utils/api"}
          :dependencies [[codox-md "0.1.0"]]

@@ -4,10 +4,12 @@
    ritz.repl-utils.classloader
    [cemerick.pomegranate.aether :only [dependency-files resolve-dependencies]]))
 
+(def repositories {"clojars" "https://clojars.org/repo/"
+                   "central" "http://repo1.maven.org/maven2/"})
 (deftest classloader-test
   (let [classpath (dependency-files
                    (resolve-dependencies
-                    :repositories {"clojars" "https://clojars.org/repo/"}
+                    :repositories repositories
                     :coordinates '[[org.clojure/clojure "1.4.0"]]
                     :retrieve true))
         {:keys [cl]} (classloader classpath nil nil nil)]
@@ -18,7 +20,7 @@
   (testing "1.4"
     (let [classpath (dependency-files
                      (resolve-dependencies
-                      :repositories {"clojars" "https://clojars.org/repo/"}
+                      :repositories repositories
                       :coordinates '[[org.clojure/clojure "1.4.0"]]
                       :retrieve true))
           {:keys [cl]} (set-classpath! classpath)]
@@ -27,7 +29,7 @@
   (testing "replace 1.4 with 1.3"
     (let [classpath (dependency-files
                      (resolve-dependencies
-                      :repositories {"clojars" "https://clojars.org/repo/"}
+                      :repositories repositories
                       :coordinates '[[org.clojure/clojure "1.3.0"]]
                       :retrieve true))
           {:keys [cl]} (set-classpath! classpath)]
