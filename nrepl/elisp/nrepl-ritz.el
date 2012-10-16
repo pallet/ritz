@@ -43,11 +43,11 @@ to specific the full path to it. Localhost is assumed."
   "nrepl op for eval of forms.")
 (make-variable-buffer-local 'nrepl-eval-op)
 
-(defun nrepl-eval-request (input &optional ns)
+(defun nrepl-eval-request (input &optional ns session)
   (append (if ns (list "ns" ns))
           (list
            "op" nrepl-eval-op
-           "session" (nrepl-current-session)
+           "session" (or session (nrepl-current-session))
            "code" input)))
 
 ;;; # General helpers
