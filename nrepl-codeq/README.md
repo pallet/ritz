@@ -6,9 +6,7 @@ provided to use the middleware.
 ## Usage
 
 You will need an nREPL srever running the codeq middleware, and to have the
-`nrepl-ritz.el` emacs packgae installed.
-
-[Clone codeq](https://github.com/Datomic/codeq), and run `lein install`.
+`nrepl-ritz.el` emacs package installed.
 
 Add nrepl-codeq to your `:dev` (in `project.clj`) or `:user` (in
 `~/.lein/profiles.clj`) dependencies.
@@ -37,8 +35,8 @@ containing a source element and a date element.
 
 ## Known Issues
 
-The middleware introduces a dependency on datomic and codeq in the user's
-project classpath. These transitively depend on clojure 1.5.0 alpha's.
+The middleware introduces a dependency on datomic in the user's project
+classpath. This transitively depends on clojure 1.5.0 alpha's.
 
 ## License
 
