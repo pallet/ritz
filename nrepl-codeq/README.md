@@ -8,10 +8,6 @@ provided to use the middleware.
 You will need an nREPL srever running the codeq middleware, and to have the
 `nrepl-ritz.el` emacs packgae installed.
 
-[Download datomic free](http://downloads.datomic.com/free.html), and install the
-datomic jar in your local repo following the
-[instructions](http://docs.datomic.com/integrating-peer-lib.html).
-
 [Clone codeq](https://github.com/Datomic/codeq), and run `lein install`.
 
 Add nrepl-codeq to your `:dev` (in `project.clj`) or `:user` (in
