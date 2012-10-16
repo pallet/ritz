@@ -265,7 +265,8 @@ generate a name for the thread."
     (when log-level
       (ritz.jpda.jdi-clj/control-eval vm `(ritz.logging/set-level ~log-level)))
     (ritz.jpda.jdi-clj/control-eval
-     vm `(ritz.nrepl.exec/set-middleware! ~(vec middleware)))
+     vm `(ritz.nrepl.exec/set-middleware!
+          ~(vec (map #(list 'quote %) middleware))))
     (ritz.jpda.jdi-clj/control-eval
      vm `(ritz.nrepl.exec/set-extra-classpath! ~(vec extra-classpath)))
     (ritz.jpda.jdi-clj/control-eval
