@@ -23,6 +23,10 @@ environments and for debuggers.
       <td>nREPL project middleware.</td>
     </tr>
     <tr>
+      <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl-codeq>ritz-nrepl-codeq</a></td>
+      <td>nREPL codeq middleware.</td>
+    </tr>
+    <tr>
       <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl">ritz-nrepl-hornetq</a></td>
       <td>nREPL server and client for running over HornetQ</td>
     </tr>

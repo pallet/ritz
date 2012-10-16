@@ -493,6 +493,38 @@ are supported:
 (define-key nrepl-interaction-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
 (define-key nrepl-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
 
+;;; codeq def browsing
+(defvar nrepl-codeq-url "datomic:free://localhost:4334/git")
+
+(defun nrepl--codeq-def-insert-def (def)
+  (destructuring-bind (def datetime) def
+    (insert "        " datetime "\n"
+            def "\n\n\n")))
+
+(defun nrepl-codeq-def-handler (symbol-name)
+  "Display codeq defs for symbol-name."
+  (when (not symbol-name)
+    (error "No symbol given"))
+  (nrepl-ritz-send-op-strings
+   "codeq-def"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer value)
+      (if value
+          (with-current-buffer (nrepl-popup-buffer "*nREPL codeq*" t)
+            (let ((inhibit-read-only t))
+              (mapc 'nrepl--codeq-def-insert-def value)))
+        (error "No codeq def for %s" symbol-name)))
+    nil nil nil)
+   `("symbol" ,symbol-name "ns" ,nrepl-buffer-ns
+     "datomic-url" ,nrepl-codeq-url)))
+
+(defun nrepl-codeq-def (query)
+  "Display codeq defs for symbol at point"
+  (interactive "P")
+  (nrepl-read-symbol-name
+   "Codeq defs for: " 'nrepl-codeq-def-handler query))
+
 ;;; undefine symbol
 (defun nrepl-ritz-undefine-symbol-handler (symbol-name)
   "Undefine on the symbol at point."
