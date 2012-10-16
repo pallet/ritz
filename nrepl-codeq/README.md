@@ -29,6 +29,17 @@ To view the definitions of a symbol within an nrepl.el session, use
 
     M-x nrepl-codeq-def
 
+## Middleware details
+
+The middleware provides the "codeq-def" op, and requires "symbol" and
+"datomic-url" arguments. It returns list, where each element is a list
+containing a source element and a date element.
+
+## Known Issues
+
+The middleware introduces a dependency on datomic and codeq in the user's
+project classpath. These transitively depend on clojure 1.5.0 alpha's.
+
 ## License
 
 Copyright © 2012 Hugo Duncan
