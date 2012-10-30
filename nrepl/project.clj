@@ -5,7 +5,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.4.0"]
-                 [org.clojure/tools.nrepl "0.2.0-beta9"
+                 [org.clojure/tools.nrepl "0.2.0-RC1"
                   :exclusions [org.clojure/clojure]]
                  [ritz/ritz-debugger "0.5.1-SNAPSHOT"]
                  [ritz/ritz-nrepl-middleware "0.5.1-SNAPSHOT"]]
