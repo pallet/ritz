@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :scm {:url "git@github.com:pallet/ritz.git"}
   :sub ["repl-utils" "debugger" "nrepl-middleware" "nrepl" "nrepl-hornetq"
-        "swank" "lein-ritz"]
+        "swank" "lein-ritz" "nrepl-codeq" "nrepl-project"]
   :plugins [[lein-sub "0.2.3"]]
   :aliases {"clean" ["sub" "clean"]
             "install" ["sub" "install"]
