@@ -42,12 +42,13 @@
    (fn [_] debug/forward-rpc)))
 
 (def swank-pipeline
-  (debug/execute-if-inspect-frame-var
-   (debug/execute-inspect-if-inspector-active
-    (debug/execute-unless-inspect
-     (debug/execute-peek
-      (debug/forward-command
-       core/command-not-found))))))
+  (debug/execute-if-quit-lisp
+   (debug/execute-if-inspect-frame-var
+    (debug/execute-inspect-if-inspector-active
+     (debug/execute-unless-inspect
+      (debug/execute-peek
+       (debug/forward-command
+        core/command-not-found)))))))
 
 (defn start-remote-thread
   "Start a remote thread in the specified vm context, using thread-name to

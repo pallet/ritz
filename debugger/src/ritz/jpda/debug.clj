@@ -58,6 +58,10 @@
    (jdi-clj/vm-rt
     (jdi-vm/launch-vm (or classpath (jdi-vm/current-classpath)) main options))))
 
+(defn exit-vm
+  [context]
+  (jdi-vm/vm-exit context))
+
 ;;; # Threads
 (defn threads
   "Return a sequence containing a thread reference for each remote thread."

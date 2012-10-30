@@ -9,18 +9,19 @@
    [clojure.pprint :as pprint]
    [clojure.string :as string])
   (:import
-   com.sun.jdi.event.Event
-   com.sun.jdi.event.EventSet
-   com.sun.jdi.event.ExceptionEvent
-   com.sun.jdi.event.VMDeathEvent
-   com.sun.jdi.request.ExceptionRequest
-   com.sun.jdi.ThreadReference
-   com.sun.jdi.VirtualMachine))
+   [com.sun.jdi ThreadReference VirtualMachine]
+   [com.sun.jdi.event
+    Event EventSet ExceptionEvent VMDeathEvent VMDisconnectEvent]
+   com.sun.jdi.request.ExceptionRequest))
 
 ;;; VM resume
 (defn vm-resume
   [context]
   (.resume ^VirtualMachine (:vm context)))
+
+(defn vm-exit
+  [context]
+  (.exit ^VirtualMachine (:vm context) 0))
 
 ;;; Control thread acquisition
 (def control-thread-name "JDI-VM-Control-Thread")
