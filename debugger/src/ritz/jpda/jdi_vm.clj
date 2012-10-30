@@ -79,6 +79,12 @@
              (vec (jdi/field-values (.exception event))))
             [true nil])))
 
+      (instance? VMDisconnectEvent event)
+      (do
+        (logging/trace
+         "jdi-vm/handle-acquire-event: unexpected VM disconnect")
+        [false nil])
+
       (instance? VMDeathEvent event)
       (do
         (logging/trace
