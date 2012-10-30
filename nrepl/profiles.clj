@@ -1,9 +1,13 @@
-{:codox {:codox {:writer codox-md.writer/write-docs
-                 :output-dir "../doc/0.4/nrepl/api"}
+{:dev {:plugins [[lein-jdk-tools "0.1.0"]]
+       :repl-options
+       {:nrepl-middleware
+        [ritz.nrepl.middleware.fuzzy-complete/wrap-fuzzy-complete]}}
+ :codox {:codox {:writer codox-md.writer/write-docs
+                 :output-dir "../doc/0.5/nrepl/api"}
          :dependencies [[codox-md "0.1.0"]]
          :pedantic :warn}
  :marginalia {:pedantic :warn
-              :dir "../doc/0.4/nrepl/source"}
+              :dir "../doc/0.5/nrepl/source"}
  :release
  {:set-version
   {:updates [{:path "README.md"

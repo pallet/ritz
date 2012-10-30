@@ -8,5 +8,4 @@
                  [org.clojure/tools.nrepl "0.2.0-RC1"
                   :exclusions [org.clojure/clojure]]
                  [ritz/ritz-debugger "0.5.1-SNAPSHOT"]
-                 [ritz/ritz-nrepl-middleware "0.5.1-SNAPSHOT"]]
-  :profiles {:dev {:plugins [[lein-jdk-tools "0.1.0"]]}})
+                 [ritz/ritz-nrepl-middleware "0.5.1-SNAPSHOT"]])
