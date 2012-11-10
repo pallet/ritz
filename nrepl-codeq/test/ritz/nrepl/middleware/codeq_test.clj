@@ -10,7 +10,8 @@
    [clojure.tools.nrepl.transport :only [recv]])
   (:import
    clojure.tools.nrepl.transport.QueueTransport
-   java.util.concurrent.LinkedBlockingQueue))
+   java.util.concurrent.LinkedBlockingQueue
+   java.util.TimeZone))
 
 (defn queue-transport
   "Return in and out queues, and atransport that uses them."
@@ -113,6 +114,7 @@ on the given transport with the handler, until the atom is set to false."
 
 (deftest codeq-def-test
   (try
+    (TimeZone/setDefault (TimeZone/getTimeZone "UTC"))
     (run-transactor)
     (populate-codeq)
     (let [[in out transport] (queue-transport)
@@ -127,7 +129,7 @@ on the given transport with the handler, until the atom is set to false."
                   :datomic-url (datomic-url) :id 0})
       (is (= {:value
               [["(defmacro trace\n  [fmt-str & args]\n  `(log :trace ~fmt-str ~@args))"
-                "Sat Jul 02 22:08:35 EDT 2011"]]
+                "Sun Jul 03 02:08:35 UTC 2011"]]
               :id 0}
              (.take out)))
 
