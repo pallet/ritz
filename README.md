@@ -4,7 +4,7 @@ Ritz is a collection of libraries and servers for clojure development
 environments and for debuggers.
 
 <table>
-  <thead><tr><th>project</th><th>descritption</th></tr></thead>
+  <thead><tr><th>project</th><th>description</th></tr></thead>
   <tbody>
     <tr>
       <td><a href="https://github.com/pallet/ritz/tree/develop/swank">ritz-swank</a></td>
