@@ -39,11 +39,12 @@
         out (@bindings #'*out*)
         err (@bindings #'*err*)
         file-path (or file-path (source-form-path id))
-        line (or line 1)]
+        line (or line 1)
+        debug (when debug (Boolean. debug))]
     (if (and ns (not explicit-ns-binding))
       (transport/send
        transport
-       (response-for msg {:status #{:error :namespace-not-found :done}}))
+       (response-for msg {:status #{:error :namespace-not-found :done} :ns ns}))
       (with-bindings @bindings
         (try
           (let [[v f] (with-compiler-options {:debug debug}
