@@ -20,7 +20,7 @@ lein do clean, test && \
 git flow release start $version || exit 1
 
 lein set-version ${version} :previous-version ${previous_version} \
-  || { echo "set version failed" >2 ; exit 1; }
+  || { echo "set version failed" >2 ; exit 1; } || exit 1
 
 lein set-sub-version ${version} :previous-version ${previous_version} \
   || { echo "set sub-version failed" >2 ; exit 1; }
