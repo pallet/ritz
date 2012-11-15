@@ -1,4 +1,4 @@
-(defproject ritz/ritz-nrepl-project "0.5.1-SNAPSHOT"
+(defproject ritz/ritz-nrepl-project "0.6.0"
   :description "Project middleware for nrepl"
   :url "https://github.com/pallet/ritz"
   :license {:name "Eclipse Public License"
