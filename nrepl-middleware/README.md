@@ -6,7 +6,7 @@ Middleware for [nREPL](https://github.com/clojure/tools.nrepl).
 
 Add `ritz-nrepl-middleware` to your `:dev` `:dependencies` vector, and add the
 middleware to `:nrepl-middleware` under `:repl-options`. You can do this in your
-`project.clj` file, or in your `:user` profile in `~/.lein/profiles.clj`.
+`project.clj` file, or in the `:user` profile in `~/.lein/profiles.clj`.
 
 ```clj
 :dependencies [[ritz/ritz-nrepl-middleware "0.5.0"]]

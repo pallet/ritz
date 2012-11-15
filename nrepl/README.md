@@ -1,11 +1,7 @@
 # ritz-nrepl
 
-`ritz-nrepl` comprises an nREPL server and middleware. The server uses JPDA to
-provide debugger middleware. The library also provides general purpose
-middleware, which can be used with any nREPL client, independently of the
-debugger.
-
-Alpha.
+`ritz-nrepl` is an nREPL server with a debugger. The server uses JPDA to provide
+debugger middleware.
 
 ## nREPL debugger server usage
 
