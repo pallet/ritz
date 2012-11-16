@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/tools.nrepl "0.2.0-RC1"]
                  [cheshire "3.0.0"]
-                 [hornetq-clj/client "0.2.0-SNAPSHOT"]
+                 [hornetq-clj/client "0.2.0"]
                  [ritz/ritz-repl-utils "0.6.0"]]
   :profiles {:dev {:dependencies [[hornetq-clj/server "0.2.0-SNAPSHOT"]
                                   [clojure-complete "0.2.2"]
