@@ -9,7 +9,7 @@ Add `lein-ritz` to the `:plugins` key of your `~/.lein/profiles` file (requires
 lein version 2).
 
 ```clj
-{:user {:plugins [[lein-ritz "0.5.0"]]}}
+{:user {:plugins [[lein-ritz "0.6.0"]]}}
 ```
 
 Install the nrepl-ritz.el contrib from

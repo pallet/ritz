@@ -1,6 +1,118 @@
 # Release Notes
 
-Current release is 0.5.0.
+Current release is 0.6.0.
+
+## 0.6.0
+
+### Features
+
+- Update nrepl-ritz.el to depend on nrepl 0.1.5
+
+- Update to tools.nrepl 0.2.0-RC1
+
+- Extract nrepl middleware into nrepl-middleware
+
+- Add support for nREPL over HornetQ
+
+- Add nREPL codeq middleware
+  Provides a M-x nrepl-codeq-def command, to show all defs for a symbol.
+
+- Add nREPL project middleware
+  Middleware to allow setting the classpath for different projects.
+
+- Use dynapath for reading the effective classpath from the class loader.
+  This allows class-browse/classpath-urls and jdi-vm/current-classpath to
+  work with non-URLClassLoaders. It doesn't deal with adding event
+  exclusions for non-URLClassLoaders.
+
+- Deprecate slime-javadoc-local-paths for slime-ritz-javadoc-local-paths
+  This is now a var, and is passed on each call to slime-javadoc. This
+  makes the call to javadoc stateless and avoids problems when using
+  load-project.
+
+- Use the stratum to identify clojure frames
+
+### Fixes
+
+- Fix handling of debug in tracking-eval
+
+- Fix handling of debug options in compile-string-for-emacs
+
+- Clear aborts on every command
+  This is a sledgehammer to clear :abort-to-level flags in the debugger. A 
+  more elegant solution would be appreciated.
+
+- Add doc and release profiles to nrepl-project and -codeq
+
+- Handle VMDisconnectEvent
+
+- Add hard kill of vm on quit-lisp
+
+- Fix handling of specified middleware in nrepl server
+
+- Fix formatting of long line
+
+- Update nrepl-eval-request for compatibilty with nrepl master
+
+- Don't filter describe response in nrepl
+
+- Support ritz-swank port and host specification in project or environment
+  In line with current lein repl, allow specification of LEIN_REPL_PORT and 
+  LEIN_REPL_HOST environment variables, and the specificaiton of :host and
+  :port in the project :repl-options.
+
+- Use pathSeparatorChar when building the launch classpath, refs #52
+
+- use a init file insteads of passing the clojure form as command line
+  parameter, refs #52
+  There seems to be an issue when using nested single/double quotes in 
+  arguments passed to the LaunchingConnector (Windows platform only).
+
+- Fix port in ritz-form (now passed as integer)
+
+- add lein-profile when started with "--no-debug"
+  The dependency is required to start the swank server.
+
+- fix slime-break-on-exception
+  The prefix arg was always converted to a number. Numbers are always 
+  logically true.  Also "swank:break-on-exception" was invoked using the 
+  string value "true" or "false", which are always logically true.
+
+- Use System/out for logging by preference
+
+- Fix add-all-connections-fn! calls
+
+- Add exclusions to reduce number of unused transitive dependencies
+
+- Pass string explicitly in thread startup form, rather than a symbol
+
+- Update doc strings
+
+- Add a function to return a sequence of field namv/values pairs
+  Useful when exposing state without making remote method invocations.
+
+- Use pathSeparatorChar when building the launch classpath
+  Should address issues when starting on windows.
+
+- Ensure tools.jar is on the classpath with lein ritz-nrepl
+  Fixes #53
+
+- Add connection for eval-string-in-frame tests
+
+- Force use of clojure 1.4 in the controlling vm
+
+- Fix recursive exception handling
+
+- Fix named stepping restarts in ritz-swank
+
+- Fix eval-in-frame for new classloader usage
+  The eval-in-frame code was using the wrong clojure runtime.
+
+- Add nrepl-ritz-propery-bounds
+
+- Make exception handling more robust
+  Ignore exceptions from the context control threads.
+
 
 ## 0.5.0
 
