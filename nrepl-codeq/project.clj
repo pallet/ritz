@@ -1,4 +1,4 @@
-(defproject ritz/ritz-nrepl-codeq "0.6.0"
+(defproject ritz/ritz-nrepl-codeq "0.6.1-SNAPSHOT"
   :description "nREPL middleware for datom codeq"
   :url "https://github.com/pallet/ritz"
   :license {:name "Eclipse Public License"
@@ -6,4 +6,4 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/tools.nrepl "0.2.0-RC1"]
                  [com.datomic/datomic-free "0.8.3551"]
-                 [ritz/ritz-repl-utils "0.6.0"]])
+                 [ritz/ritz-repl-utils "0.6.1-SNAPSHOT"]])

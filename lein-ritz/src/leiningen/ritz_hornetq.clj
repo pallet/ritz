@@ -13,7 +13,7 @@
 (def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.0-beta9"
                                      :exclusions [org.clojure/clojure]]]})
 
-(def ritz-profile {:dependencies '[[ritz/ritz-nrepl-hornetq "0.6.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-nrepl-hornetq "0.6.1-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
 (defn- start-nrepl-server
