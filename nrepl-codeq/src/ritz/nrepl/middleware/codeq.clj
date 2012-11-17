@@ -42,9 +42,12 @@
 
 (defn codeq-def-reply
   "Reply to codeq-def message"
-  [{:keys [project symbol datomic-url transport] :as msg}]
+  [{:keys [project symbol ns datomic-url transport] :as msg}]
   (try
-    (let [res (query-definitions symbol datomic-url)]
+    (let [symbol (if (and symbol ns (.contains symbol "/"))
+                   symbol
+                   (str ns "/" symbol))
+          res (query-definitions symbol datomic-url)]
       (trace "codeq-def-reply %s" (vec res))
       (send-msg transport (response-for msg :value res)))
     (send-msg transport (response-for msg :status #{:done}))
