@@ -11,6 +11,7 @@
    [ritz.swank.messages :as messages]
    ritz.swank.connections)
   (:use
+   [ritz.debugger.break :only [clear-aborts]]
    [ritz.debugger.connection
     :only [bindings bindings-assoc!]
     :rename {bindings connection-bindings}]
@@ -31,7 +32,7 @@
  ritz.swank.connections/connection-for-event)
 
 (add-all-connections-fn!
- (ritz.swank.connections/all-connections))
+ ritz.swank.connections/all-connections)
 
 (def default-pipeline
   (core/execute-slime-fn core/command-not-found))
@@ -43,6 +44,7 @@
     (let [connection (connection/request connection buffer-package thread id)
           f (commands/slime-fn (first form))
           handler (or (connection/swank-handler connection) default-pipeline)
+          _ (clear-aborts connection)
           result (handler connection form buffer-package id f)]
       (cond
        (= ::abort result) (do

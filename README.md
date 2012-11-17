@@ -4,7 +4,7 @@ Ritz is a collection of libraries and servers for clojure development
 environments and for debuggers.
 
 <table>
-  <thead><tr><th>project</th><th>descritption</th></tr></thead>
+  <thead><tr><th>project</th><th>description</th></tr></thead>
   <tbody>
     <tr>
       <td><a href="https://github.com/pallet/ritz/tree/develop/swank">ritz-swank</a></td>
@@ -13,6 +13,22 @@ environments and for debuggers.
     <tr>
       <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl">ritz-nrepl</a></td>
       <td>nREPL server.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl-middleware">ritz-nrepl-middleware</a></td>
+      <td>nREPL middleware.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl-project">ritz-nrepl-project</a></td>
+      <td>nREPL project middleware.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl-codeq">ritz-nrepl-codeq</a></td>
+      <td>nREPL codeq middleware.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/pallet/ritz/tree/develop/nrepl-hornetq">ritz-nrepl-hornetq</a></td>
+      <td>nREPL server and client for running over HornetQ</td>
     </tr>
     <tr>
       <td><a href="https://github.com/pallet/ritz/tree/develop/debugger">ritz-debugger</a></td>

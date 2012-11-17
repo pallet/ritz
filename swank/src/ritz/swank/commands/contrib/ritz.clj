@@ -8,7 +8,7 @@
            exception-filter-enable! exception-filter-disable!]]
    [ritz.repl-utils.source-forms :only [source-forms]]
    [ritz.swank.commands :only [defslimefn]]
-   [ritz.swank.connection :only [current-namespace]]
+   [ritz.swank.connection :only [current-namespace request-ns]]
    [ritz.swank.core :only [reset-namespaces]])
   (:require
    [clojure.java.javadoc :as javadoc]
@@ -124,8 +124,9 @@ corresponding attribute values per thread."
   nil)
 
 (defslimefn javadoc-url
-  [connection symbol-name]
-  (doc/javadoc-url symbol-name (current-namespace connection)))
+  [connection symbol-name local-javadoc-paths]
+  (doc/javadoc-local-paths local-javadoc-paths)
+  (doc/javadoc-url symbol-name (ns-name (request-ns connection))))
 
 ;;; Namespaces
 (defslimefn reset-repl

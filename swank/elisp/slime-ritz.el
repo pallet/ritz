@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.5.0
+;; Version: 0.6.0
 ;; License: EPL
 
 (define-slime-contrib slime-ritz
@@ -19,10 +19,11 @@
    (define-key java-mode-map "\C-c\C-x\C-b" 'slime-java-line-breakpoint)))
 
 (defun slime-break-on-exception (flag)
-  "Set a breakpoint at the current line"
-  (interactive "p")
+  "Break when an exception is thrown.
+With prefix argument FLAG, do not break on exception"
+  (interactive "P")
   (slime-eval-with-transcript
-   `(swank:break-on-exception ,(if flag "true" "false"))))
+   `(swank:break-on-exception ,(not flag))))
 
 (defun slime-line-breakpoint ()
   "Set a breakpoint at the current line"
@@ -361,16 +362,20 @@
    `(swank:resume-vm)))
 
 ;;; javadoc browsing
+(defvar slime-ritz-javadoc-local-paths nil
+  "A list of paths to local javadoc")
+
 (defun slime-javadoc-local-paths (local-paths)
-  "Require JavaDoc namespace, adding a list of local paths."
-  (slime-eval-async `(swank:javadoc-local-paths ,@local-paths)))
+  "Set the list of local paths. This is provided for backward compatibility."
+  (setq slime-ritz-javadoc-local-paths local-paths))
 
 (defun slime-javadoc (symbol-name)
   "Browse javadoc on the Java class at point."
   (interactive (list (slime-read-symbol-name "Javadoc for: ")))
   (when (not symbol-name)
     (error "No symbol given"))
-  (slime-eval-async `(swank:javadoc-url ,symbol-name)
+  (slime-eval-async
+      `(swank:javadoc-url ,symbol-name ,slime-ritz-javadoc-local-paths)
     (lambda (url)
       (if url
           (browse-url url)

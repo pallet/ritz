@@ -24,20 +24,18 @@ processes."
            read-exception-filters default-exception-filters]]
    [ritz.jpda.debug
     :only [add-exception-event-request add-connection-for-event-fn!
-           add-all-connections-fn!]]
+           add-all-connections-fn! launch-vm]]
    [ritz.jpda.jdi
     :only [connector connector-args invoke-single-threaded collected?]]
    [ritz.jpda.jdi-clj :only [control-eval]]
-   [ritz.jpda.jdi-vm
-    :only [acquire-thread launch-vm start-control-thread-body vm-resume]]
+   [ritz.jpda.jdi-vm :only [acquire-thread start-control-thread-body vm-resume]]
    [ritz.logging :only [set-level trace]]
    [ritz.nrepl.connections
     :only [add-pending-connection connection-for-session
            promote-pending-connection rename-connection]]
    [ritz.nrepl.debug-eval :only [debug-eval]]
-   [ritz.nrepl.exec :only [read-msg-using-classloader]]
    [ritz.nrepl.middleware.tracking-eval :only [wrap-source-forms]]
-   [ritz.nrepl.rexec :only [rexec]]
+   [ritz.nrepl.rexec :only [rexec rread-msg]]
    [ritz.nrepl.simple-eval :only [simple-eval]])
   (:require
    [clojure.java.io :as io]
@@ -49,7 +47,7 @@ processes."
  ritz.nrepl.connections/connection-for-event)
 
 (add-all-connections-fn!
- (ritz.nrepl.connections/all-connections))
+ ritz.nrepl.connections/all-connections)
 
 
 (defonce vm (atom nil))
@@ -197,12 +195,7 @@ connection is found in the connections map based on the session id."
                  :err new-session (:transport connection))]
         (trace "jpda session %s" s)
         (bindings-merge! connection s {#'*out* out #'*err* err})))
-    (let [transport (:transport connection)
-          msg (if (and (:ops msg) (:versions msg))
-                (do
-                  ;; assume this is a reply to the "describe" op
-                  )
-                msg)]
+    (let [transport (:transport connection)]
       (assert transport)
       (transport/send transport msg)))
   (trace "Reply forwarded"))
@@ -211,9 +204,7 @@ connection is found in the connections map based on the session id."
   [vm thread]
   (loop []
     (try
-      (let [reply (jdi-clj/eval
-                   vm thread invoke-single-threaded
-                   `(read-msg-using-classloader))]
+      (let [reply (rread-msg vm thread)]
         (cond
           (nil? reply) (do
                          (trace "reply-pump returned nil message")
@@ -232,7 +223,6 @@ connection is found in the connections map based on the session id."
   [server vm]
   (let [thread (:msg-pump-thread vm)]
     (assert thread)
-    (jdi-clj/eval vm thread invoke-single-threaded `(require 'ritz.nrepl.exec))
     (doto (Thread. ^clojure.lang.IFn (partial reply-pump vm thread))
       (.setName "Ritz-reply-msg-pump")
       (.setDaemon false)
@@ -253,25 +243,30 @@ generate a name for the thread."
 
 (defn start-jpda-server
   [{:keys [host port ack-port repl-port-path classpath vm-classpath
-           middleware log-level extra-classpath]}]
+           middleware log-level extra-classpath] :as options}]
   (when log-level
     (set-level log-level))
   (let [server (start-server
                 :bind "localhost" :port 0 :ack-port ack-port
                 :handler (debug-handler host port))
-        vm (launch-vm (join ":" vm-classpath) `@(promise))
+        vm (launch-vm
+            (merge
+             {:classpath (join java.io.File/pathSeparatorChar vm-classpath)
+              :main `@(promise)}
+             (select-keys options [:jvm-opts])))
         msg-thread (start-remote-thread vm "msg-pump")
         vm (assoc vm :msg-pump-thread msg-thread)
         _ (set-vm vm)
         port (-> server deref ^java.net.ServerSocket (:ss) .getLocalPort)]
-    (add-exception-event-request vm)
     (vm-resume vm)
     (ritz.jpda.jdi-clj/control-eval
-     vm `(require 'ritz.nrepl.exec 'ritz.logging))
+     vm `(require 'ritz.nrepl.exec 'ritz.logging)
+     {:disable-exception-requests true})
     (when log-level
       (ritz.jpda.jdi-clj/control-eval vm `(ritz.logging/set-level ~log-level)))
     (ritz.jpda.jdi-clj/control-eval
-     vm `(ritz.nrepl.exec/set-middleware! ~(vec middleware)))
+     vm `(ritz.nrepl.exec/set-middleware!
+          ~(vec (map #(list 'quote %) middleware))))
     (ritz.jpda.jdi-clj/control-eval
      vm `(ritz.nrepl.exec/set-extra-classpath! ~(vec extra-classpath)))
     (ritz.jpda.jdi-clj/control-eval
@@ -280,6 +275,7 @@ generate a name for the thread."
       (ritz.jpda.jdi-clj/control-eval
        vm `(ritz.nrepl.exec/set-log-level ~log-level)))
     (start-reply-pump server vm)
+    (add-exception-event-request vm)
     (deliver server-ready nil)
     (println "nREPL server started on port" port)
     (when repl-port-path

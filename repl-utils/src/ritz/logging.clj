@@ -2,7 +2,10 @@
   "Logging for swank. Rudimentary for now")
 
 (defonce ^java.io.Writer logging-out
-  (or *out* (java.io.FileWriter. (java.io.File. "/tmp/swank.log"))))
+  (or
+   (java.io.PrintWriter. System/out)
+   *out*
+   (java.io.FileWriter. (java.io.File. "/tmp/swank.log"))))
 
 (def monitor (Object.))
 

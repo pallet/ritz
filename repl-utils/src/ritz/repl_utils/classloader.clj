@@ -25,7 +25,7 @@ This depends on having classlojure on the classpath."
 
 (defn has-classloader?
   []
-  @cl)
+  (boolean @cl))
 
 (defn absolute-filename [filename]
   (.getPath (file filename)))
@@ -38,30 +38,23 @@ This depends on having classlojure on the classpath."
   [files]
   (->> files (map absolute-filename) (map filename-to-url-string)))
 
-(defn requires-reset?
-  "Predicate to test if a new classpath would require a classpath reset.
-Returns a map with reset? and new-cl? flags."
-  [files]
-  (let [all-files (union (set files) @cl-extra-files)]
-    {:reset? (or (not (seq @cl-files))
-                 (seq (difference @cl-files all-files)))
-     :new-cl? (not= @cl-files all-files)}))
+(defn classloader
+  "Take a new classpath `files`, an existing classloader `cl`, (possibly nil),
+  an existing classpath `cl-files`, and extra files `cl-extra-files` to be added
+  to the specified `files` and returns a map. The returned `:cl` key is
+  the (possibly new). The `:cp` key contains the classpath. The `:extra-files`
+  key contains the extra files.
 
-(defn set-extra-classpath!
-  "Set the extra files for the classpath."
-  [files]
-  (reset! cl-extra-files (set files))
-  nil)
-
-(defn set-classpath!
-  "Set the ClassLoader to the specified files."
-  [files]
+  If any dependencies in `cl-files` are not specified in `files` then the
+  clojure runtime is properly re-initialised. Otherwise the new classloader
+  has the previous classloader as it's parent."
+  [files cl cl-files cl-extra-files]
   (feature-cond
    classlojure-on-classpath
-   (let [file-set (union (set files) @cl-extra-files)
-         new-files (difference file-set @cl-files)
-         removed-files (difference @cl-files file-set)
-         reset-required (or (seq removed-files) (not (seq @cl-files)))
+   (let [file-set (union (set files) cl-extra-files)
+         new-files (difference file-set cl-files)
+         removed-files (difference cl-files file-set)
+         reset-required (or (seq removed-files) (not (seq cl-files)))
          loader (if reset-required
                   (doto (#'classlojure.core/url-classloader
                          (files-to-urls file-set)
@@ -74,21 +67,55 @@ Returns a map with reset? and new-cl? flags."
                       new-files
                       (map absolute-filename)
                       (map filename-to-url-string))
-                     @cl)
-                    @cl))]
-     (reset! cl loader)
-     (reset! cl-files file-set)
-     nil)
-   :else (throw (Exception. "Can not configure classpath"))))
+                     cl)
+                    cl))]
+     {:cl loader :cp file-set :extra-files cl-extra-files
+      :reset-required? reset-required})
+   :else (throw
+          (Exception.
+           "Can not configure classpath. Classlojure not on classpath."))))
+
+
+(defn requires-reset?
+  "Predicate to test if a new classpath would require a classpath reset.
+Returns a map with reset? and new-cl? flags."
+  ([files cl-files cl-extra-files]
+     (let [all-files (union (set files) cl-extra-files)]
+       {:reset? (or (not (seq cl-files))
+                    (seq (difference cl-files all-files)))
+        :new-cl? (not= cl-files all-files)}))
+  ([files]
+     (requires-reset? files @cl-files @cl-extra-files)))
+
+(defn set-extra-classpath!
+  "Set the extra files for the classpath."
+  [files]
+  (reset! cl-extra-files (set files))
+  nil)
+
+(defn set-classpath!
+  "Set the ClassLoader to the specified files."
+  [files]
+  (let [{:keys [cp] :as cl-info} (classloader
+                                  files @cl @cl-files @cl-extra-files)]
+    (reset! cl (:cl cl-info))
+    (reset! cl-files cp)
+    nil))
 
 (defn classpath
   []
   (when-let [cl @cl] (.getURLs cl)))
 
+(defn eval-clojure-in
+  "Evaluate a closure form in the specified classloader `cl` with the specified
+  args."
+  [cl form & args]
+  (trace "eval-clojure in %s %s" form (vec args))
+  (feature-cond
+   classlojure-on-classpath (apply eval-in cl form args)
+   :else (throw (Exception. "Can not eval in configurable classpath"))))
+
 (defn eval-clojure
   "Evaluate a closure form in a classloader with the specified paths."
   [form & args]
-  (trace "eval-clojure %s %s" form (vec args))
-  (feature-cond
-   classlojure-on-classpath (apply eval-in @cl form args)
-   :else (throw (Exception. "Can not eval in configurable classpath"))))
+  (apply eval-clojure-in @cl form args))

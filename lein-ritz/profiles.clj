@@ -12,4 +12,7 @@
               #"ritz-nrepl \"\d+\.\d+\.\d+(-SNAPSHOT)?\""}
              {:path "src/leiningen/ritz_nrepl.clj"
               :search-regex
-              #"ritz-repl-utils \"\d+\.\d+\.\d+(-SNAPSHOT)?\""}]}}}
+              #"ritz-repl-utils \"\d+\.\d+\.\d+(-SNAPSHOT)?\""}
+             {:path "src/leiningen/ritz_hornetq.clj"
+              :search-regex
+              #"ritz-nrepl-hornetq \"\d+\.\d+\.\d+(-SNAPSHOT)?\""}]}}}

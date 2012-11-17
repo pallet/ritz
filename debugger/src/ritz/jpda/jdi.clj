@@ -11,13 +11,16 @@
   (:use
    [clojure.stacktrace :only [print-cause-trace]])
   (:import
+   (java.io
+    File)
    (com.sun.jdi
     VirtualMachine PathSearchingVirtualMachine
     Bootstrap VMDisconnectedException
     ObjectReference StringReference
     ThreadReference ThreadGroupReference
     ReferenceType Locatable Location StackFrame
-    Field LocalVariable Method ClassType Value)
+    Field LocalVariable Method ClassType Value Mirror
+    ClassLoaderReference)
    (com.sun.jdi.connect
     Connector)
    (com.sun.jdi.event
@@ -71,7 +74,10 @@
            quote-args (.get arguments "quote")
            main-args (.get arguments "main")
            option-args (.get arguments "options")
-           args (str " -cp '" classpath "' clojure.main -e '" expr "'")]
+           init-file (File/createTempFile "ritz-init" ".clj")
+           args (str " -cp '" classpath "' clojure.main -i " (.getCanonicalPath init-file))]
+       (.deleteOnExit init-file)
+       (spit init-file expr)
        (logging/trace "jdi/launch %s" args)
        (logging/trace "jdi/launch options %s" (string/join " " options))
        (.setValue quote-args "'")
@@ -192,14 +198,19 @@
 (defn vm-event-daemon
   "Runs a thread to dispatch the vm events
    `connected` is an atom to to allow clean loop shutdown"
-  [vm connected context]
-  (logging/trace "vm-event-daemons")
-  {:vm-ev (executor/daemon-thread
-           "vm-events"
-           (run-events vm connected context handle-event)
-           (logging/trace "vm-events: exit"))})
+  [context]
+  (logging/trace "vm-event-daemon")
+  (assoc context
+    :vm-ev (executor/daemon-thread
+            "vm-events"
+            (run-events (:vm context) (:connected context) context handle-event)
+            (logging/trace "vm-events: exit"))))
 
 ;;; low level wrappers
+(defn ^VirtualMachine virtual-machine
+  [^Mirror m]
+  (.virtualMachine m))
+
 (defn classes
   "Return the class references for the class name from the vm."
   [^VirtualMachine vm ^String class-name]
@@ -225,6 +236,13 @@
 (defn object-reference-type-name
   [^ObjectReference obj-ref]
   (format "ObjectReference %s" (.. obj-ref referenceType name)))
+
+(defn field-values
+  "Returns a sequence of Field name and Value pairs."
+  [^ObjectReference obj-ref]
+  (map
+   (juxt #(.name %) #(.getValue obj-ref %))
+   (.. obj-ref referenceType allFields)))
 
 
 (defn save-exception-request-states
@@ -274,10 +292,12 @@
     :or {threading invoke-single-threaded disable-exception-requests false}
     :as options}
    class-or-object ^Method method args]
+  {:pre [thread class-or-object method]}
   ;; (logging/trace
   ;;  "jdi/invoke-method %s %s\nargs %s\noptions %s"
   ;;  class-or-object method (pr-str args) options)
-  (logging/trace "jdi/invoke-method %s %s" method options)
+  (logging/trace
+   "jdi/invoke-method %s arg count %s options %s" method (count args) options)
   (try
     (letfn [(invoke []
               (let [args (java.util.ArrayList. (or args []))]
@@ -465,6 +485,12 @@
   (doseq [^ThreadReference thread threads]
     (.resume thread)))
 
+(defn ^ClassLoaderReference thread-classloader
+  "Return the classloader used by the current thread. This works by finding the
+classloader for the current frame's declaring type."
+  [^ThreadReference thread]
+  (.. (first (.frames thread)) location declaringType classLoader))
+
 ;;; Event Requests
 (def
   ^{:doc "Keyword to event request suspend policy value. Allows specification
@@ -629,18 +655,13 @@
    (mapcat #(class-line-locations % line))
    (map #(breakpoint vm suspend-policy %))))
 
-;;; from cdt
 (defn clojure-frame?
-  "Predicate to test if a frame is a clojure frame. Checks the for the extension
-   of the frame location's source name, or for the presence of well know clojure
-   field prefixes."
+  "Predicate to test if a frame is a clojure frame. Uses the declaring type's
+default stratum to decide."
   [^StackFrame frame fields]
-  (let [^String source-path (location-source-path (.location frame))]
-    (or (and source-path (.endsWith source-path ".clj"))
-        (and
-         (some #{"__meta"} (map #(.name ^Field %) fields))
-         ;;(or (nil? source-path) (not (.endsWith source-path ".java")))
-         ))))
+  (let [^Location location (.location frame)
+        ^String stratum (.. location declaringType defaultStratum)]
+    (= "Clojure" stratum)))
 
 (def clojure-implementation-regex
   #"(^const__\d*$|^__meta$|^__var__callsite__\d*$|^__site__\d*__$|^__thunk__\d*__$)")
@@ -694,7 +715,11 @@
     {:field field
      :name field-name
      :unmangled-name (unmunge-clojure field-name)
-     :value value}))
+     :value value
+     :synthetic (.isSynthetic field)
+     :static (.isStatic field)
+     :final (.isFinal field)
+     :type (.typeName field)}))
 
 (defn local-maps
   "Returns a sequence of maps representing unmangled clojure locals."
@@ -704,7 +729,9 @@
     {:local local
      :name local-name
      :unmangled-name (if unmangle? (unmunge-clojure local-name) local-name)
-     :value value}))
+     :value value
+     :type (.typeName local)
+     :argument (.isArgument local)}))
 
 (defn unmangled-frame-locals
   "Return a sequence of maps, representing the fields and locals in a frame.
@@ -744,29 +771,35 @@
         method (location-method-name location)
         line (location-line-number location)
         ^String source-name (or (location-source-name location) "UNKNOWN")
-        ^String source-path (or (location-source-path location) "UNKNOWN")]
-    (if (and (= method "invoke") source-name
-             (or (.endsWith source-name ".clj")
-                 (.startsWith source-name "SOURCE_FORM_")))
+        ^String source-path (or (location-source-path location) "UNKNOWN")
+        ^String stratum (.. location declaringType defaultStratum)]
+    (if (= stratum "Clojure")
       {:function (and declaring-type (unmunge-clojure declaring-type))
        :source source-name
        :source-path source-path
-       :line line}
+       :line line
+       :stratum stratum}
       {:function (format "%s.%s" declaring-type method)
        :source source-name
        :source-path source-path
-       :line line})))
+       :line line
+       :stratum stratum})))
 
 (defn exception-message
   "Provide a string with the details of the exception"
-  [context ^ExceptionEvent event]
-  (with-disabled-exception-requests [(:vm context)]
+  [context ^ObjectReference exception ^ThreadReference thread]
+  (with-disabled-exception-requests [(.virtualMachine thread)]
     (when-let [msg (invoke-method
-                    (event-thread event)
+                    thread
                     {:disable-exception-requests true}
-                    (.exception event)
+                    exception
                     (:exception-message context) [])]
       (string-value msg))))
+
+(defn exception-event-message
+  "Provide a string with the details of the exception"
+  [context ^ExceptionEvent event]
+  (exception-message context (.exception event) (event-thread event)))
 
 (defn exception-event-string
   "Provide a string with the details of the exception"
@@ -774,7 +807,7 @@
   (format
    "%s\n%s\n%s\n%s"
    (.. event exception referenceType name)
-   (exception-message context event)
+   (exception-event-message context event)
    (.. event exception toString)
    (string/join
     \newline

@@ -1,0 +1,38 @@
+<configuration>
+
+  <!-- prevent per-message overhead for jul logging calls, e.g. Hornet -->
+  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+    <resetJUL>true</resetJUL>
+  </contextListener>
+
+  <appender name="MAIN" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${DATOMIC_LOG_DIR:-log}/%d{yyyy-MM-dd}.log</fileNamePattern>
+      <maxHistory>72</maxHistory> 
+    </rollingPolicy>
+    <prudent>true</prudent> <!-- multi jvm safe, slower -->
+    <encoder>
+      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %-10contextName %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- comment this out to see logging of segment->object cache conversions -->
+  <logger name="datomic.domain" level="INFO"/>
+
+  <!-- comment this out to see detailed logging of storage access -->
+  <!-- <logger name="datomic.kv-cluster" level="INFO"/> -->
+
+  <!-- these namespsaces create a ton of log noise -->
+  <logger name="httpclient" level="INFO"/>
+  <logger name="org.apache.commons.httpclient" level="INFO"/>
+  <logger name="org.apache.http" level="INFO"/>
+  <logger name="org.jets3t" level="INFO"/>
+  <logger name="com.amazonaws" level="INFO"/>
+  <logger name="com.amazonaws.request" level="WARN"/>
+  <logger name="sun.rmi" level="INFO"/> 
+  <logger name="net.spy.memcached" level="INFO"/>
+
+  <root level="debug">
+    <appender-ref ref="MAIN"/>
+  </root>
+</configuration>

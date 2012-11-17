@@ -46,7 +46,9 @@
     core/protocol-version))
 
 (defslimefn quit-lisp [connection]
+  (trace "shutting down agents")
   (shutdown-agents)
+  (trace "exiting")
   (System/exit 0))
 
 (defslimefn toggle-debug-on-swank-error [connection]
@@ -219,7 +221,7 @@
         file (java.io.File. buffer-path)
         line (utils-io/read-position-line file position)
         ret (binding [*ns* (or (utils-io/guess-namespace file) *ns*)]
-              (with-compiler-options (compiler-options debug)
+              (with-compiler-options (compiler-options (list :policy debug))
                 (compile/compile-region string buffer-path line)))
         delta (- (System/nanoTime) start)]
     (messages/compilation-result nil ret (/ delta 1000000000.0))))

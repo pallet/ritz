@@ -22,10 +22,11 @@
    ritz.swank.commands.contrib.ritz)
   (:use
    [clojure.string :only [join]]
+   [ritz.jpda.debug :only [launch-vm]]
    [ritz.jpda.jdi :only [invoke-single-threaded]]
    [ritz.jpda.jdi-clj :only [control-eval]]
    [ritz.jpda.jdi-vm
-    :only [acquire-thread launch-vm start-control-thread-body vm-resume]]
+    :only [acquire-thread start-control-thread-body vm-resume]]
    [ritz.logging :only [trace]]
    [ritz.swank.connections :only [add-connection]]
    [ritz.swank.rexec :only [rexec rread-msg]]
@@ -41,12 +42,13 @@
    (fn [_] debug/forward-rpc)))
 
 (def swank-pipeline
-  (debug/execute-if-inspect-frame-var
-   (debug/execute-inspect-if-inspector-active
-    (debug/execute-unless-inspect
-     (debug/execute-peek
-      (debug/forward-command
-       core/command-not-found))))))
+  (debug/execute-if-quit-lisp
+   (debug/execute-if-inspect-frame-var
+    (debug/execute-inspect-if-inspector-active
+     (debug/execute-unless-inspect
+      (debug/execute-peek
+       (debug/forward-command
+        core/command-not-found)))))))
 
 (defn start-remote-thread
   "Start a remote thread in the specified vm context, using thread-name to
@@ -72,9 +74,10 @@ generate a name for the thread."
                    options
                    (dissoc :announce)
                    (merge {:port 0 :join true :server-ns 'ritz.repl}))
-          cp (pr-str (join ":" vm-classpath))
-          vm (apply launch-vm cp `@(promise)
-                    (apply concat (select-keys options [:jvm-opts])))
+          cp (join java.io.File/pathSeparatorChar vm-classpath)
+          vm (launch-vm
+              (merge {:classpath cp :main `@(promise)}
+                     (select-keys options [:jvm-opts])))
           msg-thread (start-remote-thread vm "msg-pump")
           vm (assoc vm :msg-pump-thread msg-thread)
           options (assoc options :vm-context vm)]

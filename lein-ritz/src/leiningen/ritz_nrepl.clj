@@ -9,31 +9,16 @@
   (:use
    [clojure.tools.cli :only [cli]]
    [clojure.set :only [difference]]
-   [leiningen.core.classpath :only [get-classpath]]))
+   [leiningen.core.classpath :only [get-classpath]]
+   [ritz.plugin-helpers
+    :only [classlojure-profile clojure-profile lein-profile]]))
 
-(def nrepl-version "0.2.0-beta9")
-
-(def profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
-                               :exclusions [org.clojure/clojure]]
-                              [clojure-complete "0.2.1"
-                               :exclusions [org.clojure/clojure]]]})
-
-(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
+(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.0-beta9"
                                      :exclusions [org.clojure/clojure]]]})
 
-(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl nrepl-version
-                                     :exclusions [org.clojure/clojure]]]})
-
-
-(def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.5.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.6.0"
                                     :exclusions [org.clojure/clojure]]]})
 
-(def repl-utils-profile {:dependencies '[[ritz/ritz-repl-utils "0.5.0"
-                                          :exclusions [org.clojure/clojure]]]})
-
-(def lein-project-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
-
-(def classlojure-profile {:dependencies '[[classlojure "0.6.6"]]})
 
 (defn- start-jpda-server
   "Start the JPDA nrepl server. The JPDA nrepl server will start the user
@@ -44,12 +29,15 @@ project server."
   (let [jpda-project (->
                       project
                       (project/merge-profiles
-                       [ritz-profile lein-project-profile]))
+                       [clojure-profile lein-profile ritz-profile])
+                      (dissoc :test-paths :source-paths :resource-paths)
+                      (assoc :jvm-opts ["-Djava.awt.headless=true"
+                                        "-XX:+TieredCompilation"]))
         vm-project (->
-                      project
-                      (dissoc :test-paths :source-paths :dependencies)
-                      (project/merge-profiles
-                       [ritz-profile classlojure-profile]))
+                    project
+                    (dissoc :test-paths :source-paths :dependencies)
+                    (project/merge-profiles
+                     [ritz-profile classlojure-profile]))
         user-project (->
                       project
                       (project/merge-profiles [ritz-profile]))

@@ -5,8 +5,8 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.5.0
-;; Package-Requires: ((nrepl "0.1.4"))
+;; Version: 0.6.0
+;; Package-Requires: ((nrepl "0.1.5"))
 ;; License: EPL
 
 (require 'nrepl)
@@ -43,11 +43,11 @@ to specific the full path to it. Localhost is assumed."
   "nrepl op for eval of forms.")
 (make-variable-buffer-local 'nrepl-eval-op)
 
-(defun nrepl-eval-request (input &optional ns)
+(defun nrepl-eval-request (input &optional ns session)
   (append (if ns (list "ns" ns))
           (list
            "op" nrepl-eval-op
-           "session" (nrepl-current-session)
+           "session" (or session (nrepl-current-session))
            "code" input)))
 
 ;;; # General helpers
@@ -194,6 +194,13 @@ Assumes all insertions are made at point."
 (defsubst nrepl-ritz-insert-propertized (props &rest args)
   "Insert all ARGS and then add text-PROPS to the inserted text."
   (nrepl-propertize-region props (apply #'insert args)))
+
+(defun nrepl-ritz-property-bounds (prop)
+  "Return the positions of the previous and next changes to PROP.
+PROP is the name of a text property."
+  (assert (get-text-property (point) prop))
+  (let ((end (next-single-char-property-change (point) prop)))
+    (list (previous-single-char-property-change end prop) end)))
 
 ;;; # Goto source locations
 (defun nrepl-ritz-show-buffer-position (position &optional recenter)
@@ -486,6 +493,38 @@ are supported:
 (define-key nrepl-interaction-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
 (define-key nrepl-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
 
+;;; codeq def browsing
+(defvar nrepl-codeq-url "datomic:free://localhost:4334/git")
+
+(defun nrepl--codeq-def-insert-def (def)
+  (destructuring-bind (def datetime) def
+    (insert "        " datetime "\n"
+            def "\n\n\n")))
+
+(defun nrepl-codeq-def-handler (symbol-name)
+  "Display codeq defs for symbol-name."
+  (when (not symbol-name)
+    (error "No symbol given"))
+  (nrepl-ritz-send-op-strings
+   "codeq-def"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer value)
+      (if value
+          (with-current-buffer (nrepl-popup-buffer "*nREPL codeq*" t)
+            (let ((inhibit-read-only t))
+              (mapc 'nrepl--codeq-def-insert-def value)))
+        (error "No codeq def for %s" symbol-name)))
+    nil nil nil)
+   `("symbol" ,symbol-name "ns" ,nrepl-buffer-ns
+     "datomic-url" ,nrepl-codeq-url)))
+
+(defun nrepl-codeq-def (query)
+  "Display codeq defs for symbol at point"
+  (interactive "P")
+  (nrepl-read-symbol-name
+   "Codeq defs for: " 'nrepl-codeq-def-handler query))
+
 ;;; undefine symbol
 (defun nrepl-ritz-undefine-symbol-handler (symbol-name)
   "Undefine on the symbol at point."
@@ -685,6 +724,8 @@ reading input.  The result is a string (\"\" if no input was given)."
  (defvar nrepl-dbg-thread-id nil
   "Thread associated with a buffer"))
 
+(defvar nrepl-dbg-show-java-frames t
+  "Whether to show java frames or not")
 
 (defmacro define-nrepl-dbg-faces (&rest faces)
   "Define the set of faces used in the debugger.
@@ -802,7 +843,7 @@ Full list of commands:
   ("<"    'nrepl-dbg-beginning-of-stacktrace)
   (">"    'nrepl-dbg-end-of-stacktrace)
   ("t"    'nrepl-dbg-toggle-details)
-  ("r"    'nrepl-dbg-restart-frame)
+  ("j"    'nrepl-dbg-toggle-java-frames)
   ("I"    'nrepl-dbg-invoke-named-restart)
   ("c"    'nrepl-dbg-continue)
   ("s"    'nrepl-dbg-step-into)
@@ -849,21 +890,18 @@ Full list of commands:
         (let ((name (format "*nrepl-dbg %s*" thread)))
           (with-current-buffer (generate-new-buffer name)
             (setq nrepl-session session
-                  nrepl-dbg-thread thread)
+                  nrepl-dbg-thread-id thread)
             (current-buffer))))))
 
 
-(defun nrepl-dbg-setup (thread level exception restarts frames)
+(defun nrepl-dbg-setup (thread level exception restarts frames &optional force)
   "Setup a new NREPL-DBG buffer.
 EXCEPTION is a string describing the exception being debugged.
 RESTARTS is a list of strings (NAME DESCRIPTION) for each available restart.
 FRAMES is a list (NUMBER DESCRIPTION &optional PLIST) describing the initial
 portion of the stacktrace. Frames are numbered from 0."
-  (message "nrepl-dbg-setup")
   (with-current-buffer (nrepl-dbg-get-buffer thread)
-    (message "nrepl-dbg-setup 1")
-    (unless (equal nrepl-dbg-level level)
-      (message "nrepl-dbg-setup 2")
+    (unless (and (equal nrepl-dbg-level level) (not force))
       (let ((inhibit-read-only t))
         (nrepl-dbg-mode)
         (setq nrepl-dbg-thread-id thread)
@@ -906,9 +944,9 @@ If LEVEL isn't the same as in the buffer reinitialize the buffer."
     (lambda (buffer value)
       (lexical-let ((v (nrepl-keywordise value)))
         (destructuring-bind (&key thread-id level exception restarts frames) v
-          (nrepl-dbg-setup thread-id level exception restarts frames))))
+          (nrepl-dbg-setup thread-id level exception restarts frames t))))
     nil nil nil)
-   `("thread" ,thread "level" ,level "frame-min"  0 "frame-max" 10)))
+   `(thread-id ,thread level ,level frame-min  0 frame-max 10)))
 
 (defun nrepl-dbg-exit (thread _level &optional stepping)
   "Exit from the debug level LEVEL."
@@ -997,14 +1035,18 @@ If MORE is non-nil, more frames are on the Lisp stack."
 If FACE is nil, `nrepl-dbg-frame-line-face' is used."
   (setq face (or face 'nrepl-dbg-frame-line-face))
   (let ((number (nrepl-dbg-frame.number frame))
-        (string (nrepl-dbg-frame.string frame)))
-    (nrepl-propertize-region
-        `(frame ,frame nrepl-dbg-default-action nrepl-dbg-toggle-details)
-      (nrepl-propertize-region '(mouse-face highlight)
-        (insert " " (nrepl-dbg-in-face frame-label (format "%2d:" number)) " ")
-        (nrepl-ritz-insert-indented
-         (nrepl-ritz-add-face face string)))
-      (insert "\n"))))
+        (string (nrepl-dbg-frame.string frame))
+        (stratum (lax-plist-get (nrepl-dbg-frame.plist frame) "stratum")))
+    (when (or nrepl-dbg-show-java-frames
+              (not (equal stratum "Java")))
+      (nrepl-propertize-region
+          `(frame ,frame nrepl-dbg-default-action nrepl-dbg-toggle-details)
+        (nrepl-propertize-region '(mouse-face highlight)
+          (insert
+           " " (nrepl-dbg-in-face frame-label (format "%2d:" number)) " ")
+          (nrepl-ritz-insert-indented
+           (nrepl-ritz-add-face face string)))
+        (insert "\n")))))
 
 (defun nrepl-dbg-fetch-frames (thread-id from to)
   (nrepl-ritz-send-op
@@ -1059,7 +1101,7 @@ Called on the `point-entered' text-property hook."
        (get-text-property (point) 'details-visible-p)))
 
 (defun nrepl-dbg-frame-region ()
-  (slime-property-bounds 'frame))
+  (nrepl-ritz-property-bounds 'frame))
 
 (defun nrepl-dbg-frame-forward ()
   (goto-char (next-single-char-property-change (point) 'frame)))
@@ -1257,6 +1299,13 @@ VAR should be a plist with the keys :name, :id, and :value."
         (nrepl-propertize-region '(details-visible-p nil)
           (nrepl-dbg-insert-frame frame))))))
 
+
+(defun nrepl-dbg-toggle-java-frames ()
+  "Show or hide java frames"
+  (interactive)
+  (setq nrepl-dbg-show-java-frames (not nrepl-dbg-show-java-frames))
+  (nrepl-dbg-reinitialize nrepl-dbg-thread-id nrepl-dbg-level))
+
 (defun nrepl-dbg-disassemble ()
   "Disassemble the code for the current frame."
   (interactive)
@@ -1291,7 +1340,7 @@ VAR should be a plist with the keys :name, :id, and :value."
          (insert result))))
    'frame-number frame
    'code string
-   'pprint "true"))
+   'pprint t))
 
 (defun nrepl-dbg-read-form-for-frame (prompt)
   (lexical-let ((frame (nrepl-dbg-frame-number-at-point)))
@@ -1433,10 +1482,9 @@ frame move command."
    (nrepl-make-response-handler
     (current-buffer)
     (lambda (buffer value)
-      (message "b-o-e")
       (lexical-let ((v (nrepl-keywordise value)))
         (destructuring-bind (&key thread-id level exception restarts frames) v
-          (message "b-o-e calling")
+          (message "b-o-e calling %s %s" thread-id level)
           (nrepl-dbg-setup thread-id level exception restarts frames))))
     nil nil nil)
    `("enable" ,(if flag "true" "false"))))

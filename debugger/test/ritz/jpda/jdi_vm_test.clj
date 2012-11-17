@@ -15,7 +15,7 @@
            (let [context (jdi-vm/launch-vm
                           (jdi-vm/current-classpath)
                           `(println (str '~'hi))
-                          :out *out*)]
+                          {:out *out*})]
              (.resume (:vm context))
              (is (:control-thread context))
              (is (.isSuspended (:control-thread context)))

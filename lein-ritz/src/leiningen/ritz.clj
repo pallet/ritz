@@ -8,38 +8,15 @@
    [clojure.set :only [difference union]]
    [clojure.tools.cli :only [cli]]
    [leiningen.core.classpath :only [get-classpath]]
-   [ritz.add-sources :only [add-source-artifacts]]
-   [robert.hooke :only [add-hook]]))
+   [ritz.plugin-helpers
+    :only [classlojure-profile clojure-profile lein-profile jpda-jars]]))
 
 
-(defn opts-list [port host opts]
-  (apply concat (merge {:host host :port (Integer. port)
-                        :repl-out-root true :block true}
-                       (apply hash-map (map read-string opts)))))
-
-(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.5.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.6.0"
                                     :exclusions [org.clojure/clojure]]]})
 
-(def lein-profile {:dependencies '[[leiningen "2.0.0-preview10"]]})
-
-(def classlojure-profile {:dependencies '[[classlojure "0.6.6"]]})
-
-(def clojure-profile {:dependencies '[[org.clojure/clojure "1.4.0"]]})
-
-(defn jpda-jars
-  []
-  (let [libdir (io/file (System/getProperty "java.home") ".." "lib")]
-    (for [j ["tools.jar" "sa-jdi.jar"]
-          :when (.exists (io/file libdir j))]
-      (.getCanonicalPath (io/file libdir j)))))
-
-
 (defn ritz-form [project port host {:keys [debug] :as opts}]
-  (let [jpda-project (->
-                      project
-                      (project/merge-profiles
-                       [ritz-profile lein-profile]))
-        vm-classes (io/file (:compile-path project) ".." "vm-classes")
+  (let [vm-classes (io/file (:compile-path project) ".." "vm-classes")
         vm-project (->
                     project
                     (project/unmerge-profiles [:default])
@@ -64,7 +41,7 @@
                            user-project [clojure-profile])))]
     (.mkdirs vm-classes)
     `(do (binding [*compile-path* ~(.getAbsolutePath
-                                    (java.io.File.
+                                    (io/file
                                      (or (:compile-path project)
                                          "./classes")))]
            (when-let [is# ~(:repl-init-script project)]
@@ -77,7 +54,7 @@
             '~(merge
                (select-keys project [:jvm-opts :properties])
                opts
-               {:port (Integer. port)
+               {:port port
                 :host host
                 :classpath (vec user-classpath)
                 :vm-classpath (vec vm-classpath)
@@ -94,18 +71,15 @@
                      (catch java.io.FileNotFoundException _)))]
     (apply eip args)))
 
-(defn add-jpda-jars
-  "JPDA is in the JDK's tools.jar and sa-jdi.jar. Add them to the classpath."
-  [f project]
-  (concat (f project) (jpda-jars)))
+(defn- repl-port [project]
+  (Integer. (or (System/getenv "LEIN_REPL_PORT")
+                (-> project :repl-options :port)
+                0)))
 
-(defn add-ritz
-  "JPDA is in the JDK's tools.jar and sa-jdi.jar. Add them to the classpath."
-  [project]
-  (update-in project [:dependencies]
-             conj ['ritz/ritz-swank
-                   (or (System/getenv "RITZ_VERSION")
-                       (System/getProperty "ritz.version" "0.5.0"))]))
+(defn- repl-host [project]
+  (or (System/getenv "LEIN_REPL_HOST")
+      (-> project :repl-options :host)
+      "localhost"))
 
 (defn ritz
   "Launch ritz server for Emacs to connect. Optionally takes PORT and HOST.
@@ -113,48 +87,29 @@
 -d   --[no-]debug      Enable debugger
 -f   --port-file       File to write port info to
 -m   --message         announce message"
-  ([project & args]
-     (let [[{:keys [debug] :as opts} [port host]]
-           (cli args
-                ["-d" "--[no-]debug" :default true]
-                ["-b" "--backlog" :parse-fn #(Integer. %) :default 0]
-                ["-l" "--log-level" :default nil]
-                ["-m" "--message"]
-                ["-f" "--port-file"])
-           opts (->
-                 opts
-                 (assoc :server-ns
-                   (if debug 'ritz.swank.proxy 'ritz.swank.repl))
-                 (update-in [:log-level] #(when % (keyword %))))
-           start-project (if debug
-                           (->
-                            project
-                            (project/unmerge-profiles [:default])
-                            (project/merge-profiles
-                             [clojure-profile lein-profile ritz-profile])
-                            (dissoc :test-paths :source-paths :resource-paths)
-                            (assoc :jvm-opts ["-Djava.awt.headless=true"
-                                              "-XX:+TieredCompilation"]))
-                           project)]
-       (eval-in-project
-        start-project
-        (ritz-form project (or port 0) (or host "localhost") opts)))))
-
-(defmacro add-hooks
-  []
-  (if (and
-       (find-ns 'leiningen.core.classpath)
-       (ns-resolve 'leiningen.core.classpath 'get-classpath))
-    `(do
-       (add-hook
-        #'leiningen.core.classpath/get-classpath add-jpda-jars)
-       (add-hook
-        #'leiningen.core.classpath/get-classpath add-source-artifacts))
-    `(do
-       (require 'leiningen.classpath)
-       (add-hook
-        #'leiningen.classpath/get-classpath add-jpda-jars)
-       (add-hook
-        #'leiningen.classpath/get-classpath add-source-artifacts))))
-
-(add-hooks)
+  [project & args]
+  (let [[{:keys [debug] :as opts} [^String port host]]
+        (cli args
+             ["-d" "--[no-]debug" :default true]
+             ["-b" "--backlog" :parse-fn #(Integer. ^String %) :default 0]
+             ["-l" "--log-level" :default nil]
+             ["-m" "--message"]
+             ["-f" "--port-file"])
+        port (if port (Integer. port) (repl-port project))
+        host (or host (repl-host project))
+        opts (->
+              opts
+              (assoc :server-ns
+                (if debug 'ritz.swank.proxy 'ritz.swank.repl))
+              (update-in [:log-level] #(when % (keyword %))))
+        start-project (if debug
+                        (->
+                         project
+                         (project/unmerge-profiles [:default])
+                         (project/merge-profiles
+                          [clojure-profile lein-profile ritz-profile])
+                         (dissoc :test-paths :source-paths :resource-paths)
+                         (assoc :jvm-opts ["-Djava.awt.headless=true"
+                                           "-XX:+TieredCompilation"]))
+                        (project/merge-profiles project [ritz-profile]))]
+    (eval-in-project start-project (ritz-form project port host opts))))

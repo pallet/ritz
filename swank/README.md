@@ -61,14 +61,14 @@ To make ritz available in all your projects, add the lein-ritz plugin to your
 ritz on a per project basis.
 
 ```clj
-{:user {:plugins [[lein-ritz "0.5.0"]]}}
+{:user {:plugins [[lein-ritz "0.6.0"]]}}
 ```
 
 To enable ritz on a per project basis, add it to your `project.clj`'s :dev
 profile.
 
 ```clj
-{:dev {:plugins [[lein-ritz "0.5.0"]]}}
+{:dev {:plugins [[lein-ritz "0.6.0"]]}}
 ```
 
 In either case, start a swank server with `lein ritz` inside your project
@@ -79,10 +79,10 @@ directory, and then use `M-x slime-connect` in emacs to connect to it.
 To make ritz available in all your projects, install the lein-ritz plugin.
 
 ```
-lein plugin install lein-ritz "0.5.0"
+lein plugin install lein-ritz "0.6.0"
 ```
 
-Add `[lein-ritz "0.5.0"]` to your project.clj `:dev-dependencies`.
+Add `[lein-ritz "0.6.0"]` to your project.clj `:dev-dependencies`.
 
 
 Start a swank server with `lein ritz` inside your project directory,
@@ -98,7 +98,7 @@ For "jack-in" to work, you can not have SLIME installed.
 * Install `clojure-mode` either from
   [Marmalade](http://marmalade-repo.org) or from
   [git](http://github.com/technomancy/clojure-mode).
-* lein plugin install lein-ritz "0.5.0"
+* lein plugin install lein-ritz "0.6.0"
 * in your .emacs file, add the following and evalulate it (or restart emacs)
 
     ```lisp
@@ -162,7 +162,13 @@ To run with a maven project:
 * **C-c C-c**: compile top-level expression at point
 * **C-c C-x b**: break on exception (turn it off with a prefix)
 * **C-c C-x C-b**: set breakpoint at line
-* nrepl-ritz-reload-project: re-read classpath from project.clj
+* slime-break-on-exception: break on exception
+* slime-ritz-reload-project: re-read classpath from project.clj
+* slime-ritz-load-project: Use the project.clj for the current buffer
+* slime-ritz-lein: Run a lein task on the current project
+
+See [SLDB](http://common-lisp.net/project/slime/doc/html/Debugger.html) for help
+on using the debugger.
 
 ### Breakpoints
 
@@ -217,23 +223,31 @@ the browser you have set up in emacs.
 If you use slime with multiple lisps, you can isolate clojure specific
 setup by using `ritz-connected-hook` and `ritz-repl-mode-hook`.
 
+
+## Embedding
+
+You can embed Ritz in your project, start the server from within your own code,
+and connect via Emacs to that instance:
+
+```clj
+(ns my-app
+  (:use [ritz.swank.socket-server :only [start]]))
+
+(start {:server-ns 'ritz.swank.repl})
+ ;; optionally takes :host/:port keyword args
+```
+
+The `:server-ns` keyword is used to select the server without the built in
+debugger (which starts an extra VM, and probably shouldn't be used embedded).
+
+To make this work in production, ritz-swank needs to be in :dependencies in
+project.clj in addition to being installed as a user-level plugin.
+
 ## Open Problems
 
 Recompilation of clojure code creates new classes, with the same location as the
 code they replace.  Recompilation therefore looses breakpoints, which are set on
 the old code. Setting breakpoints by line number finds all the old code too.
-
-## Roadmap
-
-Allow customisations of which exceptions are trapped by ritz.
-
-A pure JDI backend, that doesn't require swank in the target VM is certainly a
-possibility.
-
-A slime-eval-symbol-at-point would be useful (requires determining the frame
-in the current sldb stacktrace using file and line number).
-
-Add watchpoints with logging of locals to an emacs buffer or file.
 
 ## Use Cases
 

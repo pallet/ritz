@@ -86,31 +86,42 @@ the events can be delivered back."
   (map
    #(list
      %1
-     (format "%s (%s:%s)" (:function %2) (:source %2) (:line %2)))
+     (format "%s (%s:%s)" (:function %2) (:source %2) (:line %2))
+     (list :stratum (:stratum %2)))
    (iterate inc start)
    frames))
+
+
+(defn debugger-data
+  [{:keys [thread thread-id condition event restarts] :as level-info}
+   level frame-min frame-max]
+  `("exception" ~(list (:exception-message condition)
+                       (:type condition))
+    "thread-id" ~thread-id
+    "frames" ~(vec (stacktrace-frames (build-backtrace thread) frame-min))
+    "restarts" ~(vec (map
+                      (fn [{:keys [name description]}]
+                        (list name description))
+                      restarts))
+    "level" ~level))
+
+(defn debugger-info
+  [connection thread-id level frame-min frame-max]
+  (let [[level-info lvl] (break/break-level-info connection thread-id)]
+    (trace "debugger-info %s %s %s" thread-id level level-info)
+    (debugger-data level-info lvl (or frame-min 0) (or frame-max 100))))
 
 (defmethod display-break-level :nrepl
   [{:keys [transport] :as connection}
    {:keys [thread thread-id condition event restarts] :as level-info}
    level]
-  (trace "display-break-level: :nrepl")
+  (trace "display-break-level: thread-id %s level %s" thread-id level)
   (when-let [msg (-> (debug-context connection) :breakpoint :msg)]
-    (trace "display-break-level: reply to %s" msg)
-    (transport/send
-     transport
-     (response-for
-      msg
-      :value
-      `("exception" ~(list (:exception-message condition)
-                           (:type condition))
-        "thread-id" ~thread-id
-        "frames" ~(stacktrace-frames (build-backtrace thread) 0)
-        "restarts" ~(map
-                     (fn [{:keys [name description]}] (list name description))
-                     restarts)
-        "level" ~level)))
-    (trace "display-break-level: sent message")))
+    (let [value (debugger-data level-info level 0 100)]
+      (trace "display-break-level: reply to %s" msg)
+      (trace "display-break-level: reply %s" value)
+      (transport/send transport (response-for msg :value value))
+      (trace "display-break-level: sent message"))))
 
 (defmethod dismiss-break-level :nrepl
   [connection
@@ -120,9 +131,10 @@ the events can be delivered back."
 
 (defn frame-eval
   [connection thread-id frame-number code pprint]
-  (trace "invoke-restart %s" thread-id)
+  (trace "frame-eval %s %s %s" thread-id (pr-str code) (pr-str pprint))
   (let [[level-info level] (break/break-level-info connection thread-id)
         thread (:thread level-info)]
+    (trace "frame-eval level-info %s" level-info)
     {:result (if pprint
                (pprint-eval-string-in-frame
                 connection (vm-context connection) thread code frame-number)

@@ -19,7 +19,7 @@
 
 (defonce cache-classpath (atom {}))
 
-(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.5.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.6.0"
                                     :exclusions [org.clojure/clojure]]]})
 
 (defn project-classpath

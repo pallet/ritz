@@ -9,7 +9,7 @@
            remove-breakpoint
            build-backtrace
            break-for-exception?
-           nth-thread stop-thread threads]]
+           nth-thread stop-thread threads exit-vm]]
    [ritz.logging :only [trace trace-str]]
    [ritz.debugger.connection
     :only [debug-context debug-assoc! debug-update-in! vm-context]]
@@ -34,22 +34,14 @@
    [ritz.swank.messages :as messages])
   (:import
    java.io.File
-   java.net.Socket
-   java.net.InetSocketAddress
-   java.net.InetAddress
-   com.sun.jdi.event.BreakpointEvent
-   com.sun.jdi.event.ExceptionEvent
-   com.sun.jdi.event.StepEvent
-   com.sun.jdi.request.ExceptionRequest
-   com.sun.jdi.event.VMStartEvent
-   com.sun.jdi.event.VMDeathEvent
-   com.sun.jdi.VirtualMachine
-   com.sun.jdi.ObjectReference
-   com.sun.jdi.ThreadReference
-   com.sun.jdi.StackFrame
+   (java.net Socket InetSocketAddress InetAddress)
    (com.sun.jdi
     BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
-    LongValue ShortValue StringReference)
+    LongValue ShortValue StringReference
+    VirtualMachine ObjectReference ThreadReference StackFrame)
+   (com.sun.jdi.event
+    BreakpointEvent ExceptionEvent StepEvent VMStartEvent VMDeathEvent)
+   com.sun.jdi.request.ExceptionRequest
    ritz.jpda.debug.InvocationExceptionEvent))
 
 (def ^{:dynamic true} *sldb-initial-frames* 10)
@@ -72,6 +64,13 @@
 
 ;;; execute functions and forwarding don't belong in this
 ;;; namespace
+(defn execute-if-quit-lisp
+  [handler]
+  (fn [connection form buffer-package id f]
+    (if (= 'swank/quit-lisp (first form))
+      (exit-vm (vm-context connection))
+      (handler connection form buffer-package id f))))
+
 (defn execute-if-inspect-frame-var
   [handler]
   (fn [connection form buffer-package id f]
