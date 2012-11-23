@@ -3,40 +3,75 @@
 `ritz-nrepl` is an nREPL server with a debugger. The server uses JPDA to provide
 debugger middleware.
 
-## nREPL debugger server usage
+## nREPL debugger installation
 
-Add `lein-ritz` to the `:plugins` key of your `~/.lein/profiles` file (requires
-lein version 2).
+Add this to your `~/.lein/profiles` file (requires lein version 2):
 
 ```clj
-{:user {:plugins [[lein-ritz "0.6.0"]]}}
+{:user
+ {:plugins [[lein-ritz "0.6.0"]]
+  :dependencies [[ritz/ritz-nrepl-middleware "0.6.0"]
+                 [ritz/ritz-debugger "0.6.0"]
+                 [ritz/ritz-repl-utils "0.6.0"]]
+  :repl-options {:nrepl-middleware
+                 [ritz.nrepl.middleware.javadoc/wrap-javadoc
+                  ritz.nrepl.middleware.simple-complete/wrap-simple-complete]}}
+ :hooks
+ [ritz.add-sources]}
 ```
 
-Install the nrepl-ritz.el contrib from
-[marmalade](http://marmalade-repo.org/). If you are using a SNAPSHOT version of
+Add this to your `~/.emacs.d/init.el` file:
+
+```clj
+(require 'package)
+(add-to-list 'package-archives
+       '("marmalade" . "http://marmalade-repo.org/packages/"))
+(package-initialize)
+(when (not package-archive-contents)
+  (package-refresh-contents))
+(defvar my-packages '(clojure-mode
+                      nrepl
+                      nrepl-ritz))
+(dolist (p my-packages)
+  (when (not (package-installed-p p))
+    (package-install p)))
+```
+
+If you are using a SNAPSHOT version of
 ritz-nrepl, you probably will need to install nrepl-ritz.el from
 [melpa](http://melpa.milkbox.net/packages/) instead.
 
 Note that on Emacs 23 you will need to
 [install](http://tromey.com/elpa/install.html) package.el.
 
-Once installed, run the server with:
+## Using the debugger in your project
+
+Retrieve the Clojure-sources for your project (optional):
 
 ```
-lein2 ritz-nrepl
+cd ~/your-project
+lein pom; mvn dependency:sources;
 ```
 
-Then in emacs, `M-x nrepl` and enter the port printed by the previous command.
+Then in emacs, `M-x nrepl-ritz-jack-in` to start a nrepl session with debugger capabilities.
 
 ## nREPL Ritz Emacs Commands
 
-* **C-c C-b**: display javadoc for class at point
-* **C-c C-u**: undefine symbol at point
 * **C-c C-c**: compile top-level expression at point
+* **C-u C-c C-c**: compile top-level expression at point to run without locals clearing
+* **C-c C-u**: undefine symbol at point
 * nrepl-ritz-break-on-exception : enable debugger on exceptions
 * nrepl-ritz-reload-project : re-read classpath from project.clj
 * nrepl-ritz-load-project: Use the project.clj for the current buffer
 * nrepl-ritz-lein: Run a lein task on the current project
+
+## SLDB commands for frame examination
+
+* t (or enter) toggle display of local variables
+* v show source for current frame
+* e eval expression in frame
+* d pprint result of eval in frame
+* D disassemble frame
 
 See [SLDB](http://common-lisp.net/project/slime/doc/html/Debugger.html) for help
 on using the debugger.
