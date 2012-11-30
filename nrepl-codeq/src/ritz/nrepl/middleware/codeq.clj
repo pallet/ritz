@@ -44,7 +44,7 @@
   "Reply to codeq-def message"
   [{:keys [project symbol ns datomic-url transport] :as msg}]
   (try
-    (let [symbol (if (and symbol ns (.contains symbol "/"))
+    (let [symbol (if (or (and symbol (.contains symbol "/")) (not ns))
                    symbol
                    (str ns "/" symbol))
           res (query-definitions symbol datomic-url)]

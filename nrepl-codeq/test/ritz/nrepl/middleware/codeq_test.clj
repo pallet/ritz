@@ -137,6 +137,16 @@ on the given transport with the handler, until the atom is set to false."
               :id 0}
              (.take out)))
 
+      (is (= #{:done} (:status (.take out))))
+
+      (.offer in {:op "codeq-def" :symbol "trace" :ns "ritz.logging"
+                  :datomic-url (datomic-url) :id 0})
+      (is (= {:value
+              [["(defmacro trace\n  [fmt-str & args]\n  `(log :trace ~fmt-str ~@args))"
+                "Sun Jul 03 02:08:35 UTC 2011"]]
+              :id 0}
+             (.take out)))
+
       ;; shut down the handle loop
       (reset! a false)
       (.offer in {:op "something to stop the handle loop"}))))
