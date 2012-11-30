@@ -5,4 +5,5 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/tools.nrepl "0.2.0-RC1"]
+                 [ritz/ritz-repl-utils "0.6.1-SNAPSHOT"]
                  [leiningen-core "2.0.0-preview10"]])
