@@ -57,7 +57,7 @@ This depends on having classlojure on the classpath."
          reset-required (or (seq removed-files) (not (seq cl-files)))
          loader (if reset-required
                   (doto (#'classlojure.core/url-classloader
-                         (files-to-urls file-set)
+                         (files-to-urls (concat files cl-extra-files))
                          ext-classloader)
                     (.loadClass "clojure.lang.RT")
                     (eval-in* '(require 'clojure.main)))
