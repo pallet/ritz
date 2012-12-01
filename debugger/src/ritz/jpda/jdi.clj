@@ -664,7 +664,7 @@ default stratum to decide."
     (= "Clojure" stratum)))
 
 (def clojure-implementation-regex
-  #"(^const__\d*$|^__meta$|^__var__callsite__\d*$|^__site__\d*__$|^__thunk__\d*__$)")
+  #"(^__cached_[a-z_]+_\d+$|^const__\d*$|^__meta$|^__var__callsite__\d*$|^__site__\d*__$|^__thunk__\d*__$)")
 
 (defn visible-clojure-fields
   "Return the subset of fields that should be visible."
