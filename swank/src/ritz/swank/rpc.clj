@@ -130,7 +130,7 @@ protocol. Code from Terje Norderhaug <terje@in-progress.com>."
 
 (defn- write-packet
   [^Writer writer ^String str]
-  (let [len (.length str)]
+  (let [len (.codePointCount str 0 (.length str))]
     (doto writer
       (.write (format "%06x" len))
       (.write str)
