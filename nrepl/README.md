@@ -77,6 +77,20 @@ on using the debugger.
 
 [API Docs](http://palletops.com/ritz/0.4/nrepl/api/)
 
+## Possible Issues
+
+If ritz-nrepl complains:
+
+```
+ERROR: transport error 202: connect failed: Connection refused
+ERROR: JDWP Transport dt_socket failed to initialize, TRANSPORT_INIT(510)
+```
+
+then
+
+ - please check that your hostname resolves (`host $(hostname)`).
+ - check that you are not using drip
+
 ## License
 
 Copyright © 2012 Hugo Duncan
