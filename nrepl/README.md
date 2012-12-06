@@ -5,7 +5,7 @@ debugger middleware.
 
 ## nREPL debugger installation
 
-Add this to your `~/.lein/profiles` file (requires lein version 2):
+Add this to your `~/.lein/profiles.clj` file (requires lein version 2):
 
 ```clj
 {:user
