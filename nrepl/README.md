@@ -15,9 +15,8 @@ Add this to your `~/.lein/profiles` file (requires lein version 2):
                  [ritz/ritz-repl-utils "0.6.0"]]
   :repl-options {:nrepl-middleware
                  [ritz.nrepl.middleware.javadoc/wrap-javadoc
-                  ritz.nrepl.middleware.simple-complete/wrap-simple-complete]}}
- :hooks
- [ritz.add-sources]}
+                  ritz.nrepl.middleware.simple-complete/wrap-simple-complete]}
+  :hooks [ritz.add-sources]}}
 ```
 
 Add this to your `~/.emacs.d/init.el` file:
