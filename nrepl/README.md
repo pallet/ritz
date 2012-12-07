@@ -89,7 +89,7 @@ ERROR: JDWP Transport dt_socket failed to initialize, TRANSPORT_INIT(510)
 then
 
  - please check that your hostname resolves (`host $(hostname)`).
- - check that you are not using drip
+ - check that if you are using drip, that you have 0.1.8 or later.
 
 ## License
 
