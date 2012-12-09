@@ -10,18 +10,17 @@ Add this to your `~/.lein/profiles.clj` file (requires lein version 2):
 ```clj
 {:user
  {:plugins [[lein-ritz "0.6.0"]]
-  :dependencies [[ritz/ritz-nrepl-middleware "0.6.0"]
-                 [ritz/ritz-debugger "0.6.0"]
-                 [ritz/ritz-repl-utils "0.6.0"]]
+  :dependencies [[ritz/ritz-nrepl-middleware "0.6.0"]]
   :repl-options {:nrepl-middleware
                  [ritz.nrepl.middleware.javadoc/wrap-javadoc
                   ritz.nrepl.middleware.simple-complete/wrap-simple-complete]}
   :hooks [ritz.add-sources]}}
 ```
 
-Add this to your `~/.emacs.d/init.el` file:
+Add this to your `~/.emacs.d/init.el` file, in order to install the emacs
+packages:
 
-```clj
+```cl
 (require 'package)
 (add-to-list 'package-archives
        '("marmalade" . "http://marmalade-repo.org/packages/"))
@@ -34,6 +33,15 @@ Add this to your `~/.emacs.d/init.el` file:
 (dolist (p my-packages)
   (when (not (package-installed-p p))
     (package-install p)))
+```
+
+Add this to your `~/.emacs.d/init.el` file, in order to enable nrepl-ritz
+functionality in your nrepl connected clojure buffers:
+
+```cl
+(add-hook 'nrepl-interaction-mode-hook 'my-nrepl-mode-setup)
+(defun my-nrepl-mode-setup ()
+  (require 'nrepl-ritz))
 ```
 
 If you are using a SNAPSHOT version of
