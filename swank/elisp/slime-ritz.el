@@ -448,7 +448,23 @@ With prefix argument FLAG, do not break on exception"
 
 ;;;###autoload
 (defun slime-clojure-connection-setup ()
-  (slime-ritz-bind-keys))
+  (slime-ritz-bind-keys)
+  (when (featurep 'clojure-mode)
+    (slime-clojure-mode-enable-slime-on-existing-buffers)
+    (add-hook 'clojure-mode-hook 'slime-clojure-mode-enable-slime)))
+
+(defun slime-clojure-mode-enable-slime-on-existing-buffers ()
+  (dolist (buffer (buffer-list))
+    (with-current-buffer buffer
+      (when (eq major-mode 'clojure-mode)
+	(slime-mode t)
+	(set (make-local-variable 'slime-find-buffer-package-function)
+	     'clojure-find-ns)))))
+
+(defun slime-clojure-mode-enable-slime ()
+  (slime-mode t)
+  (set (make-local-variable 'slime-find-buffer-package-function)
+       'clojure-find-ns))
 
 ;;;###autoload
 (defun slime-clojure-repl-setup ()
