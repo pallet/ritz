@@ -470,3 +470,7 @@ With prefix argument FLAG, do not break on exception"
 
 (provide 'slime-ritz)
 ;;; slime-ritz.el ends here
+
+;; Local Variables:
+;; byte-compile-warnings: (not cl-functions)
+;; End:
