@@ -87,6 +87,20 @@ on using the debugger.
 
 ## Possible Issues
 
+### Classpath Length Issue on Windows
+
+If you see something like:
+
+```
+Cannot run program "java" (in directory "M:\libs\myproject"):
+  CreateProcess error=206, The file name or extension is too long
+```
+
+then you may have hit a limit in the length of the classpath computed by
+leiningen.  Try adding `:eval-in :classloader` to your project.
+
+### hostname Issue
+
 If ritz-nrepl complains:
 
 ```
