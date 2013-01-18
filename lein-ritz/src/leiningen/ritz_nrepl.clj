@@ -13,7 +13,7 @@
    [ritz.plugin-helpers
     :only [classlojure-profile clojure-profile lein-profile]]))
 
-(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.0-beta9"
+(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.1"
                                      :exclusions [org.clojure/clojure]]]})
 
 (def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.6.1-SNAPSHOT"
