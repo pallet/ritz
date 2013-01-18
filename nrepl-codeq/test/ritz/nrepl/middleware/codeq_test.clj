@@ -68,7 +68,7 @@ on the given transport with the handler, until the atom is set to false."
               (resolve-dependencies
                :repositories {"clojars" "https://clojars.org/repo/"
                               "central" "http://repo1.maven.org/maven2/"}
-               :coordinates '[[org.cloudhoist/datomic-free-transactor "0.8.3551"]
+               :coordinates '[[org.cloudhoist/datomic-free-transactor "0.8.3731"]
                               [ch.qos.logback/logback-classic "1.0.0"]]
                :retrieve true))
              "file:dev-resources/"))
