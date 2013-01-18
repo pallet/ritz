@@ -5,3 +5,8 @@ jdk:
   - openjdk7
   - openjdk6
   - oraclejdk7
+before_script:
+ - "echo JAVA_HOME $JAVA_HOME"
+ - "echo 'which java' `which java`"
+ - "echo JAVA_OPTS $JAVA_OPTS"
+ - "export JAVA_OPTS=-Xmx512m"
