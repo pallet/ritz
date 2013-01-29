@@ -465,34 +465,6 @@ are supported:
   (interactive)
   (nrepl-ritz-apropos (read-string "Clojure apropos: ") nil nil))
 
-;;; javadoc browsing
-(defvar nrepl-ritz-javadoc-local-paths nil)
-
-(defun nrepl-ritz-javadoc-input-handler (symbol-name)
-  "Browse javadoc on the Java class at point."
-  (when (not symbol-name)
-    (error "No symbol given"))
-  (nrepl-ritz-send-op-strings
-   "javadoc"
-   (nrepl-make-response-handler
-    (current-buffer)
-    (lambda (buffer url)
-      (if url
-          (browse-url url)
-        (error "No javadoc url for %s" symbol-name)))
-    nil nil nil)
-   `("symbol" ,symbol-name "ns" ,nrepl-buffer-ns
-     "local-paths" ,(mapconcat #'identity nrepl-ritz-javadoc-local-paths " "))))
-
-(defun nrepl-ritz-javadoc (query)
-  "Browse javadoc on the Java class at point."
-  (interactive "P")
-  (nrepl-read-symbol-name
-   "Javadoc for: " 'nrepl-ritz-javadoc-input-handler query))
-
-(define-key nrepl-interaction-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
-(define-key nrepl-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
-
 ;;; codeq def browsing
 (defvar nrepl-codeq-url "datomic:free://localhost:4334/git")
 
