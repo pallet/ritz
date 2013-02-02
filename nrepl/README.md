@@ -13,8 +13,7 @@ Add this to your `~/.lein/profiles.clj` file (requires lein version 2):
   :dependencies [[ritz/ritz-nrepl-middleware "0.6.0"]]
   :repl-options {:nrepl-middleware
                  [ritz.nrepl.middleware.javadoc/wrap-javadoc
-                  ritz.nrepl.middleware.simple-complete/wrap-simple-complete]}
-  :hooks [ritz.add-sources]}}
+                  ritz.nrepl.middleware.simple-complete/wrap-simple-complete]}}}
 ```
 
 Add this to your `~/.emacs.d/init.el` file, in order to install the emacs

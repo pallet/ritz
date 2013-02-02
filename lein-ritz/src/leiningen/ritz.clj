@@ -8,7 +8,7 @@
    [clojure.set :only [difference union]]
    [clojure.tools.cli :only [cli]]
    [leiningen.core.classpath :only [get-classpath]]
-   [ritz.plugin-helpers
+   [lein-ritz.plugin-helpers
     :only [classlojure-profile clojure-profile lein-profile jpda-jars]]))
 
 

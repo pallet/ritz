@@ -10,7 +10,7 @@
    [clojure.tools.cli :only [cli]]
    [clojure.set :only [difference]]
    [leiningen.core.classpath :only [get-classpath]]
-   [ritz.plugin-helpers
+   [lein-ritz.plugin-helpers
     :only [classlojure-profile clojure-profile lein-profile]]))
 
 (def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.1"
@@ -46,7 +46,6 @@ project server."
         user-classpath-no-ritz (vec (get-classpath project))
         extra-classpath (difference
                          (set user-classpath) (set user-classpath-no-ritz))
-        _ (require 'leiningen.ritz) ;; for add-hooks
         server-starting-form
         `(do
            (ritz.nrepl/start-jpda-server
