@@ -1,12 +1,12 @@
 ;;; nrepl-ritz.el --- nrepl extensions for ritz
 ;;
-;; Copyright 2012 Hugo Duncan
+;; Copyright 2012, 2013 Hugo Duncan
 ;;
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
 ;; Version: 0.6.0
-;; Package-Requires: ((nrepl "0.1.5"))
+;; Package-Requires: ((nrepl "0.1.6"))
 ;; License: EPL
 
 (require 'nrepl)
