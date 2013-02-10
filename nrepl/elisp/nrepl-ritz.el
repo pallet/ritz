@@ -43,13 +43,6 @@ to specific the full path to it. Localhost is assumed."
   "nrepl op for eval of forms.")
 (make-variable-buffer-local 'nrepl-eval-op)
 
-(defun nrepl-eval-request (input &optional ns session)
-  (append (if ns (list "ns" ns))
-          (list
-           "op" nrepl-eval-op
-           "session" (or session (nrepl-current-session))
-           "code" input)))
-
 ;;; # General helpers
 (defun flatten-alist (alist)
   "Convert the ALIST into a list with a sequence of key and value."
@@ -1458,7 +1451,6 @@ frame move command."
     (lambda (buffer value)
       (lexical-let ((v (nrepl-keywordise value)))
         (destructuring-bind (&key thread-id level exception restarts frames) v
-          (message "b-o-e calling %s %s" thread-id level)
           (nrepl-dbg-setup thread-id level exception restarts frames))))
     nil nil nil)
    `("enable" ,(if flag "true" "false"))))
