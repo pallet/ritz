@@ -1442,7 +1442,35 @@ frame move command."
    (nrepl-current-ns)
    (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
 
+(defun nrepl-ritz-resume-all ()
+  (interactive)
+  (nrepl-ritz-send-op
+   "resume-all"
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   nil))
+
+(define-key
+  nrepl-interaction-mode-map (kbd "C-c C-x C-b") 'nrepl-ritz-line-breakpoint)
+
+(defun nrepl-ritz-line-breakpoint (flag)
+  "Set breakpoint at current line"
+  (interactive "p")
+  (nrepl-ritz-send-op
+   "break-at"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer value)
+      (message "xx")
+      (lexical-let ((v (nrepl-keywordise value)))
+        (destructuring-bind (&key count) v
+          (message "Set %s breakpoints" count))))
+    nil nil nil)
+   `(file ,(buffer-name)
+     line ,(line-number-at-pos)
+     ns ,(or (nrepl-current-ns) "user"))))
+
 (defun nrepl-ritz-break-on-exception (flag)
+  "Enable break on exception"
   (interactive "p")
   (nrepl-ritz-send-op
    "break-on-exception"
@@ -1453,7 +1481,9 @@ frame move command."
         (destructuring-bind (&key thread-id level exception restarts frames) v
           (nrepl-dbg-setup thread-id level exception restarts frames))))
     nil nil nil)
-   `("enable" ,(if flag "true" "false"))))
+   `(enable ,(if flag "true" "false"))))
+
+
 
 (provide 'nrepl-ritz)
 ;;; nrepl-ritz.el ends here

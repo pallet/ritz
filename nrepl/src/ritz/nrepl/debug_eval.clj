@@ -72,6 +72,28 @@
       (= "break-on-exception" op)
       (ritz.nrepl.debug/break-on-exception connection (or (:enable msg) true))
 
+      (= "break-at" op)
+      (let [filename (read-when (:file msg))
+            line (read-when (:line msg))
+            namespace (read-when (:ns msg))]
+       (trace "break-at %s" msg)
+       (if (not (and filename line namespace))
+          (transport/send
+           transport (response-for
+                      msg
+                      :status #{:error :missing-file-line}
+                      :value {:file filename :line line :ns namespace}))
+          (let [value (nrepl-debug/break-at connection namespace filename line)]
+            (transport/send transport
+                            (response-for msg :value (args-for-map value)))
+            (transport/send transport (response-for msg :status :done)))))
+
+      (= "resume-all" op)
+      (do
+        (trace "resume-all")
+        (let [value (nrepl-debug/resume-all connection)]
+          (transport/send transport (response-for msg :status :done))))
+
       (= "debugger-info" op)
       (let [value
             (ritz.nrepl.debug/debugger-info
