@@ -1,7 +1,7 @@
 (ns ritz.nrepl.handler
   "Handlers for ritz nrepl"
   (:require
-   [clojure.tools.nrepl.middleware pr-values session load-file])
+   [clojure.tools.nrepl.middleware pr-values session])
   (:use
    [clojure.tools.nrepl.middleware :only [linearize-middleware-stack]]
    [clojure.tools.nrepl.server :only [unknown-op]]
@@ -9,13 +9,14 @@
    [ritz.nrepl.middleware.describe-symbol :only [wrap-describe-symbol]]
    [ritz.nrepl.middleware.doc :only [wrap-doc]]
    [ritz.nrepl.middleware.javadoc :only [wrap-javadoc]]
+   [ritz.nrepl.middleware.load-file :only [wrap-load-file]]
    [ritz.nrepl.middleware.simple-complete :only [wrap-simple-complete]]
    [ritz.nrepl.middleware.tracking-eval :only [tracking-eval]]))
 
 (def ritz-middlewares
   [#'clojure.tools.nrepl.middleware/wrap-describe
    #'tracking-eval
-   #'clojure.tools.nrepl.middleware.load-file/wrap-load-file
+   #'wrap-load-file
    #'clojure.tools.nrepl.middleware.session/add-stdin
    #'clojure.tools.nrepl.middleware.session/session
    #'wrap-apropos

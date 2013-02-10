@@ -39,11 +39,14 @@ middleware to `:nrepl-middleware` under `:repl-options`. You can do this in your
 ["eval"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.tracking-eval.html)
 : eval with source form tracking
 
+["load-file"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.load-file.html)
+: load file with optional locals clearing and dead var removal
+
 [API Docs](http://palletops.com/ritz/0.4/nrepl-middleware/api/)
 
 
 ## License
 
-Copyright © 2012 Hugo Duncan
+Copyright © 2012, 2013 Hugo Duncan
 
 Distributed under the Eclipse Public License.
