@@ -95,13 +95,15 @@ to specific the full path to it. Localhost is assumed."
 ;;; # Requests
 (defun nrepl-ritz-send-op (op callback attributes)
   (lexical-let ((request (append
-                          (list "op" op "session" (nrepl-current-session))
+                          (list "op" op "session"
+                                (nrepl-current-tooling-session))
                           (mapcar 'prin1-to-string attributes))))
     (nrepl-send-request request callback)))
 
 (defun nrepl-ritz-send-op-strings (op callback attributes)
   (lexical-let ((request (append
-                          (list "op" op "session" (nrepl-current-session))
+                          (list "op" op "session"
+                                (nrepl-current-tooling-session))
                           attributes)))
     (nrepl-send-request request callback)))
 
@@ -116,7 +118,7 @@ passing to the ON-VALUE callback."
   (lexical-let ((request
                  (append
                   (list "op" op
-                        "session" (nrepl-current-session)
+                        "session" (nrepl-current-tooling-session)
                         "thread-id" (prin1-to-string nrepl-dbg-thread-id))
                   (mapcar 'prin1-to-string attributes)))
                 (f on-value))
