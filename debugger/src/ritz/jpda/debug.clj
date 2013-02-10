@@ -699,10 +699,9 @@ of any debug function that uses a user thread."
 
 (defn restart-info
   [connection event level]
-  (let [exception-info (when (instance? ExceptionEvent event)
-                         (exception-info connection event))]
-    {:condition exception-info
-     :restarts (restarts event exception-info connection level)}))
+  (let [condition-info (condition-info event connection)]
+    {:condition condition-info
+     :restarts (restarts event condition-info connection level)}))
 
 (defn debugger-event-info
   "Calculate debugger information and invoke"
