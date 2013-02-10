@@ -16,26 +16,19 @@
           (locate-file (format "%s.bat" nrepl-lein-command) exec-path))
       (format "%s ritz-nrepl" nrepl-lein-command)
     (format "echo \"%s ritz-nrepl\" | $SHELL -l" nrepl-lein-command))
-  "The command used to start the nREPL via nrepl-ritz-jack-in.
+  "The command used to start the nREPL via `nrepl-ritz-jack-in'.
 For a remote nREPL server lein must be in your PATH.  The remote
 proc is launched via sh rather than bash, so it might be necessary
-to specific the full path to it. Localhost is assumed."
+to specific the full path to it.  Localhost is assumed."
   :type 'string
   :group 'nrepl-mode)
 
 ;;;###autoload
-(defun nrepl-ritz-jack-in (prompt-project)
+(defun nrepl-ritz-jack-in (&optional prompt-project)
+  "Jack in with a ritz nrepl server."
   (interactive "P")
-  (let* ((cmd (if prompt-project
-                  (format "cd %s && %s" (ido-read-directory-name "Project: ")
-                          nrepl-ritz-server-command)
-                  nrepl-ritz-server-command))
-         (process (start-process-shell-command
-                   "nrepl-ritz-server" "*nrepl-server*" cmd)))
-    (set-process-filter process 'nrepl-server-filter)
-    (set-process-sentinel process 'nrepl-server-sentinel)
-    (set-process-coding-system process 'utf-8-unix 'utf-8-unix)
-    (message "Starting nREPL ritz server...")))
+  (let ((nrepl-server-command nrepl-ritz-server-command))
+    (nrepl-jack-in prompt-project)))
 
 ;;; overwrite nrepl.el functions to allow easy development of ritz.
 ;;; Maybe these could be put back into nrepl.el
