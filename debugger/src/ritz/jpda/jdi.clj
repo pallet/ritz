@@ -366,7 +366,7 @@
   [classpath filepath]
   (logging/trace "matching-classpath-files %s" filepath)
   ;; (logging/trace "matching-classpath-files %s" (vec (filepaths classpath)))
-  (filter #(re-find (re-pattern filepath) %) (filepaths classpath)))
+  (filter #(.endsWith filepath %) (filepaths classpath)))
 
 (defn namespace-for-path
   "Takes a path and builds a namespace string from it"
@@ -376,6 +376,7 @@
     (->
      path
      (string/replace #".class$" "")
+     (string/replace #".clj$" "")
      (string/replace "/" "."))))
 
 (defn file-namespace

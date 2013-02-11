@@ -6,7 +6,6 @@
    [ritz.jpda.debug :as debug]
    [ritz.nrepl.debug :as nrepl-debug]
    ritz.nrepl.commands
-   ritz.nrepl.debug
    ritz.repl-utils.doc) ;; ensure commands are loaded
   (:use
    [clojure.java.io :only [writer]]
@@ -15,8 +14,10 @@
    [clojure.tools.nrepl.middleware.interruptible-eval :only [*msg*]]
    [ritz.debugger.connection :only [bindings bindings-assoc!]]
    [ritz.logging :only [trace]]
+   [ritz.nrepl.connections :only [add-message-reply-hook]]
    [ritz.nrepl.middleware :only [args-for-map read-when]]
    [ritz.nrepl.project :only [load-project reload reset-repl lein]]
+   [ritz.nrepl.rexec :only [rexec]]
    [ritz.repl-utils.io :only [streams-for-out]]))
 
 (defn evaluate
@@ -59,145 +60,156 @@
               :root-ex (-> (#'clojure.main/root-cause e) class str)))))))))
 
 
+(defn breakpoints-recreate [connection msg reply]
+  (nrepl-debug/breakpoints-recreate connection msg))
+
 (defn debug-eval*
   [handler {:keys [code op transport] :as msg}]
   (let [connection (:ritz.nrepl/connection msg)]
     (cond
-      (#{"jpda"} op)
-      (if-not code
-        (transport/send
-         transport (response-for msg :status #{:error :no-code}))
-        (evaluate msg))
+     (#{"jpda"} op)
+     (if-not code
+       (transport/send
+        transport (response-for msg :status #{:error :no-code}))
+       (evaluate msg))
 
-      (= "break-on-exception" op)
-      (ritz.nrepl.debug/break-on-exception connection (or (:enable msg) true))
+     ;; The load file op needs to be proxied, so we can keep track of file
+     ;; loads to reset breakpoints, etc.
+     (= "load-file" op)
+     (do
+       (trace "LOAD FILE")
+       (add-message-reply-hook connection msg breakpoints-recreate)
+       (rexec (:vm-context connection) msg))
 
-      (= "break-at" op)
-      (let [filename (read-when (:file msg))
-            line (read-when (:line msg))
-            namespace (read-when (:ns msg))]
+     (= "break-on-exception" op)
+     (ritz.nrepl.debug/break-on-exception connection (or (:enable msg) true))
+
+     (= "break-at" op)
+     (let [filename (read-when (:file msg))
+           line (read-when (:line msg))
+           namespace (read-when (:ns msg))]
        (trace "break-at %s" msg)
        (if (not (and filename line namespace))
-          (transport/send
-           transport (response-for
-                      msg
-                      :status #{:error :missing-file-line}
-                      :value {:file filename :line line :ns namespace}))
-          (let [value (nrepl-debug/break-at connection namespace filename line)]
-            (transport/send transport
-                            (response-for msg :value (args-for-map value)))
-            (transport/send transport (response-for msg :status :done)))))
+         (transport/send
+          transport (response-for
+                     msg
+                     :status #{:error :missing-file-line}
+                     :value {:file filename :line line :ns namespace}))
+         (let [value (nrepl-debug/break-at connection namespace filename line)]
+           (transport/send transport
+                           (response-for msg :value (args-for-map value)))
+           (transport/send transport (response-for msg :status :done)))))
 
-      (= "resume-all" op)
-      (do
-        (trace "resume-all")
-        (let [value (nrepl-debug/resume-all connection)]
-          (transport/send transport (response-for msg :status :done))))
+     (= "resume-all" op)
+     (do
+       (trace "resume-all")
+       (let [value (nrepl-debug/resume-all connection)]
+         (transport/send transport (response-for msg :status :done))))
 
-      (= "debugger-info" op)
-      (let [value
-            (ritz.nrepl.debug/debugger-info
-             connection
-             (read-string (:thread-id msg))
-             (read-when (:level msg))
-             (read-when (:frame-min msg))
-             (read-when (:frame-max msg)))]
-        (transport/send transport
-                        (response-for msg :value (args-for-map value)))
-        (transport/send transport (response-for msg :status :done)))
+     (= "debugger-info" op)
+     (let [value
+           (ritz.nrepl.debug/debugger-info
+            connection
+            (read-string (:thread-id msg))
+            (read-when (:level msg))
+            (read-when (:frame-min msg))
+            (read-when (:frame-max msg)))]
+       (transport/send transport
+                       (response-for msg :value (args-for-map value)))
+       (transport/send transport (response-for msg :status :done)))
 
-      (= "invoke-restart" op)
-      (do
-        (ritz.nrepl.debug/invoke-restart
-         connection (read-string (:thread-id msg))
-         (read-when (:restart-number msg))
-         (read-when (:restart-name msg)))
-        (transport/send transport (response-for msg :status :done)))
+     (= "invoke-restart" op)
+     (do
+       (ritz.nrepl.debug/invoke-restart
+        connection (read-string (:thread-id msg))
+        (read-when (:restart-number msg))
+        (read-when (:restart-name msg)))
+       (transport/send transport (response-for msg :status :done)))
 
-      (= "frame-eval" op)
-      (let [v (nrepl-debug/frame-eval
-               connection
-               (read-string (:thread-id msg))
-               (read-string (:frame-number msg))
-               (read-string (:code msg))
-               (read-when (:pprint msg)))]
-        (transport/send transport (response-for msg :value (args-for-map v)))
-        (transport/send transport (response-for msg :status :done)))
+     (= "frame-eval" op)
+     (let [v (nrepl-debug/frame-eval
+              connection
+              (read-string (:thread-id msg))
+              (read-string (:frame-number msg))
+              (read-string (:code msg))
+              (read-when (:pprint msg)))]
+       (transport/send transport (response-for msg :value (args-for-map v)))
+       (transport/send transport (response-for msg :status :done)))
 
-      (= "frame-source" op)
-      (let [v (nrepl-debug/frame-source
-               connection
-               (read-string (:thread-id msg))
-               (read-string (:frame-number msg)))]
-        (transport/send
-         transport
-         (response-for
-          msg :value
-          (if v
-            (args-for-map v)
-            (list :error "Could not find source location"))))
-        (transport/send transport (response-for msg :status :done)))
+     (= "frame-source" op)
+     (let [v (nrepl-debug/frame-source
+              connection
+              (read-string (:thread-id msg))
+              (read-string (:frame-number msg)))]
+       (transport/send
+        transport
+        (response-for
+         msg :value
+         (if v
+           (args-for-map v)
+           (list :error "Could not find source location"))))
+       (transport/send transport (response-for msg :status :done)))
 
-      (= "frame-locals" op)
-      (let [v (nrepl-debug/frame-locals
-               connection
-               (read-string (:thread-id msg))
-               (read-string (:frame-number msg)))]
-        (transport/send transport (response-for msg :value (args-for-map v)))
-        (transport/send transport (response-for msg :status :done)))
+     (= "frame-locals" op)
+     (let [v (nrepl-debug/frame-locals
+              connection
+              (read-string (:thread-id msg))
+              (read-string (:frame-number msg)))]
+       (transport/send transport (response-for msg :value (args-for-map v)))
+       (transport/send transport (response-for msg :status :done)))
 
-      (= "disassemble-frame" op)
-      (let [v (nrepl-debug/disassemble-frame
-               connection
-               (read-string (:thread-id msg))
-               (read-string (:frame-number msg)))]
-        (transport/send transport (response-for msg :value (args-for-map v)))
-        (transport/send transport (response-for msg :status :done)))
+     (= "disassemble-frame" op)
+     (let [v (nrepl-debug/disassemble-frame
+              connection
+              (read-string (:thread-id msg))
+              (read-string (:frame-number msg)))]
+       (transport/send transport (response-for msg :value (args-for-map v)))
+       (transport/send transport (response-for msg :status :done)))
 
-      (= "reload-project" op)
-      (let [f #(transport/send transport (response-for msg :status :done))]
-        (reload connection)
-        (trace "reload-project done")
-        (f))
+     (= "reload-project" op)
+     (let [f #(transport/send transport (response-for msg :status :done))]
+       (reload connection)
+       (trace "reload-project done")
+       (f))
 
-      (= "load-project" op)
-      (let [project-file (:project-file msg)
-            f #(transport/send transport (response-for msg :status :done))]
-        (load-project connection project-file)
-        (trace "load-project done")
-        (f))
+     (= "load-project" op)
+     (let [project-file (:project-file msg)
+           f #(transport/send transport (response-for msg :status :done))]
+       (load-project connection project-file)
+       (trace "load-project done")
+       (f))
 
-      (= "reset-repl" op)
-      (do
-        (reset-repl connection)
-        (trace "reset-repl done")
-        (transport/send transport (response-for msg :status :done)))
+     (= "reset-repl" op)
+     (do
+       (reset-repl connection)
+       (trace "reset-repl done")
+       (transport/send transport (response-for msg :status :done)))
 
-      (= "lein" op)
-      (let [args (read-when (:args msg))
-            ]
-        (trace "lein %s" args)
-        (let [[os is] (streams-for-out)
-              buffer-size (* 1024 10)   ; bytes
-              period 500                ; ms
-              bytes (byte-array buffer-size)
-              read-ouput (fn []
-                           (when (pos? (.available is))
-                             (let [num-read (.read is bytes 0 buffer-size)
-                                   s (String. bytes 0 num-read "UTF-8")]
-                               (transport/send
-                                transport (response-for msg :out s)))))
-              f (future
-                  (binding [*out* (writer os)]
-                    (lein connection args)))]
-          (while (not (future-done? f))
-            (Thread/sleep period)
-            (read-ouput))
-          (while (read-ouput)))
-        (trace "lein done")
-        (transport/send transport (response-for msg :status :done)))
+     (= "lein" op)
+     (let [args (read-when (:args msg))
+           ]
+       (trace "lein %s" args)
+       (let [[os is] (streams-for-out)
+             buffer-size (* 1024 10)    ; bytes
+             period 500                 ; ms
+             bytes (byte-array buffer-size)
+             read-ouput (fn []
+                          (when (pos? (.available is))
+                            (let [num-read (.read is bytes 0 buffer-size)
+                                  s (String. bytes 0 num-read "UTF-8")]
+                              (transport/send
+                               transport (response-for msg :out s)))))
+             f (future
+                 (binding [*out* (writer os)]
+                   (lein connection args)))]
+         (while (not (future-done? f))
+           (Thread/sleep period)
+           (read-ouput))
+         (while (read-ouput)))
+       (trace "lein done")
+       (transport/send transport (response-for msg :status :done)))
 
-      :else (handler msg))))
+     :else (handler msg))))
 
 (defn debug-eval
   "nREPL Middleware for debug evaluation."

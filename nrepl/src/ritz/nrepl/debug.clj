@@ -95,6 +95,16 @@ the events can be delivered back."
   [connection]
   (vec (ritz.jpda.debug/breakpoints (vm-context connection))))
 
+(defn breakpoints-recreate
+  [connection {:keys [namespace file file-name file-path] :as msg}]
+  (trace "breakpoints-recreate for f %s f-n %s f-p %s" file file-name file-path)
+  (trace "breakpoints-recreate existing %s" (breakpoint-list connection))
+  (doseq [{:keys [file line enabled] :as bp}
+          (filter #(= file-path (:file %)) (breakpoint-list connection))
+          :when enabled]
+    (let [b (line-breakpoint (vm-context connection) nil file line)]
+      (trace "breakpoints-recreate recreated %s breakboints" (count b)))))
+
 (defn stacktrace-frames
   [frames start]
   (map

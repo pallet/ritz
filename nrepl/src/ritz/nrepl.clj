@@ -31,7 +31,7 @@ processes."
    [ritz.jpda.jdi-vm :only [acquire-thread start-control-thread-body vm-resume]]
    [ritz.logging :only [set-level trace]]
    [ritz.nrepl.connections
-    :only [add-pending-connection connection-for-session
+    :only [add-pending-connection call-message-reply-hook connection-for-session
            promote-pending-connection rename-connection]]
    [ritz.nrepl.debug-eval :only [debug-eval]]
    [ritz.nrepl.middleware.tracking-eval :only [wrap-source-forms]]
@@ -61,7 +61,9 @@ reference."
   [msg]
   (let [connection (->
                     default-connection
-                    (assoc :vm-context @vm :type :nrepl)
+                    (assoc :vm-context @vm
+                           :type :nrepl
+                           :msg-response-hooks (atom {}))
                     (merge (select-keys msg [:transport])))]
     (exception-filters-set!
      connection (or (read-exception-filters) default-exception-filters))
@@ -195,6 +197,7 @@ connection is found in the connections map based on the session id."
                  :err new-session (:transport connection))]
         (trace "jpda session %s" s)
         (bindings-merge! connection s {#'*out* out #'*err* err})))
+    (call-message-reply-hook connection msg)
     (let [transport (:transport connection)]
       (assert transport)
       (transport/send transport msg)))
