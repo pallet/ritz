@@ -16,7 +16,7 @@
 (def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.1"
                                      :exclusions [org.clojure/clojure]]]})
 
-(def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.7.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.7.1-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
 

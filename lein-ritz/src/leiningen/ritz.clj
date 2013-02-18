@@ -12,7 +12,7 @@
     :only [classlojure-profile clojure-profile lein-profile jpda-jars]]))
 
 
-(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.7.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.7.1-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
 
 (defn ritz-form [project port host {:keys [debug] :as opts}]
