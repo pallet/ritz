@@ -1,6 +1,78 @@
 # Release Notes
 
-Current release is 0.6.0.
+Current release is 0.7.0.
+
+## 0.7.0
+
+### Features
+
+- Enable line breakpoints
+  Enables setting of line breakpoints with nrepl-ritz-line-breakpoint,
+  bound to C-c C-x C-b.  Requires nrepl-ritz-break-on-exception to be on.
+
+- Recreate breakpoints on load-file
+  Breakpoints were not being recreated when code was recompiled for
+  load-file.
+
+  To do this, it adds a message reply hook, for notifying a function on the
+  reply to a specific message.
+
+- Add a load-file middleware
+  The load-file operation adds optional disabling of local var clearing,
+  and dead var removal.
+
+- Update to nrepl.el 1.6
+
+- Update to tools.nrepl 0.2.1
+
+- Use lein 2 plugin loading for hooks
+  Removes the need to add explicit hooks.
+
+### Fixes
+- Update to latest dynapath to resolve transitive dep issues.
+  Dynapath renamed core -> util for 0.2.0, released to central for 0.2.1
+  (requiring a group), and dynapath.util/classpath-urls now contains a
+  check to verify the given CL is readable, so I removed that check.
+
+- Make nrepl-ritz-jack-in use nrepl-jack-in
+
+- Correct the regex for implementation fields
+  The regex for matching implementation fields in stack frames was wrong.
+
+- Calculate condition-info correctly
+  The exception message information was blank for breakpoint and step
+  events.
+
+- Use the nrepl tooling session
+
+- Removes ritz-javadoc support that migrated into nrepl
+  Javadoc support moved into nrepl core, so supporting javadoc in ritz is
+  no longer necessary.
+
+- Use clojure.walk/macroexpand for macroexpand-all
+
+- Update datomic transactor version
+
+- Add slime support for clojure-mode
+  Slime support was dropped in clojure-mode:
+  https://github.com/technomancy/clojure-mode/pull/115
+
+- Disable byte-compile-warnings (calls to runtime functions from the CL
+  package), refs #60
+
+- Ensure encoding related JVM options are passed to the controlling debugger
+  vm, refs #62
+  The swank connection reader should use the encoding specified in the 
+  projects JVM options (-Dswank.encoding=...)
+
+- Use ".codePointCount" to calculate the length of a rpc message string, refs
+  #62
+  Java Unicode surrogate pairs consists of two chars and thus results in an
+  invalid length when ".length" is used to calculate the packet length.
+
+- Fix codeq lookup of qualified symbols
+
+- Namespace qualify symbol passed to codeq when unqualified
 
 ## 0.6.0
 
