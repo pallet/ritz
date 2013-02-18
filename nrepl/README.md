@@ -9,8 +9,8 @@ Add this to your `~/.lein/profiles.clj` file (requires lein version 2):
 
 ```clj
 {:user
- {:plugins [[lein-ritz "0.6.0"]]
-  :dependencies [[ritz/ritz-nrepl-middleware "0.6.0"]]
+ {:plugins [[lein-ritz "0.7.0"]]
+  :dependencies [[ritz/ritz-nrepl-middleware "0.7.0"]]
   :repl-options {:nrepl-middleware
                  [ritz.nrepl.middleware.javadoc/wrap-javadoc
                   ritz.nrepl.middleware.simple-complete/wrap-simple-complete]}}}

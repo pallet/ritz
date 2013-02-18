@@ -11,7 +11,7 @@ Library of useful functions for implementing clojure development clients.
 Add the following to your `:dependencies`:
 
 ```clj
-[ritz/ritz-repl-utils "0.6.0"]
+[ritz/ritz-repl-utils "0.7.0"]
 ```
 
 ## License
