@@ -172,6 +172,7 @@ executes the provided `cmd`."
   [classpath cmd {:as options}]
   (logging/trace
    "launch-vm %s\n%s" classpath (with-out-str (pprint/pprint cmd)))
+  (logging/trace "launch-vm options %s" options)
   (let [vm (jdi/launch classpath (wrap-launch-cmd cmd) (:jvm-opts options))
         connected (atom true)
         context {:vm vm :connected connected}

@@ -366,7 +366,7 @@
   [classpath filepath]
   (logging/trace "matching-classpath-files %s" filepath)
   ;; (logging/trace "matching-classpath-files %s" (vec (filepaths classpath)))
-  (filter #(re-find (re-pattern filepath) %) (filepaths classpath)))
+  (filter #(.endsWith filepath %) (filepaths classpath)))
 
 (defn namespace-for-path
   "Takes a path and builds a namespace string from it"
@@ -376,6 +376,7 @@
     (->
      path
      (string/replace #".class$" "")
+     (string/replace #".clj$" "")
      (string/replace "/" "."))))
 
 (defn file-namespace
@@ -664,7 +665,7 @@ default stratum to decide."
     (= "Clojure" stratum)))
 
 (def clojure-implementation-regex
-  #"(^const__\d*$|^__meta$|^__var__callsite__\d*$|^__site__\d*__$|^__thunk__\d*__$)")
+  #"(^__cached_[a-z_]+\d+$|^const__\d*$|^__meta$|^__var__callsite__\d*$|^__site__\d*__$|^__thunk__\d*__$)")
 
 (defn visible-clojure-fields
   "Return the subset of fields that should be visible."

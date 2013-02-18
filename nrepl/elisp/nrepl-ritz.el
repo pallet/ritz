@@ -1,12 +1,12 @@
 ;;; nrepl-ritz.el --- nrepl extensions for ritz
 ;;
-;; Copyright 2012 Hugo Duncan
+;; Copyright 2012, 2013 Hugo Duncan
 ;;
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.6.0
-;; Package-Requires: ((nrepl "0.1.5"))
+;; Version: 0.7.0
+;; Package-Requires: ((nrepl "0.1.6"))
 ;; License: EPL
 
 (require 'nrepl)
@@ -16,39 +16,25 @@
           (locate-file (format "%s.bat" nrepl-lein-command) exec-path))
       (format "%s ritz-nrepl" nrepl-lein-command)
     (format "echo \"%s ritz-nrepl\" | $SHELL -l" nrepl-lein-command))
-  "The command used to start the nREPL via nrepl-ritz-jack-in.
+  "The command used to start the nREPL via `nrepl-ritz-jack-in'.
 For a remote nREPL server lein must be in your PATH.  The remote
 proc is launched via sh rather than bash, so it might be necessary
-to specific the full path to it. Localhost is assumed."
+to specific the full path to it.  Localhost is assumed."
   :type 'string
   :group 'nrepl-mode)
 
 ;;;###autoload
-(defun nrepl-ritz-jack-in (prompt-project)
+(defun nrepl-ritz-jack-in (&optional prompt-project)
+  "Jack in with a ritz nrepl server."
   (interactive "P")
-  (let* ((cmd (if prompt-project
-                  (format "cd %s && %s" (ido-read-directory-name "Project: ")
-                          nrepl-ritz-server-command)
-                  nrepl-ritz-server-command))
-         (process (start-process-shell-command
-                   "nrepl-ritz-server" "*nrepl-server*" cmd)))
-    (set-process-filter process 'nrepl-server-filter)
-    (set-process-sentinel process 'nrepl-server-sentinel)
-    (set-process-coding-system process 'utf-8-unix 'utf-8-unix)
-    (message "Starting nREPL ritz server...")))
+  (let ((nrepl-server-command nrepl-ritz-server-command))
+    (nrepl-jack-in prompt-project)))
 
 ;;; overwrite nrepl.el functions to allow easy development of ritz.
 ;;; Maybe these could be put back into nrepl.el
 (defvar nrepl-eval-op "eval"
   "nrepl op for eval of forms.")
 (make-variable-buffer-local 'nrepl-eval-op)
-
-(defun nrepl-eval-request (input &optional ns session)
-  (append (if ns (list "ns" ns))
-          (list
-           "op" nrepl-eval-op
-           "session" (or session (nrepl-current-session))
-           "code" input)))
 
 ;;; # General helpers
 (defun flatten-alist (alist)
@@ -95,13 +81,15 @@ to specific the full path to it. Localhost is assumed."
 ;;; # Requests
 (defun nrepl-ritz-send-op (op callback attributes)
   (lexical-let ((request (append
-                          (list "op" op "session" (nrepl-current-session))
+                          (list "op" op "session"
+                                (nrepl-current-tooling-session))
                           (mapcar 'prin1-to-string attributes))))
     (nrepl-send-request request callback)))
 
 (defun nrepl-ritz-send-op-strings (op callback attributes)
   (lexical-let ((request (append
-                          (list "op" op "session" (nrepl-current-session))
+                          (list "op" op "session"
+                                (nrepl-current-tooling-session))
                           attributes)))
     (nrepl-send-request request callback)))
 
@@ -116,7 +104,7 @@ passing to the ON-VALUE callback."
   (lexical-let ((request
                  (append
                   (list "op" op
-                        "session" (nrepl-current-session)
+                        "session" (nrepl-current-tooling-session)
                         "thread-id" (prin1-to-string nrepl-dbg-thread-id))
                   (mapcar 'prin1-to-string attributes)))
                 (f on-value))
@@ -464,34 +452,6 @@ are supported:
   "Show apropos at point."
   (interactive)
   (nrepl-ritz-apropos (read-string "Clojure apropos: ") nil nil))
-
-;;; javadoc browsing
-(defvar nrepl-ritz-javadoc-local-paths nil)
-
-(defun nrepl-ritz-javadoc-input-handler (symbol-name)
-  "Browse javadoc on the Java class at point."
-  (when (not symbol-name)
-    (error "No symbol given"))
-  (nrepl-ritz-send-op-strings
-   "javadoc"
-   (nrepl-make-response-handler
-    (current-buffer)
-    (lambda (buffer url)
-      (if url
-          (browse-url url)
-        (error "No javadoc url for %s" symbol-name)))
-    nil nil nil)
-   `("symbol" ,symbol-name "ns" ,nrepl-buffer-ns
-     "local-paths" ,(mapconcat #'identity nrepl-ritz-javadoc-local-paths " "))))
-
-(defun nrepl-ritz-javadoc (query)
-  "Browse javadoc on the Java class at point."
-  (interactive "P")
-  (nrepl-read-symbol-name
-   "Javadoc for: " 'nrepl-ritz-javadoc-input-handler query))
-
-(define-key nrepl-interaction-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
-(define-key nrepl-mode-map (kbd "C-c b") 'nrepl-ritz-javadoc)
 
 ;;; codeq def browsing
 (defvar nrepl-codeq-url "datomic:free://localhost:4334/git")
@@ -921,9 +881,9 @@ portion of the stacktrace. Frames are numbered from 0."
                (nrepl-dbg-prune-initial-frames frames) t)
             (insert "[No stacktrace]")))
         (run-hooks 'nrepl-dbg-hook)
-        (set-syntax-table lisp-mode-syntax-table))
+        (set-syntax-table clojure-mode-syntax-table))
       (setq buffer-read-only t))
-    (pop-to-buffer (current-buffer))))
+    (nrepl-popup-display-buffer (current-buffer) t)))
 
 (defun nrepl-dbg-activate (thread level select)
   "Display the debugger buffer for THREAD.
@@ -952,7 +912,7 @@ If LEVEL isn't the same as in the buffer reinitialize the buffer."
   "Exit from the debug level LEVEL."
   (when-let (nrepl-dbg (nrepl-dbg-find-buffer thread))
     (with-current-buffer nrepl-dbg
-      (kill-buffer))))
+      (nrepl-popup-buffer-quit t))))
 
 ;;; ## Insertion
 (defun nrepl-dbg-insert-exception (exception)
@@ -1475,7 +1435,35 @@ frame move command."
    (nrepl-current-ns)
    (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
 
+(defun nrepl-ritz-resume-all ()
+  (interactive)
+  (nrepl-ritz-send-op
+   "resume-all"
+   (nrepl-make-response-handler (current-buffer) nil nil nil nil)
+   nil))
+
+(define-key
+  nrepl-interaction-mode-map (kbd "C-c C-x C-b") 'nrepl-ritz-line-breakpoint)
+
+(defun nrepl-ritz-line-breakpoint (flag)
+  "Set breakpoint at current line"
+  (interactive "p")
+  (nrepl-ritz-send-op
+   "break-at"
+   (nrepl-make-response-handler
+    (current-buffer)
+    (lambda (buffer value)
+      (message "xx")
+      (lexical-let ((v (nrepl-keywordise value)))
+        (destructuring-bind (&key count) v
+          (message "Set %s breakpoints" count))))
+    nil nil nil)
+   `(file ,(buffer-name)
+     line ,(line-number-at-pos)
+     ns ,(or (nrepl-current-ns) "user"))))
+
 (defun nrepl-ritz-break-on-exception (flag)
+  "Enable break on exception"
   (interactive "p")
   (nrepl-ritz-send-op
    "break-on-exception"
@@ -1484,10 +1472,11 @@ frame move command."
     (lambda (buffer value)
       (lexical-let ((v (nrepl-keywordise value)))
         (destructuring-bind (&key thread-id level exception restarts frames) v
-          (message "b-o-e calling %s %s" thread-id level)
           (nrepl-dbg-setup thread-id level exception restarts frames))))
     nil nil nil)
-   `("enable" ,(if flag "true" "false"))))
+   `(enable ,(if flag "true" "false"))))
+
+
 
 (provide 'nrepl-ritz)
 ;;; nrepl-ritz.el ends here

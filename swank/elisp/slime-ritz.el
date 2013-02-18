@@ -5,7 +5,7 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, slime
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.6.0
+;; Version: 0.7.0
 ;; License: EPL
 
 (define-slime-contrib slime-ritz
@@ -448,7 +448,23 @@ With prefix argument FLAG, do not break on exception"
 
 ;;;###autoload
 (defun slime-clojure-connection-setup ()
-  (slime-ritz-bind-keys))
+  (slime-ritz-bind-keys)
+  (when (featurep 'clojure-mode)
+    (slime-clojure-mode-enable-slime-on-existing-buffers)
+    (add-hook 'clojure-mode-hook 'slime-clojure-mode-enable-slime)))
+
+(defun slime-clojure-mode-enable-slime-on-existing-buffers ()
+  (dolist (buffer (buffer-list))
+    (with-current-buffer buffer
+      (when (eq major-mode 'clojure-mode)
+	(slime-mode t)
+	(set (make-local-variable 'slime-find-buffer-package-function)
+	     'clojure-find-ns)))))
+
+(defun slime-clojure-mode-enable-slime ()
+  (slime-mode t)
+  (set (make-local-variable 'slime-find-buffer-package-function)
+       'clojure-find-ns))
 
 ;;;###autoload
 (defun slime-clojure-repl-setup ()
@@ -470,3 +486,7 @@ With prefix argument FLAG, do not break on exception"
 
 (provide 'slime-ritz)
 ;;; slime-ritz.el ends here
+
+;; Local Variables:
+;; byte-compile-warnings: (not cl-functions)
+;; End:

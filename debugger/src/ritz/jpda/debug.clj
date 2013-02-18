@@ -53,7 +53,7 @@
 (defn launch-vm
   "Launch and configure the vm for the debugee."
   [{:keys [classpath main] :as options}]
-  (trace "debug/launch-vm")
+  (trace "debug/launch-vm %s" options)
   (jdi/vm-event-daemon
    (jdi-clj/vm-rt
     (jdi-vm/launch-vm (or classpath (jdi-vm/current-classpath)) main options))))
@@ -699,10 +699,9 @@ of any debug function that uses a user thread."
 
 (defn restart-info
   [connection event level]
-  (let [exception-info (when (instance? ExceptionEvent event)
-                         (exception-info connection event))]
-    {:condition exception-info
-     :restarts (restarts event exception-info connection level)}))
+  (let [condition-info (condition-info event connection)]
+    {:condition condition-info
+     :restarts (restarts event condition-info connection level)}))
 
 (defn debugger-event-info
   "Calculate debugger information and invoke"

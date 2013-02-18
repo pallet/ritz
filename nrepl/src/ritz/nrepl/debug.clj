@@ -2,13 +2,14 @@
   "Debugger implementation for nREPL"
   (:use
    [clojure.tools.nrepl.misc :only [response-for]]
+   [ritz.debugger.breakpoint :only [breakpoints-add!]]
    [ritz.debugger.connection :only [vm-context debug-context]]
    [ritz.jpda.debug
-    :only [break-for-exception? add-exception-event-request event-break-info
-           display-break-level dismiss-break-level
-           invoke-named-restart build-backtrace frame-source-location
-           frame-locals-with-string-values
-           eval-string-in-frame pprint-eval-string-in-frame]]
+    :only [add-exception-event-request break-for-exception? build-backtrace
+           dismiss-break-level display-break-level eval-string-in-frame
+           event-break-info frame-locals-with-string-values
+           frame-source-location invoke-named-restart line-breakpoint
+           pprint-eval-string-in-frame]]
    [ritz.jpda.jdi :only [discard-event-request handle-event silent-event?]]
    [ritz.logging :only [trace trace-str]]
    [ritz.nrepl.connections :only [all-connections]])
@@ -55,6 +56,8 @@
     (ritz.jpda.debug/invoke-restart connection thread-id nil restart-number)))
 
 ;;; debugger
+(defn resume-all [connection]
+  (.resume (:vm (connection/vm-context connection))))
 
 ;;; exceptions
 (defn break-on-exception
@@ -77,9 +80,30 @@ the events can be delivered back."
         (-> (debug-context connection) :breakpoint :msg)
         :status :done)))))
 
+(defn break-at
+  "Enable a breakpoint at a given line"
+  [{:keys [transport] :as connection} namespace filename line]
+  (trace "break-at %s %s" filename line)
+  (let [filename (when filename
+                   (string/replace filename #" \(.*jar\)" ""))
+        breakpoints (line-breakpoint
+                     (vm-context connection) namespace filename line)]
+    (breakpoints-add! connection breakpoints)
+    {:count (count breakpoints)}))
+
 (defn breakpoint-list
   [connection]
   (vec (ritz.jpda.debug/breakpoints (vm-context connection))))
+
+(defn breakpoints-recreate
+  [connection {:keys [namespace file file-name file-path] :as msg}]
+  (trace "breakpoints-recreate for f %s f-n %s f-p %s" file file-name file-path)
+  (trace "breakpoints-recreate existing %s" (breakpoint-list connection))
+  (doseq [{:keys [file line enabled] :as bp}
+          (filter #(= file-path (:file %)) (breakpoint-list connection))
+          :when enabled]
+    (let [b (line-breakpoint (vm-context connection) nil file line)]
+      (trace "breakpoints-recreate recreated %s breakboints" (count b)))))
 
 (defn stacktrace-frames
   [frames start]
@@ -95,8 +119,8 @@ the events can be delivered back."
 (defn debugger-data
   [{:keys [thread thread-id condition event restarts] :as level-info}
    level frame-min frame-max]
-  `("exception" ~(list (:exception-message condition)
-                       (:type condition))
+  `("exception" ~(list (:message condition "No message")
+                       (:type condition ""))
     "thread-id" ~thread-id
     "frames" ~(vec (stacktrace-frames (build-backtrace thread) frame-min))
     "restarts" ~(vec (map

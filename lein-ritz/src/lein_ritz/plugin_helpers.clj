@@ -1,9 +1,7 @@
-(ns ritz.plugin-helpers
+(ns lein-ritz.plugin-helpers
   "Helpers for use in the lein plugins"
-  (:use
-   [clojure.java.io :only [file]]
-   [ritz.add-sources :only [add-source-artifacts]]
-   [robert.hooke :only [add-hook]]))
+  (:require
+   [clojure.java.io :refer [file]]))
 
 ;;; Dependencies used in vms and classloaders
 (def lein-profile
@@ -30,23 +28,3 @@
   "JPDA is in the JDK's tools.jar and sa-jdi.jar. Add them to the classpath."
   [f project]
   (concat (f project) (jpda-jars)))
-
-;;; Add hooks
-(defmacro add-hooks
-  []
-  (if (and
-       (find-ns 'leiningen.core.classpath)
-       (ns-resolve 'leiningen.core.classpath 'get-classpath))
-    `(do
-       (add-hook
-        #'leiningen.core.classpath/get-classpath add-jpda-jars)
-       (add-hook
-        #'leiningen.core.classpath/get-classpath add-source-artifacts))
-    `(do
-       (require 'leiningen.classpath)
-       (add-hook
-        #'leiningen.classpath/get-classpath add-jpda-jars)
-       (add-hook
-        #'leiningen.classpath/get-classpath add-source-artifacts))))
-
-(add-hooks)

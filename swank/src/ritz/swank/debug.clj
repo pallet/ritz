@@ -13,6 +13,7 @@
    [ritz.logging :only [trace trace-str]]
    [ritz.debugger.connection
     :only [debug-context debug-assoc! debug-update-in! vm-context]]
+   [ritz.debugger.breakpoint]
    [ritz.repl-utils.source-forms :only [source-form!]]
    [ritz.swank.rexec :only [rexec rread-msg]])
   (:require
@@ -167,23 +168,6 @@ otherwise pass it on."
       (throw e))))
 
 ;;; # Breakpoints
-
-;;; ## State
-(defn breakpoints
-  [connection]
-  (:breakpoints (debug-context connection)))
-
-(defn breakpoints-set!
-  [connection breakpoints]
-  (debug-assoc! connection :breakpoints breakpoints))
-
-(defn breakpoints-add!
-  [connection breakpoints]
-  (debug-update-in! connection [:breakpoints] concat breakpoints))
-
-(defn breakpoint
-  [connection breakpoint-id]
-  (nth (breakpoints connection) breakpoint-id nil))
 
 ;;; ## Logic
 (defn breakpoint-list

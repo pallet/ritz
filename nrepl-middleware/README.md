@@ -9,7 +9,7 @@ middleware to `:nrepl-middleware` under `:repl-options`. You can do this in your
 `project.clj` file, or in the `:user` profile in `~/.lein/profiles.clj`.
 
 ```clj
-:dependencies [[ritz/ritz-nrepl-middleware "0.6.0"]]
+:dependencies [[ritz/ritz-nrepl-middleware "0.7.0"]]
 :repl-options {:nrepl-middleware
                 [ritz.nrepl.middleware.javadoc/wrap-javadoc
                  ritz.nrepl.middleware.simple-complete/wrap-simple-complete]}
@@ -39,11 +39,14 @@ middleware to `:nrepl-middleware` under `:repl-options`. You can do this in your
 ["eval"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.tracking-eval.html)
 : eval with source form tracking
 
+["load-file"](http://palletops.com/ritz/0.4/nrepl/api/ritz.nrepl.middleware.load-file.html)
+: load file with optional locals clearing and dead var removal
+
 [API Docs](http://palletops.com/ritz/0.4/nrepl-middleware/api/)
 
 
 ## License
 
-Copyright © 2012 Hugo Duncan
+Copyright © 2012, 2013 Hugo Duncan
 
 Distributed under the Eclipse Public License.

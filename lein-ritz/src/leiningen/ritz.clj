@@ -8,11 +8,11 @@
    [clojure.set :only [difference union]]
    [clojure.tools.cli :only [cli]]
    [leiningen.core.classpath :only [get-classpath]]
-   [ritz.plugin-helpers
+   [lein-ritz.plugin-helpers
     :only [classlojure-profile clojure-profile lein-profile jpda-jars]]))
 
 
-(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.6.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-swank "0.7.0"
                                     :exclusions [org.clojure/clojure]]]})
 
 (defn ritz-form [project port host {:keys [debug] :as opts}]
@@ -102,6 +102,7 @@
               (assoc :server-ns
                 (if debug 'ritz.swank.proxy 'ritz.swank.repl))
               (update-in [:log-level] #(when % (keyword %))))
+        jvm-eopts (filter #(re-matches #"^-D(swank|file).encoding.*" %) (:jvm-opts project))
         start-project (if debug
                         (->
                          project
@@ -109,7 +110,7 @@
                          (project/merge-profiles
                           [clojure-profile lein-profile ritz-profile])
                          (dissoc :test-paths :source-paths :resource-paths)
-                         (assoc :jvm-opts ["-Djava.awt.headless=true"
-                                           "-XX:+TieredCompilation"]))
+                         (assoc :jvm-opts (concat ["-Djava.awt.headless=true" "-XX:+TieredCompilation"]
+                                                  jvm-eopts)))
                         (project/merge-profiles project [ritz-profile]))]
     (eval-in-project start-project (ritz-form project port host opts))))

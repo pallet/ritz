@@ -107,7 +107,7 @@ Provides middleware to control evaluation in a classloader."
      project-name
      (get-classpath project)
      (get-classpath
-      (assoc project :dependencies '[[org.clojure/tools.nrepl "0.2.0-beta10"]]))
+      (assoc project :dependencies '[[org.clojure/tools.nrepl "0.2.1"]]))
      transport
      (-> project :repl-options :nrepl-middleware))
     (transport/send transport

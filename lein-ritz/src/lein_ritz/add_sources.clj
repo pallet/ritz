@@ -1,8 +1,6 @@
-(ns ritz.add-sources
+(ns lein-ritz.add-sources
   (:require
-   [clojure.java.io :as io])
-  (:use
-   [robert.hooke :only [add-hook]]))
+   [clojure.java.io :as io]))
 
 (defn- source-jar
   "Return the path to the source jar if it exists."

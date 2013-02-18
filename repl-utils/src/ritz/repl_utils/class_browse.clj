@@ -24,7 +24,7 @@
            [java.util StringTokenizer]
            [java.util.jar JarFile JarEntry]
            [java.util.regex Pattern])
-  (:require [dynapath.core :as dp]))
+  (:require [dynapath.util :as dp]))
 
 ;;; Class file naming, categorization
 
@@ -120,9 +120,7 @@
 (defn classpath-urls
   "Return the classpath URL's for the current clojure classloader."
   []
-  (let [cl (.getClassLoader clojure.lang.RT)]
-    (when (dp/readable-classpath? cl)
-      (dp/classpath-urls cl))))
+  (dp/classpath-urls (.getClassLoader clojure.lang.RT)))
 
 (defn classpath
   "Return the classpath File's for the current clojure classloader."

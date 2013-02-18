@@ -10,10 +10,10 @@
    [clojure.tools.cli :only [cli]]
    [leiningen.core.main :only [debug]]))
 
-(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.0-beta9"
+(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.1"
                                      :exclusions [org.clojure/clojure]]]})
 
-(def ritz-profile {:dependencies '[[ritz/ritz-nrepl-hornetq "0.6.0"
+(def ritz-profile {:dependencies '[[ritz/ritz-nrepl-hornetq "0.7.0"
                                     :exclusions [org.clojure/clojure]]]})
 
 (defn- start-nrepl-server

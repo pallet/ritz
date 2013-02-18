@@ -63,13 +63,15 @@ on the given transport with the handler, until the atom is set to false."
   []
   (let [f (java.io.File/createTempFile "nrepl-codeq" ".properties")
         cl (classlojure
-            (dependency-files
-             (resolve-dependencies
-              :repositories {"clojars" "https://clojars.org/repo/"
-                             "central" "http://repo1.maven.org/maven2/"}
-              :coordinates '[[org.cloudhoist/datomic-free-transactor "0.8.3551"]
-                             [ch.qos.logback/logback-classic "1.0.0"]]
-              :retrieve true)))
+            (conj
+             (dependency-files
+              (resolve-dependencies
+               :repositories {"clojars" "https://clojars.org/repo/"
+                              "central" "http://repo1.maven.org/maven2/"}
+               :coordinates '[[org.cloudhoist/datomic-free-transactor "0.8.3731"]
+                              [ch.qos.logback/logback-classic "1.0.0"]]
+               :retrieve true))
+             "file:dev-resources/"))
         properties {:protocol "free"
                     :host "localhost"
                     :port 4334
@@ -99,15 +101,17 @@ on the given transport with the handler, until the atom is set to false."
 (defn populate-codeq
   []
   (let [cl (classlojure
-            (dependency-files
-             (resolve-dependencies
-              :repositories {"clojars" "https://clojars.org/repo/"
-                             "central" "http://repo1.maven.org/maven2/"}
-              :coordinates '[[org.cloudhoist/codeq "0.1.0-SNAPSHOT"
-                              :exclusions [org.slf4j/slf4j-nop]]
-                             [org.clojure/clojure "1.5.0-alpha6"]
-                             [ch.qos.logback/logback-classic "1.0.0"]]
-              :retrieve true)))]
+            (conj
+             (dependency-files
+              (resolve-dependencies
+               :repositories {"clojars" "https://clojars.org/repo/"
+                              "central" "http://repo1.maven.org/maven2/"}
+               :coordinates '[[org.cloudhoist/codeq "0.1.0-SNAPSHOT"
+                               :exclusions [org.slf4j/slf4j-nop]]
+                              [org.clojure/clojure "1.5.0-alpha6"]
+                              [ch.qos.logback/logback-classic "1.0.0"]]
+               :retrieve true))
+              "file:dev-resources/"))]
     (eval-in cl `(require 'datomic.codeq.core))
     (eval-in cl `(import 'org.h2.Driver))  ;; fails to find driver without this
     (eval-in cl `(datomic.codeq.core/main ~(datomic-url)))))
@@ -126,6 +130,16 @@ on the given transport with the handler, until the atom is set to false."
                           (catch Exception e (print-cause-trace e))))]
       ;; set the classpath
       (.offer in {:op "codeq-def" :symbol "ritz.logging/trace"
+                  :datomic-url (datomic-url) :id 0})
+      (is (= {:value
+              [["(defmacro trace\n  [fmt-str & args]\n  `(log :trace ~fmt-str ~@args))"
+                "Sun Jul 03 02:08:35 UTC 2011"]]
+              :id 0}
+             (.take out)))
+
+      (is (= #{:done} (:status (.take out))))
+
+      (.offer in {:op "codeq-def" :symbol "trace" :ns "ritz.logging"
                   :datomic-url (datomic-url) :id 0})
       (is (= {:value
               [["(defmacro trace\n  [fmt-str & args]\n  `(log :trace ~fmt-str ~@args))"
