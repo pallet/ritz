@@ -138,7 +138,7 @@ reference."
 ;;; We forward the message to the user process. The reply pump
 ;;; will pump all replies back to the client.
 (defn execute-eval
-  "Execute a jpda action"
+  "Execute an operation in the user process"
   [host port {:keys [op transport] :as msg}]
   (trace "execute-jpda %s" op)
   (let [connection (::connection msg)]
