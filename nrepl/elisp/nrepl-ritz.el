@@ -881,9 +881,9 @@ portion of the stacktrace. Frames are numbered from 0."
                (nrepl-dbg-prune-initial-frames frames) t)
             (insert "[No stacktrace]")))
         (run-hooks 'nrepl-dbg-hook)
-        (set-syntax-table lisp-mode-syntax-table))
+        (set-syntax-table clojure-mode-syntax-table))
       (setq buffer-read-only t))
-    (pop-to-buffer (current-buffer))))
+    (nrepl-popup-display-buffer (current-buffer) t)))
 
 (defun nrepl-dbg-activate (thread level select)
   "Display the debugger buffer for THREAD.
@@ -912,7 +912,7 @@ If LEVEL isn't the same as in the buffer reinitialize the buffer."
   "Exit from the debug level LEVEL."
   (when-let (nrepl-dbg (nrepl-dbg-find-buffer thread))
     (with-current-buffer nrepl-dbg
-      (kill-buffer))))
+      (nrepl-popup-buffer-quit t))))
 
 ;;; ## Insertion
 (defun nrepl-dbg-insert-exception (exception)
