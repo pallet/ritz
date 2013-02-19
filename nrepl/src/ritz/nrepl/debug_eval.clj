@@ -100,6 +100,32 @@
                            (response-for msg :value (args-for-map value)))
            (transport/send transport (response-for msg :status :done)))))
 
+     (= "breakpoint-remove" op)
+     (let [filename (read-when (:file msg))
+           line (read-when (:line msg))]
+       (trace "breakpoint-remove %s" msg)
+       (if (not (and filename line))
+         (transport/send
+          transport (response-for
+                     msg
+                     :status #{:error :missing-file-line}
+                     :value {:file filename :line line :ns namespace}))
+         (let [value (nrepl-debug/breakpoint-remove connection filename line)]
+           (transport/send transport
+                           (response-for msg :value (args-for-map value)))
+           (transport/send transport (response-for msg :status :done)))))
+
+     (= "breakpoint-list" op)
+     (do
+       (trace "breakpoint-list %s" msg)
+       (let [value (nrepl-debug/breakpoint-list connection)]
+         (trace "breakpoint-list is %s"
+                (with-out-str (clojure.pprint/pprint value)))
+         (transport/send transport
+                         (response-for
+                          msg :value (args-for-map {:breakpoints value})))
+         (transport/send transport (response-for msg :status :done))))
+
      (= "resume-all" op)
      (do
        (trace "resume-all")
