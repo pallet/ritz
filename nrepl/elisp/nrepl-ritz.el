@@ -10,6 +10,7 @@
 ;; License: EPL
 
 (require 'nrepl)
+(require 'ewoc)
 
 ;;; Code:
 
@@ -266,9 +267,8 @@ Optional argument RECENTER specifies that the point should be recentered."
     (nrepl-ritz-goto-location-position line)
     (point)))
 
-(defun nrepl-ritz-goto-source-location (zip file line &optional noerror)
-  "In ZIP and FILE, got LINE.
-Argument NOERROR is not used."
+(defun nrepl-ritz-goto-source-location (zip file line &optional source-form)
+  "In ZIP and FILE, got LINE."
   (nrepl-ritz-goto-location-buffer zip file source-form)
   (let ((pos (nrepl-ritz-location-offset line)))
     (cond ((and (<= (point-min) pos) (<= pos (point-max))))
@@ -312,7 +312,9 @@ Optional argument TIMEOUT specifies a timeout for the flash."
   (nrepl-send-string
    "(ritz.logging/toggle-level :trace)"
    (nrepl-make-response-handler (current-buffer) nil nil nil nil)
-   nrepl-buffer-ns))
+   nrepl-buffer-ns)
+  (nrepl-ritz-send-debug
+   "(ritz.logging/toggle-level :trace)" nrepl-buffer-ns nil))
 
 
 ;;; jpda commands
@@ -1484,17 +1486,117 @@ Argument MOVE-FN is a function to perform the movement."
 
 
 
-
-
-
 ;;; breakpoints
-(defun nrepl-ritz-break-breakpoint-list ()
-  "Display a list of breakpoints."
+(define-derived-mode nrepl-ritz-breakpoints-mode nrepl-popup-buffer-mode
+  "nrepl-ritz-breakpoint"
+  "nREPL Breakpoints Interaction Mode.
+\\{nrepl-ritz-breakpoints-mode-map}
+\\{nrepl-popup-buffer-mode-map}"
+  (set (make-local-variable 'truncate-lines) t))
+
+(defvar nrepl-ritz-breakpoints-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "g" 'nrepl-ritz-breakpoints)
+    (define-key map (kbd "C-k") 'nrepl-ritz-breakpoints-kill)
+    (define-key map (kbd "RET") 'nrepl-ritz-breakpoints-goto)
+    map))
+
+(defconst nrepl-ritz--breakpoints-buffer-name "*nrepl-breakpoints*")
+
+(defun nrepl-ritz-breakpoints ()
+  "Open a browser buffer for nREPL breakpoints."
   (interactive)
-  (nrepl-send-debug
-   "(ritz.nrepl.debug/breakpoint-list)"
-   (nrepl-current-ns)
-   (nrepl-make-response-handler (current-buffer) nil nil nil nil)))
+  (lexical-let ((buffer (get-buffer nrepl-ritz--breakpoints-buffer-name)))
+    (if buffer
+        (progn
+          (nrepl-ritz--breakpoints-refresh-buffer
+           buffer (not (get-buffer-window buffer))))
+      (nrepl-ritz--setup-breakpoints))))
+
+(defun nrepl-ritz--setup-breakpoints ()
+  "Create a buffer for nREPL breakpoints."
+  (with-current-buffer
+      (get-buffer-create nrepl-ritz--breakpoints-buffer-name)
+    (lexical-let ((ewoc (ewoc-create
+                         'nrepl-ritz--breakpoint-pp
+                         " line file\n")))
+      (set (make-local-variable 'nrepl-ritz-breakpoint-ewoc) ewoc)
+      (setq buffer-read-only t)
+      (nrepl-ritz-breakpoints-mode)
+      (nrepl-ritz--breakpoints-refresh-buffer (current-buffer) t))))
+
+(defun nrepl-ritz--breakpoints-refresh ()
+  "Refresh the breakpoints buffer, if the buffer exists.
+The breakpoints buffer is determined by
+`nrepl-ritz--breakpoints-buffer-name'"
+  (lexical-let ((buffer (get-buffer nrepl-ritz--breakpoints-buffer-name)))
+    (when buffer
+      (nrepl-ritz--breakpoints-refresh-buffer buffer nil))))
+
+(defun nrepl-ritz--breakpoints-refresh-buffer (buffer select)
+  "Refresh the breakpoints BUFFER."
+  (lexical-let ((buffer buffer)
+                (select select))
+    (with-current-buffer buffer
+      (nrepl-ritz-send-dbg-op
+       "breakpoint-list"
+       (lambda (buffer value)
+         (nrepl-ritz--update-breakpoints-display
+          (buffer-local-value 'nrepl-ritz-breakpoint-ewoc buffer)
+          (mapcar #'nrepl-keywordise value))
+         (when select
+           (select-window (display-buffer buffer))))))))
+
+(defun nrepl-ritz--breakpoint-pp (breakpoint)
+  "Print a BREAKPOINT to the current buffer."
+  (lexical-let* ((buffer-read-only nil))
+    (destructuring-bind (&key line file enabled) breakpoint
+      (insert (format "%5s %s" (prin1-to-string line) file)))))
+
+(defun nrepl-ritz--update-breakpoints-display (ewoc breakpoints)
+  "Update the breakpoints EWOC to show BREAKPOINTS."
+  (ewoc-filter ewoc (lambda (n) (member n breakpoints)))
+  (let ((existing))
+    (ewoc-map (lambda (n)
+                (setq existing (append (list n) existing)))
+              ewoc)
+    (lexical-let ((added (set-difference breakpoints existing :test #'equal)))
+      (mapc (apply-partially 'ewoc-enter-last ewoc) added)
+      (save-excursion (ewoc-refresh ewoc)))))
+
+(defun nrepl-ritz-ewoc-apply-at-point (f)
+  "Apply function F to the ewoc node at point.
+F is a function of two arguments, the ewoc and the data at point."
+  (lexical-let* ((ewoc nrepl-ritz-breakpoint-ewoc)
+                 (node (and ewoc (ewoc-locate ewoc))))
+    (when node
+      (funcall f ewoc (ewoc-data node)))))
+
+(defun nrepl-ritz-breakpoints-goto ()
+  "Jump to the breakpoint at point."
+  (interactive)
+  (nrepl-ritz-ewoc-apply-at-point #'nrepl-ritz--breakpoints-goto))
+
+(defun nrepl-ritz--breakpoints-goto (ewoc data)
+  "Jump to the breakpoint in EWOC specified by DATA."
+  (interactive)
+  (destructuring-bind (&key line file enabled) data
+    (nrepl-ritz-show-source-location nil file line nil)))
+
+(defun nrepl-ritz-breakpoints-kill ()
+  "Remove breakpoint at point in the breakpoints browser."
+  (interactive)
+  (nrepl-ritz-ewoc-apply-at-point #'nrepl-ritz--breakpoints-kill))
+
+(defun nrepl-ritz--breakpoints-kill (ewoc data)
+  "Remove the breakpoint in EWOC specified by DATA."
+  (destructuring-bind (&key line file enabled) data
+    (nrepl-ritz-send-dbg-op
+     "breakpoint-remove"
+     (lambda (buffer value)
+       (message "breakpoints-kill on value")
+       (nrepl-ritz--breakpoints-refresh))
+     'file file 'line line)))
 
 (defun nrepl-ritz-resume-all ()
   "Resume all threads."
@@ -1519,7 +1621,8 @@ Argument FLAG is unused."
       (message "xx")
       (lexical-let ((v (nrepl-keywordise value)))
         (destructuring-bind (&key count) v
-          (message "Set %s breakpoints" count))))
+          (message "Set %s breakpoints" count))
+        (nrepl-ritz--breakpoints-refresh)))
     nil nil nil)
    `(file ,(buffer-name)
      line ,(line-number-at-pos)
