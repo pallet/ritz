@@ -246,7 +246,7 @@ generate a name for the thread."
 
 (defn start-jpda-server
   [{:keys [host port ack-port repl-port-path classpath vm-classpath
-           middleware log-level extra-classpath] :as options}]
+           middleware log-level extra-classpath jvm-opts] :as options}]
   (when log-level
     (set-level log-level))
   (let [server (start-server

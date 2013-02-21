@@ -57,6 +57,7 @@ project server."
              :vm-classpath ~(vec vm-classpath)
              :extra-classpath ~(vec extra-classpath)
              :middleware ~(vec (map #(list 'quote %) nrepl-middleware))
+             :jvm-opts ~(:jvm-opts user-project)
              :log-level ~log-level})
            @(promise))]
     (eval/eval-in-project
