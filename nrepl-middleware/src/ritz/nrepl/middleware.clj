@@ -5,6 +5,10 @@
 
 (defmethod transform-value :default [v] v)
 
+(defmethod transform-value java.lang.Boolean
+  [v]
+  (if v "true" "false"))
+
 (defmethod transform-value clojure.lang.PersistentVector
   [v]
   (list* (map transform-value v)))
