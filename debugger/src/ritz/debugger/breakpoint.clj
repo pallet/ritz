@@ -23,9 +23,7 @@
   (debug-update-in!
    connection [:breakpoints]
    (fn [breakpoints]
-     (remove #(= breakpoint
-                 (select-keys (breakpoint-data %) (keys breakpoint)))
-             breakpoints))))
+     (remove #(= breakpoint (select-keys % (keys breakpoint))) breakpoints))))
 
 (defn breakpoint
   [connection breakpoint-id]

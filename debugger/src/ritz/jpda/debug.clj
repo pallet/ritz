@@ -136,6 +136,7 @@
 (defn line-breakpoint
   "Set a line breakpoint."
   [vm-context namespace filename line]
+  {:pre [vm-context (:vm vm-context)]}
   (jdi/line-breakpoints
    ^VirtualMachine (:vm vm-context)
    breakpoint-suspend-policy namespace filename line))
@@ -161,6 +162,13 @@
                     (= line (.lineNumber location))))
             (jdi/breakpoints vm)))))
 
+(defn breakpoint-set-line
+  "Set a line breakpoint."
+  [connection namespace filename line]
+  (map
+   jdi/breakpoint-data
+   (line-breakpoint (vm-context connection) namespace filename line)))
+
 (defn breakpoint-kill
   [connection file line]
   (doseq [^BreakpointRequest breakpoint
@@ -180,6 +188,17 @@
   (doseq [^BreakpointRequest breakpoint
           (breakpoints-for connection file line)]
     (.disable breakpoint)))
+
+(defn breakpoint-move
+  "Move a breakpoint in file from from-line to to-line."
+  [connection namespace file from-line to-line]
+  (for [^BreakpointRequest breakpoint
+        (breakpoints-for connection file from-line)]
+    (do
+      (.. breakpoint virtualMachine eventRequestManager
+          (deleteEventRequest breakpoint))
+      [(breakpoint-set-line connection namespace file to-line)
+       (jdi/breakpoint-data breakpoint)])))
 
 (defn breakpoint-location
   [connection file line]

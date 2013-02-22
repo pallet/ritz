@@ -11,6 +11,7 @@
 
 (require 'nrepl)
 (require 'ewoc)
+(require 'fringe-helper)
 
 ;;; Code:
 
@@ -1586,17 +1587,12 @@ F is a function of two arguments, the ewoc and the data at point."
 (defun nrepl-ritz-breakpoints-kill ()
   "Remove breakpoint at point in the breakpoints browser."
   (interactive)
-  (nrepl-ritz-ewoc-apply-at-point #'nrepl-ritz--breakpoints-kill))
+  (nrepl-ritz-ewoc-apply-at-point #'nrepl-ritz--breakpoints-ewoc-kill))
 
-(defun nrepl-ritz--breakpoints-kill (ewoc data)
+(defun nrepl-ritz--breakpoints-ewoc-kill (ewoc data)
   "Remove the breakpoint in EWOC specified by DATA."
   (destructuring-bind (&key line file enabled) data
-    (nrepl-ritz-send-dbg-op
-     "breakpoint-remove"
-     (lambda (buffer value)
-       (message "breakpoints-kill on value")
-       (nrepl-ritz--breakpoints-refresh))
-     'file file 'line line)))
+    (nrepl-ritz--line-breakpoint-kill file line)))
 
 (defun nrepl-ritz-resume-all ()
   "Resume all threads."
@@ -1611,22 +1607,41 @@ F is a function of two arguments, the ewoc and the data at point."
 
 (defun nrepl-ritz-line-breakpoint (flag)
   "Set breakpoint at current line.
-Argument FLAG is unused."
-  (interactive "p")
-  (nrepl-ritz-send-op
-   "break-at"
-   (nrepl-make-response-handler
-    (current-buffer)
-    (lambda (buffer value)
-      (message "xx")
-      (lexical-let ((v (nrepl-keywordise value)))
-        (destructuring-bind (&key count) v
-          (message "Set %s breakpoints" count))
-        (nrepl-ritz--breakpoints-refresh)))
-    nil nil nil)
-   `(file ,(buffer-name)
-     line ,(line-number-at-pos)
-     ns ,(or (nrepl-current-ns) "user"))))
+With a prefix argument FLAG, remove the breakpoint."
+  (interactive "P")
+  (if flag
+      (nrepl-ritz--line-breakpoint-kill (buffer-file-name) (line-number-at-pos))
+    (nrepl-ritz--line-breakpoint-add
+     (or (nrepl-current-ns) "user") (buffer-file-name) (line-number-at-pos))))
+
+(defun nrepl-ritz--line-breakpoint-add (ns file line)
+  "Set breakpoint at file and line."
+  (lexical-let ((file file) (line line))
+    (nrepl-ritz-send-op
+     "break-at"
+     (nrepl-make-response-handler
+      (current-buffer)
+      (lambda (buffer value)
+        (lexical-let ((v (nrepl-keywordise value)))
+          (destructuring-bind (&key count) v
+            (message "Set %s breakpoints" count))
+          (nrepl-ritz--breakpoints-refresh)
+          (with-current-buffer buffer
+            (nrepl-ritz--breakpoint-fringe-set line))))
+      nil nil nil)
+     `(file ,file
+            line ,line
+            ns ,ns))))
+
+(defun nrepl-ritz--line-breakpoint-kill (file line)
+  "Remove the breakpoint at point."
+  (lexical-let ((file file) (line line))
+    (nrepl-ritz-send-dbg-op
+     "breakpoint-remove"
+     (lambda (buffer value)
+       (nrepl-ritz--breakpoints-refresh)
+       (nrepl-ritz--breakpoint-fringe-clear file line))
+     'file file 'line line)))
 
 (defun nrepl-ritz-break-on-exception (flag)
   "Set break on exception.
@@ -1643,7 +1658,99 @@ Argument FLAG is used to enable or disable."
     nil nil nil)
    `(enable ,(if flag "true" "false"))))
 
+(defface nrepl-ritz:breakpoint
+    '((t (:foreground "green" :weight bold)))
+  "Face fir breakpoint arrow"
+  :group 'nrepl)
 
+(fringe-helper-define
+ 'nrepl-ritz:breakpoint nil
+ "........."
+ ".....X..."
+ ".....XX.."
+ ".XXXXXXX."
+ ".....XXXX"
+ ".XXXXXXX."
+ ".....XX.."
+ ".....X..."
+ ".........")
+
+(defvar nrepl-ritz-breakpoint-overlays nil)
+(make-variable-buffer-local 'nrepl-ritz-breakpoint-overlays)
+
+(defun nrepl-ritz-goto-line (line)
+  "Move point to the specified line."
+  (goto-char (point-min))
+  (forward-line (1- line)))
+
+(defun nrepl-ritz--line-to-pos (line)
+  (save-excursion
+    (nrepl-ritz-goto-line line)
+    (point)))
+
+(defun nrepl-ritz--breakpoint-fringe-set (line)
+  (lexical-let* ((pos (nrepl-ritz-line-to-pos line))
+                 (overlay (fringe-helper-insert-region
+                           pos pos 'nrepl-ritz:breakpoint nil
+                           'nrepl-ritz:breakpoint)))
+    (overlay-put overlay 'nrepl-ritz:breakpoint line)
+    (unless (local-variable-p 'nrepl-ritz-breakpoint-overlays)
+      (set (make-local-variable 'nrepl-ritz-breakpoint-overlays) nil))
+    (push overlay nrepl-ritz-breakpoint-overlays)))
+
+(defun nrepl-ritz--breakpoint-fringe-clear (filename line)
+  (lexical-let ((buffer (get-file-buffer filename)))
+    (when buffer
+      (with-current-buffer buffer
+        (lexical-let* ((bp-p (lambda (x)
+                                   (not (= line
+                                           (overlay-get
+                                            x 'nrepl-ritz:breakpoint)))))
+                       (overlays (remove-if bp-p
+                                            nrepl-ritz-breakpoint-overlays)))
+          (mapc 'fringe-helper-remove overlays)
+          (setq nrepl-ritz-breakpoint-overlays
+                (remove-if
+                 (lambda (overlay)
+                   (member overlay overlays))
+                 nrepl-ritz-breakpoint-overlays)))))))
+
+(defun nrepl-ritz--breakpoint-fringe-clear-all ()
+  (when (local-variable-p 'nrepl-ritz-breakpoint-overlays)
+    (mapc 'fringe-helper-remove nrepl-ritz-breakpoint-overlays)
+    (setq nrepl-ritz-breakpoint-overlays nil)))
+
+(add-hook 'nrepl-file-loaded-hook 'nrepl-ritz-adjust-breakpoints)
+
+(defun nrepl-ritz-adjust-breakpoints ()
+  "Adjust breakpoints to match the current buffer."
+  (message "adjust breakpoints")
+  (lexical-let ((to-move (nrepl-ritz--breakpoints-to-move)))
+    (when to-move
+      (message "adjust breakpoints %s" to-move)
+        (nrepl-ritz-send-dbg-op
+         "breakpoints-move"
+         (lambda (buffer value))
+         'ns (or (nrepl-current-ns) "user")
+         'file (buffer-file-name)
+         'lines (nrepl-ritz--breakpoints-to-move)))))
+
+(defun nrepl-ritz--breakpoints-to-move ()
+  "Return a list of breakpoints to move.
+The list elements are lists with old line and new-line."
+  (when (local-variable-p 'nrepl-ritz-breakpoint-overlays)
+    (lexical-let ((breakpoints (mapcar
+                                (lambda (overlay)
+                                  (list
+                                   (overlay-get overlay 'nrepl-ritz:breakpoint)
+                                   (line-number-at-pos
+                                    (overlay-start overlay))))
+                                nrepl-ritz-breakpoint-overlays)))
+      (remove-if
+       (lambda (vals)
+         (destructuring-bind (bp-line new-line) vals
+           (equal bp-line new-line)))
+       breakpoints))))
 
 (provide 'nrepl-ritz)
 ;;; nrepl-ritz.el ends here

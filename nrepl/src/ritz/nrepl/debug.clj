@@ -6,9 +6,10 @@
    [ritz.debugger.connection :only [vm-context debug-context]]
    [ritz.jpda.debug
     :only [add-exception-event-request break-for-exception? breakpoint-kill
-           build-backtrace dismiss-break-level display-break-level
-           eval-string-in-frame event-break-info frame-locals-with-string-values
-           frame-source-location invoke-named-restart line-breakpoint
+           breakpoint-move breakpoint-set-line build-backtrace
+           dismiss-break-level display-break-level eval-string-in-frame
+           event-break-info frame-locals-with-string-values
+           frame-source-location invoke-named-restart
            pprint-eval-string-in-frame]]
    [ritz.jpda.jdi :only [discard-event-request handle-event silent-event?]]
    [ritz.logging :only [trace trace-str]]
@@ -86,13 +87,27 @@ the events can be delivered back."
   (trace "break-at %s %s" filename line)
   (let [filename (when filename
                    (string/replace filename #" \(.*jar\)" ""))
-        breakpoints (line-breakpoint
-                     (vm-context connection) namespace filename line)]
+        breakpoints (breakpoint-set-line connection namespace filename line)]
     (breakpoints-add! connection breakpoints)
     {:count (count breakpoints)}))
 
+(defn breakpoints-move
+  "Move a breakpoint from from-line to to-line."
+  [{:keys [transport] :as connection} namespace filename lines]
+  (trace "breakpoints-move %s %s" filename lines)
+  (let [filename (when filename
+                   (string/replace filename #" \(.*jar\)" ""))]
+    (doseq [[from-line to-line] lines]
+      (let [[add remove] (breakpoint-move
+                          connection namespace filename from-line to-line)]
+        (trace "breakpoints-move remove %s" remove)
+        (trace "breakpoints-move add %s" add)
+        (breakpoints-remove! connection remove)
+        (breakpoints-add! connection add)))
+    {:count (count lines)}))
+
 (defn breakpoint-remove
-  "Remove breakpoints at a given line"
+  "Remove breakpoints at a given line."
   [{:keys [transport] :as connection} filename line]
   (trace "breakpoint-remove %s %s" filename line)
   (let [filename (when filename
@@ -112,7 +127,7 @@ the events can be delivered back."
   (doseq [{:keys [file line enabled] :as bp}
           (filter #(= file-path (:file %)) (breakpoint-list connection))
           :when enabled]
-    (let [b (line-breakpoint (vm-context connection) nil file line)]
+    (let [b (breakpoint-set-line connection nil file line)]
       (trace "breakpoints-recreate recreated %s breakboints" (count b)))))
 
 (defn stacktrace-frames

@@ -100,6 +100,26 @@
                            (response-for msg :value (args-for-map value)))
            (transport/send transport (response-for msg :status :done)))))
 
+     (= "breakpoints-move" op)
+     (let [filename (read-when (:file msg))
+           lines (read-when (:lines msg))
+           namespace (read-when (:ns msg))]
+       (trace "breakpoints-move %s" msg)
+       (trace "breakpoints-move lines %s" lines)
+       (if (not (and filename lines namespace))
+         (transport/send
+          transport (response-for
+                     msg
+                     :status #{:error :missing-file-line}
+                     :value {:file filename
+                             :lines lines
+                             :ns namespace}))
+         (let [value (nrepl-debug/breakpoints-move
+                      connection namespace filename lines)]
+           (transport/send transport
+                           (response-for msg :value (args-for-map value)))
+           (transport/send transport (response-for msg :status :done)))))
+
      (= "breakpoint-remove" op)
      (let [filename (read-when (:file msg))
            line (read-when (:line msg))]
