@@ -2,13 +2,14 @@
   "Debugger implementation for nREPL"
   (:use
    [clojure.tools.nrepl.misc :only [response-for]]
-   [ritz.debugger.breakpoint :only [breakpoints-add!]]
+   [ritz.debugger.breakpoint :only [breakpoints-add! breakpoints-remove!]]
    [ritz.debugger.connection :only [vm-context debug-context]]
    [ritz.jpda.debug
-    :only [add-exception-event-request break-for-exception? build-backtrace
+    :only [add-exception-event-request break-for-exception? breakpoint-kill
+           breakpoint-move breakpoint-set-line build-backtrace
            dismiss-break-level display-break-level eval-string-in-frame
            event-break-info frame-locals-with-string-values
-           frame-source-location invoke-named-restart line-breakpoint
+           frame-source-location invoke-named-restart
            pprint-eval-string-in-frame]]
    [ritz.jpda.jdi :only [discard-event-request handle-event silent-event?]]
    [ritz.logging :only [trace trace-str]]
@@ -86,10 +87,29 @@ the events can be delivered back."
   (trace "break-at %s %s" filename line)
   (let [filename (when filename
                    (string/replace filename #" \(.*jar\)" ""))
-        breakpoints (line-breakpoint
-                     (vm-context connection) namespace filename line)]
+        breakpoints (breakpoint-set-line connection namespace filename line)]
     (breakpoints-add! connection breakpoints)
     {:count (count breakpoints)}))
+
+(defn breakpoint-move
+  "Move a breakpoint from from-line to to-line."
+  [{:keys [transport] :as connection} namespace filename from-line to-line]
+  (trace "break-at %s %s" filename line)
+  (let [filename (when filename
+                   (string/replace filename #" \(.*jar\)" ""))
+        breakpoints (breakpoint-set-line connection namespace filename line)]
+    (breakpoints-add! connection breakpoints)
+    {:count (count breakpoints)}))
+
+(defn breakpoint-remove
+  "Remove breakpoints at a given line."
+  [{:keys [transport] :as connection} filename line]
+  (trace "breakpoint-remove %s %s" filename line)
+  (let [filename (when filename
+                   (string/replace filename #" \(.*jar\)" ""))]
+    (breakpoint-kill connection filename line)
+    (breakpoints-remove! connection {:filename filename :line line})
+    {:removed 1}))
 
 (defn breakpoint-list
   [connection]
