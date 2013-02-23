@@ -5,7 +5,7 @@
 
 ;;; Dependencies used in vms and classloaders
 (def lein-profile
-  {:dependencies '[[leiningen "2.0.0-preview10"
+  {:dependencies '[[leiningen "2.0.0"
                     ;; these are bits of lein we are not interested in
                     :exclusions [org.clojure/clojure
                                  reply

@@ -10,6 +10,6 @@
                  [org.clojure/tools.macro "0.1.1"
                   :exclusions [org.clojure/clojure]]
                  [ritz/ritz-debugger "0.7.1-SNAPSHOT"]]
-  :profiles {:dev {:dependencies [[leiningen "2.0.0-preview10"]
+  :profiles {:dev {:dependencies [[leiningen "2.0.0"]
                                   [org.clojure/clojure "1.4.0"]]
                    :plugins [[lein-jdk-tools "0.1.0"]]}})
