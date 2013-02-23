@@ -914,7 +914,7 @@ portion of the stacktrace. Frames are numbered from 0."
         (run-hooks 'nrepl-dbg-hook)
         (set-syntax-table clojure-mode-syntax-table))
       (setq buffer-read-only t))
-    (nrepl-popup-display-buffer (current-buffer) t)))
+    (nrepl-popup-buffer-display (current-buffer) t)))
 
 (defun nrepl-dbg-activate (thread level select)
   "Display the debugger buffer for THREAD.
