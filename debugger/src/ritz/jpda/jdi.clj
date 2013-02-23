@@ -223,9 +223,14 @@
   ([^ReferenceType class ^String method-name ^String signature]
      (.methodsByName class method-name signature)))
 
-(defn mirror-of
+(defn ^Value mirror-of
   "Mirror a primitive value or string into the given vm."
   [^VirtualMachine vm value]
+  (.mirrorOf vm value))
+
+(defn ^StringReference mirror-of-string
+  "Mirror a string into the given vm."
+  [^VirtualMachine vm ^String value]
   (.mirrorOf vm value))
 
 (defn string-value
@@ -241,9 +246,39 @@
   "Returns a sequence of Field name and Value pairs."
   [^ObjectReference obj-ref]
   (map
-   (juxt #(.name %) #(.getValue obj-ref %))
+   (juxt #(.name ^Field %) #(.getValue obj-ref ^Field %))
    (.. obj-ref referenceType allFields)))
 
+(defn ^ObjectReference disable-collection [^ObjectReference ref]
+  (doto ref
+    (.disableCollection)))
+
+(defn possibly-disable-collection [ref]
+  (when (instance? ObjectReference ref)
+    (disable-collection ref)))
+
+(defn ^ObjectReference enable-collection [^ObjectReference ref]
+  (doto ref
+    (.enableCollection)))
+
+(defn possibly-enable-collection [ref]
+  (when (instance? ObjectReference ref)
+    (enable-collection ref)))
+
+(defmacro with-remote-value
+  "Provide a scope in which collection of a remote value is disabled"
+  [bindings & body]
+  (if (seq bindings)
+    (let [[sym value] (seq (take 2 bindings))]
+      `(let [~sym ~(if (sequential? value)
+                     (with-meta `(disable-collection ~value) (meta value))
+                     value)]
+         (try
+           (with-remote-value [~@(drop 2 bindings)]
+             ~@body)
+           (finally
+             ~(with-meta `(enable-collection ~sym) (meta (last body)))))))
+    `(do ~@body)))
 
 (defn save-exception-request-states
   [^VirtualMachine vm]
@@ -363,7 +398,7 @@
 
 (defn matching-classpath-files
   "Return a sequence of class paths that the specified filepath matches."
-  [classpath filepath]
+  [classpath ^String filepath]
   (logging/trace "matching-classpath-files %s" filepath)
   ;; (logging/trace "matching-classpath-files %s" (vec (filepaths classpath)))
   (filter #(.endsWith filepath %) (filepaths classpath)))
@@ -490,7 +525,7 @@
   "Return the classloader used by the current thread. This works by finding the
 classloader for the current frame's declaring type."
   [^ThreadReference thread]
-  (.. (first (.frames thread)) location declaringType classLoader))
+  (.. ^StackFrame (first (.frames thread)) location declaringType classLoader))
 
 ;;; Event Requests
 (def

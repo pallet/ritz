@@ -6,12 +6,13 @@
    [ritz.logging :as logging]
    [clojure.string :as string])
   (:use
-   [clojure.stacktrace :only [print-cause-trace]])
+   [clojure.stacktrace :only [print-cause-trace]]
+   [ritz.jpda.jdi :only [with-remote-value]])
   (:import
    (com.sun.jdi
     Value BooleanValue ByteValue CharValue DoubleValue FloatValue IntegerValue
     LongValue ShortValue ThreadReference ObjectReference ClassLoaderReference
-    StringReference VirtualMachine)
+    ReferenceType StringReference VirtualMachine Method)
    (com.sun.jdi.event
     BreakpointEvent ExceptionEvent StepEvent VMStartEvent VMDeathEvent)
    com.sun.jdi.request.ExceptionRequest
@@ -106,7 +107,9 @@ with some useful methods on those classes"
         location-cls (set
                       (take-while identity (iterate get-parent location-cl)))
         selector (fn [classes]
-                    (first (filter #(location-cls (.classLoader %)) classes)))
+                   (->> classes
+                        (filter #(location-cls (.classLoader ^ReferenceType %)))
+                        first))
         classes (clojure-runtime-classes (jdi/virtual-machine thread))
         classes (zipmap (keys classes) (map selector (vals classes)))
         classes (merge
@@ -130,7 +133,9 @@ with some useful methods on those classes"
 ;;; key. On the other hand, the threads usually run in a classloader that is a
 ;;; child of the classloader of the runtime classes, so this could work.
 
-(def ^{:private true} clojure-runtime-cache (java.util.WeakHashMap.))
+(def ^{:private true
+       :tag java.util.WeakHashMap}
+  clojure-runtime-cache (java.util.WeakHashMap.))
 
 (defn clojure-runtime
   "Return a map of classes and methods for the runtime in the debug vm used by
@@ -139,8 +144,8 @@ the specified thread."
   (if (= thread (:control-thread context))
     context
     (let [cl (jdi/thread-classloader thread)]
-      (if-let [runtime (locking clojure-runtime-cache
-                         (.get clojure-runtime-cache cl))]
+      (if-let [^SoftReference runtime (locking clojure-runtime-cache
+                                        (.get clojure-runtime-cache cl))]
         (.get runtime)
         (let [runtime (clojure-runtime-for-thread thread cl)]
           (locking clojure-runtime-cache
@@ -161,13 +166,12 @@ the specified thread."
     (assert (:read-string rt))
     (assert (:Compiler rt))
     (assert (:eval rt))
-    (->>
-     (str form)
-     (jdi/mirror-of (:vm context))
-     jdi/arg-list
-     (jdi/invoke-method thread options (:RT rt) (:read-string rt))
-     jdi/arg-list
-     (jdi/invoke-method thread options (:Compiler rt) (:eval rt)))))
+    (with-remote-value
+      [^StringReference f (jdi/mirror-of-string (:vm context) (str form))
+       rv (jdi/invoke-method
+           thread options (:RT rt) (:read-string rt) (jdi/arg-list f))]
+      (jdi/invoke-method
+       thread options (:Compiler rt) (:eval rt) (jdi/arg-list rv)))))
 
 (defn ^String eval-to-string
   "Evaluate a form, which must result in a string value. The string
@@ -289,11 +293,11 @@ the specified thread."
   {:pre [thread]}
   (logging/trace "clojure-fn %s %s %s" ns name n)
   (let [rt (clojure-runtime context thread)
-        object (jdi/invoke-method
-                thread options
-                (:RT rt) (:var rt)
-                [(jdi/mirror-of (:vm context) ns)
-                 (jdi/mirror-of (:vm context) name)])]
+        ^ObjectReference object (jdi/invoke-method
+                                 thread options
+                                 (:RT rt) (:var rt)
+                                 [(jdi/mirror-of (:vm context) ns)
+                                  (jdi/mirror-of (:vm context) name)])]
     [object (or
              (first
               (jdi/methods
@@ -313,10 +317,11 @@ the specified thread."
                        (:RT rt) (:var rt)
                        [(jdi/mirror-of (:vm context) ns)
                         (jdi/mirror-of (:vm context) name)])]
-         (when-let [f (jdi/invoke-method thread options var (:deref rt) [])]
-           [f (first
-               (jdi/methods
-                (.referenceType f) "invoke" (invoke-signature n)))]))))
+         (when-let [^ObjectReference f (jdi/invoke-method
+                                        thread options var (:deref rt) [])]
+           [^Method f (first
+                       (jdi/methods
+                        (.referenceType f) "invoke" (invoke-signature n)))]))))
   ([context thread options ns name]
      {:pre [thread]}
      (let [rt (clojure-runtime context thread)]
@@ -325,9 +330,10 @@ the specified thread."
                        (:RT rt) (:var rt)
                        [(jdi/mirror-of (:vm context) ns)
                         (jdi/mirror-of (:vm context) name)])]
-         (when-let [f (jdi/invoke-method thread options var (:deref rt) [])]
+         (when-let [^ObjectReference f (jdi/invoke-method
+                                        thread options var (:deref rt) [])]
            [f (remove
-               #(or (.isAbstract %) (.isObsolete %))
+               #(or (.isAbstract ^Method %) (.isObsolete ^Method %))
                (concat
                 (jdi/methods (.referenceType f) "invoke")
                 (jdi/methods (.referenceType f) "invokePrim")))])))))

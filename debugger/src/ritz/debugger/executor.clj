@@ -23,8 +23,9 @@
          thread))))
 
 (defonce ^{:private true
-           :doc "Use own pool to prevent any interaction with user pools"}
-  ^ExecutorService executor
+           :doc "Use own pool to prevent any interaction with user pools"
+           :tag ExecutorService}
+  executor
   (Executors/newCachedThreadPool
    (thread-factory @ritz-control-group "ritz-ctrl")))
 
@@ -34,8 +35,9 @@
 
 
 (defonce ^{:private true
-           :doc "request handler pool"}
-  ^ExecutorService request-executor
+           :doc "request handler pool"
+           :tag ExecutorService}
+  request-executor
   (Executors/newCachedThreadPool
    (thread-factory @ritz-executor-group "ritz")))
 
@@ -89,7 +91,7 @@
        (recur)))))
 
 (defn daemon-thread-run
-  [name f]
+  [name ^Runnable f]
   (doto (Thread. f)
     (.setDaemon true)
     (.setName name)

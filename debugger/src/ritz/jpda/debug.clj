@@ -330,7 +330,7 @@
       @remote-condition-printer-fn))
 
 (defn exception-info
-  [connection event]
+  [connection ^ExceptionEvent event]
   (let [context (:vm-context connection)
         exception (.exception event)
         exception-type (.. exception referenceType name)
@@ -844,7 +844,7 @@ of any debug function that uses a user thread."
                    context thread {:disable-exception-requests true}
                    `(intern '~'user '~map-sym {}))]
       (try
-        (.disableCollection map-var)
+        (jdi/possibly-disable-collection map-var)
         (set-remote-values context thread map-var locals)
         (let [v (jdi-clj/eval-to-value
                  context thread {}
@@ -853,15 +853,15 @@ of any debug function that uses a user thread."
           (trace "eval-string-in-frame v %s" (pr-str v))
           (value-as-string (assoc context :current-thread thread) v))
         (finally
-         (.enableCollection map-var)
-         (clear-remote-values context thread map-var)
-         (trace "eval-string-in-frame done"))))
+          (jdi/possibly-enable-collection map-var)
+          (clear-remote-values context thread map-var)
+          (trace "eval-string-in-frame done"))))
     (catch com.sun.jdi.InvocationException e
       (throw (RuntimeException.
               (jdi/exception-message context (.exception e) thread)
               e)))
     (finally
-     (resume-thread-level-if-aborting connection (.uniqueID thread)))))
+      (resume-thread-level-if-aborting connection (.uniqueID thread)))))
 
 (defn pprint-eval-string-in-frame
   "Eval the string `expr` in the context of the specified `frame-number`
@@ -876,7 +876,7 @@ of any debug function that uses a user thread."
                    context thread {:disable-exception-requests true}
                    `(intern '~'user '~map-sym {}))]
       (try
-        (.disableCollection map-var)
+        (jdi/possibly-disable-collection map-var)
         (set-remote-values context thread map-var locals)
         (jdi-clj/eval-to-string
          context thread {}
@@ -887,7 +887,7 @@ of any debug function that uses a user thread."
                ~(with-local-bindings-form
                   map-sym locals (read-string expr))))))
         (finally
-         (.enableCollection map-var)
+         (jdi/possibly-enable-collection map-var)
          (clear-remote-values context thread map-var)
          (trace "pprint-eval-string-in-frame done"))))
     (catch com.sun.jdi.InvocationException e
@@ -908,18 +908,42 @@ of any debug function that uses a user thread."
        {:line (jdi/location-line-number location)}])))
 
 ;;; Inspection
-(defmethod value-as-string com.sun.jdi.PrimitiveValue
-  [context obj]
-  (trace "value-as-string: PrimitiveValue %s" obj)
-  (pr-str (.value obj)))
 
+;;; ## Primitive values
+(defn lower-first [^String s]
+  (str (string/lower-case (subs s 0 1)) (subs s 1)))
+
+(defn primitive-value-as-string* [cls accessor]
+  (let [obj (gensym "obj")]
+    `(defmethod value-as-string ~(Class/forName (str "com.sun.jdi." (name cls)))
+       [context# ~(vary-meta obj assoc :tag cls)]
+       (trace "value-as-string: %s %s" '~cls ~obj)
+       (pr-str (. ~obj ~accessor)))))
+
+(defn primitive-value-as-string [cls]
+  (let [obj (gensym "obj")]
+    (primitive-value-as-string*
+     cls (-> (string/split (name cls) #"\.") last lower-first symbol))))
+
+(defmacro primitive-values-as-string [& cls]
+  `(do ~@(map primitive-value-as-string cls)))
+
+(defmacro primitive-value-as-string-with-method [cls method]
+  (primitive-value-as-string* cls method))
+
+(primitive-values-as-string
+ BooleanValue ByteValue CharValue DoubleValue FloatValue LongValue ShortValue)
+
+(primitive-value-as-string-with-method IntegerValue intValue)
+
+;;; ## Other values
 (defmethod value-as-string com.sun.jdi.StringReference
-  [context obj]
+  [context ^StringReference obj]
   (trace "value-as-string: StringReference %s" obj)
   (pr-str (.value obj)))
 
-(defmethod value-as-string com.sun.jdi.Value
-  [context obj]
+(defmethod value-as-string com.sun.jdi.ObjectReference
+  [context ^ObjectReference obj]
   {:pre [(:current-thread context)]}
   (trace "value-as-string: Value %s" obj)
   (try
@@ -1186,10 +1210,8 @@ of any debug function that uses a user thread."
   "Dissasemble a symbol var"
   [context ^ThreadReference thread sym-ns sym-name]
   (trace "disassemble-symbol %s %s" sym-ns sym-name)
-  (when-let [[^Value f methods] (jdi-clj/clojure-fn-deref
-                                 context thread
-                                 {}
-                                 sym-ns sym-name)]
+  (when-let [[^ObjectReference f methods]
+             (jdi-clj/clojure-fn-deref context thread {} sym-ns sym-name)]
     (let [const-pool (disassemble/constant-pool
                       (.. f referenceType constantPool))]
       (apply
