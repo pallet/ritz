@@ -4,6 +4,7 @@
    [clojure.string :as string]
    [clojure.java.io :as io]
    [leiningen.core.eval :as eval]
+   [leiningen.core.main :refer [debug]]
    [leiningen.core.project :as project]
    [clojure.tools.nrepl.server :as nrepl.server])
   (:use
@@ -57,9 +58,10 @@ project server."
              :vm-classpath ~(vec vm-classpath)
              :extra-classpath ~(vec extra-classpath)
              :middleware ~(vec (map #(list 'quote %) nrepl-middleware))
-             :jvm-opts ~(:jvm-opts user-project)
+             :jvm-opts ~(vec (:jvm-opts user-project))
              :log-level ~log-level})
            @(promise))]
+    (debug "server-starting-form" (pr-str server-starting-form))
     (eval/eval-in-project
      jpda-project
      server-starting-form
