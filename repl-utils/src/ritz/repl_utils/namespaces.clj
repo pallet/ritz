@@ -42,7 +42,7 @@ still have metadata."
    (map
     ;; can throw if mixed pre/post 1.2.1 types are on the classpath due to
     ;; changes in defrecord and deftype mangling
-    #(try (symbol (.getName (.getPackage %))) (catch Exception _)))
+    #(try (symbol (.getName (.getPackage ^Class %))) (catch Exception _)))
    distinct
    (filter identity)))
 

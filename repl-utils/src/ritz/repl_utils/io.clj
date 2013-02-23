@@ -52,7 +52,7 @@
 (defn reader-for-location
   [{:keys [file zip] :as location-map}]
   (if zip
-    (let [jarfile (JarFile. zip)]
+    (let [jarfile (JarFile. (io/file zip))]
       (-> jarfile
           (.getInputStream (.getEntry jarfile file))
           (java.io.InputStreamReader.)))
@@ -76,6 +76,6 @@
 
 (defn streams-for-in
   ([buffer-size]
-     (let [os (java.io.PipedInputStream. buffer-size)]
+     (let [os (java.io.PipedInputStream. (int buffer-size))]
        [os (java.io.PipedOutputStream. os)]))
   ([] (streams-for-in *piped-stream-buffer-size*)))

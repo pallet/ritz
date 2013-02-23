@@ -130,10 +130,10 @@ that symbols accessible in the current namespace go first."
                    (str (.toURI (io/file (.getParent classes-file) m)))))]
     (first (filter identity (map finder files)))))
 
-(defn resolve-classname
+(defn ^String resolve-classname
   [classname namespace]
   (if-let [ns (and namespace (find-ns (symbol (name namespace))))]
-    (if-let [sym (get (ns-imports (ns-name ns)) (symbol classname))]
+    (if-let [^Class sym (get (ns-imports (ns-name ns)) (symbol classname))]
       (.getName sym)
       classname)
     classname))

@@ -5,7 +5,9 @@ This depends on having classlojure on the classpath."
    [clojure.java.io :only [file]]
    [clojure.set :only [difference union]]
    [ritz.logging :only [trace]]
-   [ritz.repl-utils.clojure :only [feature-cond]]))
+   [ritz.repl-utils.clojure :only [feature-cond]])
+  (:import
+   java.net.URLClassLoader))
 
 (def classlojure-on-classpath true)
 
@@ -56,11 +58,12 @@ This depends on having classlojure on the classpath."
          removed-files (difference cl-files file-set)
          reset-required (or (seq removed-files) (not (seq cl-files)))
          loader (if reset-required
-                  (doto (#'classlojure.core/url-classloader
-                         (files-to-urls (concat files cl-extra-files))
-                         ext-classloader)
-                    (.loadClass "clojure.lang.RT")
-                    (eval-in* '(require 'clojure.main)))
+                  (doto ^URLClassLoader (#'classlojure.core/url-classloader
+                                         (files-to-urls
+                                          (concat files cl-extra-files))
+                                         ext-classloader)
+                        (.loadClass "clojure.lang.RT")
+                        (eval-in* '(require 'clojure.main)))
                   (if (seq new-files)
                     (#'classlojure.core/url-classloader
                      (->>
@@ -104,7 +107,7 @@ Returns a map with reset? and new-cl? flags."
 
 (defn classpath
   []
-  (when-let [cl @cl] (.getURLs cl)))
+  (when-let [^URLClassLoader cl @cl] (.getURLs cl)))
 
 (defn eval-clojure-in
   "Evaluate a closure form in the specified classloader `cl` with the specified
