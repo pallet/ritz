@@ -82,7 +82,7 @@
        (rexec (:vm-context connection) msg))
 
      (= "break-on-exception" op)
-     (ritz.nrepl.debug/break-on-exception connection (or (:enable msg) true))
+     (ritz.nrepl.debug/break-on-exception connection (:enable msg true))
 
      (= "break-at" op)
      (let [filename (read-when (:file msg))

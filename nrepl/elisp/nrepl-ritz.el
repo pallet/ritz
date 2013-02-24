@@ -1645,8 +1645,8 @@ With a prefix argument FLAG, remove the breakpoint."
 
 (defun nrepl-ritz-break-on-exception (flag)
   "Set break on exception.
-Argument FLAG is used to enable or disable."
-  (interactive "p")
+Prefix argument FLAG is used to enable or disable."
+  (interactive "P")
   (nrepl-ritz-send-op
    "break-on-exception"
    (nrepl-make-response-handler
