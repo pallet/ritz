@@ -20,6 +20,7 @@
    [clojure.tools.nrepl.transport :as transport]
    [ritz.debugger.break :as break]
    [ritz.debugger.connection :as connection]
+   [ritz.debugger.exception-filters :as exception-filters]
    [ritz.jpda.jdi :as jdi]
    [ritz.jpda.jdi-clj :as jdi-clj]
    [ritz.jpda.jdi-vm :as jdi-vm])
@@ -81,6 +82,7 @@ the events can be delivered back."
         (-> (debug-context connection) :breakpoint :msg)
         :status :done)))))
 
+;;; breakpoints
 (defn break-at
   "Enable a breakpoint at a given line"
   [{:keys [transport] :as connection} namespace filename line]

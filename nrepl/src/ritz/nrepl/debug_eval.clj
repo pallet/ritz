@@ -3,6 +3,7 @@
   (:require
    [clojure.tools.nrepl.transport :as transport]
    [clojure.main :as main]
+   [ritz.debugger.exception-filters :as exception-filters]
    [ritz.jpda.debug :as debug]
    [ritz.nrepl.debug :as nrepl-debug]
    ritz.nrepl.commands
@@ -83,6 +84,67 @@
 
      (= "break-on-exception" op)
      (ritz.nrepl.debug/break-on-exception connection (:enable msg true))
+
+     (= "exception-filters" op)
+     (do
+       (trace (pr-str (exception-filters/exception-filters connection)))
+       (transport/send
+          transport
+          (response-for
+           msg
+           :value (args-for-map
+                   {:filters
+                    (map
+                     #(assoc %1 :id %2)
+                     (exception-filters/exception-filters connection)
+                     (range))})))
+       (transport/send transport (response-for msg :status :done)))
+
+     (= "exception-filters-save" op)
+     (do
+       (exception-filters/spit-exception-filters connection)
+       (transport/send
+        transport
+        (response-for
+         msg :value (args-for-map
+                     {:saved (exception-filters/exception-filters-file)})))
+       (transport/send transport (response-for msg :status :done)))
+
+     (= "exception-filters-enable" op)
+     (let [id (read-when (:filter-id msg))]
+       (if (not id)
+         (transport/send
+          transport (response-for
+                     msg :status #{:error :missing-id} :value {:filter-id id}))
+         (do
+           (exception-filters/exception-filter-enable! connection id)
+           (transport/send
+            transport (response-for msg :value (args-for-map {:enabled id})))
+           (transport/send transport (response-for msg :status :done)))))
+
+     (= "exception-filters-disable" op)
+     (let [id (read-when (:filter-id msg))]
+       (if (not id)
+         (transport/send
+          transport (response-for
+                     msg :status #{:error :missing-id} :value {:filter-id id}))
+         (do
+           (exception-filters/exception-filter-disable! connection id)
+           (transport/send
+            transport (response-for msg :value (args-for-map {:disabled id})))
+           (transport/send transport (response-for msg :status :done)))))
+
+     (= "exception-filters-kill" op)
+     (let [id (read-when (:filter-id msg))]
+       (if (not id)
+         (transport/send
+          transport (response-for
+                     msg :status #{:error :missing-id} :value {:filter-id id}))
+         (do
+           (exception-filters/exception-filter-kill! connection id)
+           (transport/send
+            transport (response-for msg :value (args-for-map {:killed id})))
+           (transport/send transport (response-for msg :status :done)))))
 
      (= "break-at" op)
      (let [filename (read-when (:file msg))

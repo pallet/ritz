@@ -22,13 +22,13 @@
   [connection id]
   (debug-update-in!
    connection [:exception-filters]
-   #(vec (concat (take (max id 0) %) (drop (inc id) %)))))
+   #(vec (concat (subvec % 0 (max id 0)) (subvec % (inc id))))))
 
 (defn- update-filter-exception
   [connection id f]
   (debug-update-in!
    connection [:exception-filters]
-   #(vec (concat (take id %) [(f (nth % id))] (drop (inc id) %)))))
+   #(vec (concat (subvec % 0 id) [(f (nth % id))] (subvec % (inc id))))))
 
 (defn exception-filter-enable!
   [connection id]
@@ -43,17 +43,17 @@
   (debug-update-in! connection [:exception-filters] conj filter))
 
 ;;; # Storage and default
+(def exception-filters-file (java-io/file ".ritz-exception-filters"))
+
 (defn read-exception-filters
   []
-  (let [filter-file (java-io/file ".ritz-exception-filters")]
-    (when (.exists filter-file)
-      (read-string (slurp filter-file)))))
+  (when (.exists exception-filters-file)
+    (read-string (slurp exception-filters-file))))
 
 (defn spit-exception-filters
   [connection]
-  (let [filter-file (java-io/file ".ritz-exception-filters")]
-    (spit filter-file
-          (pr-str (:exception-filters (debug-context connection))))))
+  (spit exception-filters-file
+        (pr-str (:exception-filters (debug-context connection)))))
 
 (def default-exception-filters
   [{:type "clojure.lang.LockingTransaction$RetryEx" :enabled true}

@@ -9,6 +9,10 @@
   [v]
   (if v "true" "false"))
 
+(defmethod transform-value java.util.regex.Pattern
+  [v]
+  (str v))
+
 (defmethod transform-value clojure.lang.PersistentVector
   [v]
   (list* (map transform-value v)))

@@ -716,24 +716,24 @@ Optional argument HISTORY determines which history buffer is used."
 (defvar nrepl-dbg-show-java-frames t
   "Whether to show java frames or not.")
 
-(defmacro define-nrepl-dbg-faces (&rest faces)
+(defmacro define-nrepl-ritz-faces (&rest faces)
   "Define the set of FACES used in the debugger.
 Each face specifiation is (NAME DESCRIPTION &optional PROPERTIES).
 NAME is a symbol; the face will be called sldb-NAME-face.
 DESCRIPTION is a one-liner for the customization buffer.
 PROPERTIES specifies any default face properties."
   `(progn ,@(loop for face in faces
-                  collect `(define-nrepl-dbg-face ,@face))))
+                  collect `(define-nrepl-ritz-face ,@face))))
 
-(defmacro define-nrepl-dbg-face (name description &optional default)
+(defmacro define-nrepl-ritz-face (name description &optional default)
   "Define face NAME with DESCRIPTION and DEFAULT."
-  (let ((facename (intern (format "nrepl-dbg-%s-face" (symbol-name name)))))
+  (let ((facename (intern (format "nrepl-ritz-%s-face" (symbol-name name)))))
     `(defface ,facename
        (list (list t ,default))
       ,(format "Face for %s." description)
       :group 'nrepl-debugger)))
 
-(define-nrepl-dbg-faces
+(define-nrepl-ritz-faces
   (topline        "the top line describing the error")
   (exception      "the exception class")
   (section        "the labels of major sections in the debugger buffer")
@@ -746,14 +746,16 @@ PROPERTIES specifies any default face properties."
   (detailed-frame-line
    "function names and arguments in a detailed (expanded) frame")
   (local-name     "local variable names")
-  (local-value    "local variable values"))
+  (local-value    "local variable values")
+  (filter-enabled "enabled exception filters")
+  (filter-disabled "enabled exception filters"))
 
-(defmacro nrepl-dbg-in-face (name string)
+(defmacro nrepl-ritz-in-face (name string)
   "Add a face property of nrepl-dbg-NAME-face to STRING."
   `(propertize
-    ,string 'face ',(intern (format "nrepl-dbg-%s-face" (symbol-name name)))))
+    ,string 'face ',(intern (format "nrepl-ritz-%s-face" (symbol-name name)))))
 
-(put 'nrepl-dbg-in-face 'lisp-indent-function 1)
+(put 'nrepl-ritz-in-face 'lisp-indent-function 1)
 
 ;;; ## nrepl-dbg mode
 (defvar nrepl-dbg-mode-syntax-table
@@ -901,10 +903,10 @@ portion of the stacktrace. Frames are numbered from 0."
         (setq nrepl-dbg-exception exception)
         (setq nrepl-dbg-restarts restarts)
         (nrepl-dbg-insert-exception exception)
-        (insert "\n\n" (nrepl-dbg-in-face section "Restarts:") "\n")
+        (insert "\n\n" (nrepl-ritz-in-face section "Restarts:") "\n")
         (setq nrepl-dbg-restart-list-start-marker (point-marker))
         (nrepl-dbg-insert-restarts restarts 0 nrepl-dbg-initial-restart-limit)
-        (insert "\n" (nrepl-dbg-in-face section "Stacktrace:") "\n")
+        (insert "\n" (nrepl-ritz-in-face section "Stacktrace:") "\n")
         (setq nrepl-dbg-stacktrace-start-marker (point-marker))
         (save-excursion
           (if frames
@@ -956,9 +958,9 @@ EXTRAS is currently used for the stepper."
   (destructuring-bind (message type) exception
     (nrepl-ritz-insert-propertized
      '(nrepl-dbg-default-action nrepl-dbg-inspect-exception)
-     (nrepl-dbg-in-face topline message)
+     (nrepl-ritz-in-face topline message)
      "\n"
-     (nrepl-dbg-in-face exception type))))
+     (nrepl-ritz-in-face exception type))))
 
 (defun nrepl-dbg-insert-restarts (restarts start count)
   "Insert RESTARTS and add the needed text props.
@@ -972,9 +974,9 @@ Argument START is the first restart to insert."
               `(,@nil restart ,number
                       nrepl-dbg-default-action nrepl-dbg-invoke-restart
                       mouse-face highlight)
-              " " (nrepl-dbg-in-face restart-number (number-to-string number))
-              ": ["  (nrepl-dbg-in-face restart-type name) "] "
-              (nrepl-dbg-in-face restart string))
+              " " (nrepl-ritz-in-face restart-number (number-to-string number))
+              ": ["  (nrepl-ritz-in-face restart-type name) "] "
+              (nrepl-ritz-in-face restart string))
           (insert "\n"))
     (when (< end len)
       (let ((pos (point)))
@@ -1042,7 +1044,7 @@ If FACE is nil, `nrepl-dbg-frame-line-face' is used."
           `(frame ,frame nrepl-dbg-default-action nrepl-dbg-toggle-details)
         (nrepl-propertize-region '(mouse-face highlight)
           (insert
-           " " (nrepl-dbg-in-face frame-label (format "%2d:" number)) " ")
+           " " (nrepl-ritz-in-face frame-label (format "%2d:" number)) " ")
           (nrepl-ritz-insert-indented
            (nrepl-ritz-add-face face string)))
         (insert "\n")))))
@@ -1275,7 +1277,7 @@ Optional argument ON to force showing details."
         (nrepl-dbg-insert-frame frame 'nrepl-dbg-detailed-frame-line-face)
         (insert
          "      "
-         (nrepl-dbg-in-face section
+         (nrepl-ritz-in-face section
            (if locals "Locals:" "[No Locals]")) "\n")
         (nrepl-dbg-insert-locals locals "        " frame)
         (setq end (point)))))
@@ -1294,7 +1296,7 @@ FRAME is the frame to use."
           (nrepl-propertize-region
               (list 'nrepl-dbg-default-action 'nrepl-dbg-inspect-var 'var i)
             (insert prefix
-                    (nrepl-dbg-in-face
+                    (nrepl-ritz-in-face
                      local-name
                      (concat name (if (zerop id) "" (format "#%d" id))))
                     " = ")
@@ -1304,7 +1306,7 @@ FRAME is the frame to use."
 
 (defun nrepl-dbg-insert-frame-variable-value (value frame index)
   "Insert the VALUE for FRAME with index INDEX."
-  (insert (nrepl-dbg-in-face local-value value)))
+  (insert (nrepl-ritz-in-face local-value value)))
 
 (defun nrepl-dbg-hide-frame-details ()
   "Delete the display of locals."
@@ -1565,18 +1567,18 @@ The breakpoints buffer is determined by
       (mapc (apply-partially 'ewoc-enter-last ewoc) added)
       (save-excursion (ewoc-refresh ewoc)))))
 
-(defun nrepl-ritz-ewoc-apply-at-point (f)
+(defun nrepl-ritz-ewoc-apply-at-point (ewoc f)
   "Apply function F to the ewoc node at point.
 F is a function of two arguments, the ewoc and the data at point."
-  (lexical-let* ((ewoc nrepl-ritz-breakpoint-ewoc)
-                 (node (and ewoc (ewoc-locate ewoc))))
+  (lexical-let* ((node (and ewoc (ewoc-locate ewoc))))
     (when node
       (funcall f ewoc (ewoc-data node)))))
 
 (defun nrepl-ritz-breakpoints-goto ()
   "Jump to the breakpoint at point."
   (interactive)
-  (nrepl-ritz-ewoc-apply-at-point #'nrepl-ritz--breakpoints-goto))
+  (nrepl-ritz-ewoc-apply-at-point
+   nrepl-ritz-breakpoint-ewoc #'nrepl-ritz--breakpoints-goto))
 
 (defun nrepl-ritz--breakpoints-goto (ewoc data)
   "Jump to the breakpoint in EWOC specified by DATA."
@@ -1587,7 +1589,8 @@ F is a function of two arguments, the ewoc and the data at point."
 (defun nrepl-ritz-breakpoints-kill ()
   "Remove breakpoint at point in the breakpoints browser."
   (interactive)
-  (nrepl-ritz-ewoc-apply-at-point #'nrepl-ritz--breakpoints-ewoc-kill))
+  (nrepl-ritz-ewoc-apply-at-point
+   nrepl-ritz-breakpoint-ewoc #'nrepl-ritz--breakpoints-ewoc-kill))
 
 (defun nrepl-ritz--breakpoints-ewoc-kill (ewoc data)
   "Remove the breakpoint in EWOC specified by DATA."
@@ -1724,16 +1727,14 @@ Prefix argument FLAG is used to enable or disable."
 
 (defun nrepl-ritz-adjust-breakpoints ()
   "Adjust breakpoints to match the current buffer."
-  (message "adjust breakpoints")
   (lexical-let ((to-move (nrepl-ritz--breakpoints-to-move)))
     (when to-move
-      (message "adjust breakpoints %s" to-move)
-        (nrepl-ritz-send-dbg-op
-         "breakpoints-move"
-         (lambda (buffer value))
-         'ns (or (nrepl-current-ns) "user")
-         'file (buffer-file-name)
-         'lines (nrepl-ritz--breakpoints-to-move)))))
+      (nrepl-ritz-send-dbg-op
+       "breakpoints-move"
+       (lambda (buffer value))
+       'ns (or (nrepl-current-ns) "user")
+       'file (buffer-file-name)
+       'lines (nrepl-ritz--breakpoints-to-move)))))
 
 (defun nrepl-ritz--breakpoints-to-move ()
   "Return a list of breakpoints to move.
@@ -1751,6 +1752,171 @@ The list elements are lists with old line and new-line."
          (destructuring-bind (bp-line new-line) vals
            (equal bp-line new-line)))
        breakpoints))))
+
+
+;;; exception-filters
+(define-derived-mode nrepl-ritz-exception-filters-mode nrepl-popup-buffer-mode
+  "nrepl-ritz-exception-filter"
+  "nREPL Exception-Filters Interaction Mode.
+\\{nrepl-ritz-exception-filters-mode-map}
+\\{nrepl-popup-buffer-mode-map}"
+  (set (make-local-variable 'truncate-lines) t))
+
+(defvar nrepl-ritz-exception-filters-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "g" 'nrepl-ritz-exception-filters)
+    (define-key map (kbd "C-k") 'nrepl-ritz-exception-filters-kill)
+    (define-key map (kbd "e") 'nrepl-ritz-exception-filters-enable)
+    (define-key map (kbd "d") 'nrepl-ritz-exception-filters-disable)
+    (define-key map (kbd "s") 'nrepl-ritz-exception-filters-save)
+    map))
+
+(defconst nrepl-ritz--exception-filters-buffer-name "*nrepl-exception-filters*")
+
+(defun nrepl-ritz-exception-filters ()
+  "Open a browser buffer for nREPL exception-filters."
+  (interactive)
+  (lexical-let ((buffer (get-buffer nrepl-ritz--exception-filters-buffer-name)))
+    (if buffer
+        (progn
+          (nrepl-ritz--exception-filters-refresh-buffer
+           buffer (not (get-buffer-window buffer))))
+      (nrepl-ritz--setup-exception-filters))))
+
+(defun nrepl-ritz--setup-exception-filters ()
+  "Create a buffer for nREPL exception-filters."
+  (with-current-buffer
+      (get-buffer-create nrepl-ritz--exception-filters-buffer-name)
+    (lexical-let ((ewoc (ewoc-create
+                         'nrepl-ritz--exception-filter-pp
+                         "         Criteria\n")))
+      (set (make-local-variable 'nrepl-ritz-exception-filter-ewoc) ewoc)
+      (setq buffer-read-only t)
+      (nrepl-ritz-exception-filters-mode)
+      (nrepl-ritz--exception-filters-refresh-buffer (current-buffer) t))))
+
+(defun nrepl-ritz--exception-filters-refresh ()
+  "Refresh the exception-filters buffer, if the buffer exists.
+The exception-filters buffer is determined by
+`nrepl-ritz--exception-filters-buffer-name'"
+  (lexical-let ((buffer (get-buffer nrepl-ritz--exception-filters-buffer-name)))
+    (when buffer
+      (nrepl-ritz--exception-filters-refresh-buffer buffer nil))))
+
+(defun nrepl-ritz--exception-filters-refresh-buffer (buffer select)
+  "Refresh the exception-filters BUFFER."
+  (lexical-let ((buffer buffer)
+                (select select))
+    (with-current-buffer buffer
+      (nrepl-ritz-send-dbg-op
+       "exception-filters"
+       (lambda (buffer value)
+         (nrepl-ritz--update-exception-filters-display
+          (buffer-local-value 'nrepl-ritz-exception-filter-ewoc buffer)
+          (mapcar #'nrepl-keywordise value))
+         (when select
+           (select-window (display-buffer buffer))))))))
+
+(defun nrepl-ritz-string-in-face (face string)
+  "Add a face property of nrepl-dbg-NAME-face to STRING."
+  (propertize string 'face face))
+
+(defun nrepl-ritz--exception-filter-pp (exception-filter)
+  "Print a EXCEPTION-FILTER to the current buffer."
+  (lexical-let* ((buffer-read-only nil))
+    (destructuring-bind
+        (&key id enabled type catch-location message throw-location)
+        exception-filter
+      (let ((face (if enabled
+                      'nrepl-ritz-filter-enabled-face
+                    'nrepl-ritz-filter-disabled-face)))
+        (when message
+          (insert (nrepl-ritz-string-in-face
+                   face (format "          message %s\n" message))))
+        (when type
+          (insert (nrepl-ritz-string-in-face
+                   face (format "             type %s\n" type))))
+        (when catch-location
+          (insert (nrepl-ritz-string-in-face
+                   face (format "   catch-location %s\n" catch-location))))
+        (when throw-location
+          (insert (nrepl-ritz-string-in-face
+                   face (format "   throw-location %s\n" throw-location))))))))
+
+(defun nrepl-ritz--update-exception-filters-display (ewoc exception-filters)
+  "Update the exception-filters EWOC to show EXCEPTION-FILTERS."
+  (with-current-buffer (ewoc-buffer ewoc)
+    (lexical-let ((p (point)))
+      (ewoc-filter ewoc (lambda (n) nil))
+      (mapc (apply-partially 'ewoc-enter-last ewoc)
+            (nrepl-ritz--convert-exception-filters exception-filters))
+      (ewoc-refresh ewoc)
+      (goto-char p))))
+
+(defun nrepl-ritz--convert-exception-filters (exception-filters)
+  "Convert boolean values in the exception filters."
+  (mapcar
+   (lambda (filter)
+     (plist-put filter :enabled (equal (plist-get filter :enabled) "true")))
+   exception-filters))
+
+(defun nrepl-ritz-exception-filters-save ()
+  "Save for nREPL exception-filters."
+  (interactive)
+  (lexical-let ((buffer (get-buffer nrepl-ritz--exception-filters-buffer-name)))
+    (nrepl-ritz-send-dbg-op
+       "exception-filters-save"
+       (lambda (buffer value)))))
+
+(defun nrepl-ritz-exception-filters-enable ()
+  "Enable the exception-filter at point."
+  (interactive)
+  (nrepl-ritz-ewoc-apply-at-point
+   nrepl-ritz-exception-filter-ewoc #'nrepl-ritz--exception-filters-enable))
+
+(defun nrepl-ritz--exception-filters-enable (ewoc data)
+  "Enable the exception-filter in EWOC specified by DATA."
+  (interactive)
+  (destructuring-bind
+      (&key id enabled type catch-location message throw-location) data
+    (nrepl-ritz-send-dbg-op
+       "exception-filters-enable"
+       (lambda (buffer value)
+         (nrepl-ritz--exception-filters-refresh))
+       'filter-id id)))
+
+(defun nrepl-ritz-exception-filters-disable ()
+  "Disable the exception-filter at point."
+  (interactive)
+  (nrepl-ritz-ewoc-apply-at-point
+   nrepl-ritz-exception-filter-ewoc #'nrepl-ritz--exception-filters-disable))
+
+(defun nrepl-ritz--exception-filters-disable (ewoc data)
+  "Disable the exception-filter in EWOC specified by DATA."
+  (interactive)
+  (destructuring-bind
+      (&key id enabled type catch-location message throw-location) data
+    (nrepl-ritz-send-dbg-op
+       "exception-filters-disable"
+       (lambda (buffer value)
+         (nrepl-ritz--exception-filters-refresh))
+       'filter-id id)))
+
+(defun nrepl-ritz-exception-filters-kill ()
+  "Remove exception-filter at point in the exception-filters browser."
+  (interactive)
+  (nrepl-ritz-ewoc-apply-at-point
+   nrepl-ritz-exception-filter-ewoc #'nrepl-ritz--exception-filters-ewoc-kill))
+
+(defun nrepl-ritz--exception-filters-ewoc-kill (ewoc data)
+  "Remove the exception-filter in EWOC specified by DATA."
+  (destructuring-bind
+      (&key id enabled type catch-location message throw-location) data
+    (nrepl-ritz-send-dbg-op
+     "exception-filters-kill"
+     (lambda (buffer value)
+       (nrepl-ritz--exception-filters-refresh))
+     'filter-id id)))
 
 (provide 'nrepl-ritz)
 ;;; nrepl-ritz.el ends here
