@@ -6,7 +6,7 @@
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
 ;; Version: 0.7.1
-;; Package-Requires: ((nrepl "0.1.6"))
+;; Package-Requires: ((nrepl "0.1.6")(fringe-helper "0.1.1"))
 ;; License: EPL
 
 (require 'nrepl)
