@@ -1918,5 +1918,9 @@ The exception-filters buffer is determined by
        (nrepl-ritz--exception-filters-refresh))
      'filter-id id)))
 
+(eval-after-load 'clojure-mode
+  '(progn
+     (define-key clojure-mode-map (kbd "C-c M-r") 'nrepl-ritz-jack-in)))
+
 (provide 'nrepl-ritz)
 ;;; nrepl-ritz.el ends here
