@@ -1490,19 +1490,19 @@ Argument MOVE-FN is a function to perform the movement."
 
 
 ;;; breakpoints
-(define-derived-mode nrepl-ritz-breakpoints-mode nrepl-popup-buffer-mode
-  "nrepl-ritz-breakpoint"
-  "nREPL Breakpoints Interaction Mode.
-\\{nrepl-ritz-breakpoints-mode-map}
-\\{nrepl-popup-buffer-mode-map}"
-  (set (make-local-variable 'truncate-lines) t))
-
 (defvar nrepl-ritz-breakpoints-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "g" 'nrepl-ritz-breakpoints)
     (define-key map (kbd "C-k") 'nrepl-ritz-breakpoints-kill)
     (define-key map (kbd "RET") 'nrepl-ritz-breakpoints-goto)
     map))
+
+(define-derived-mode nrepl-ritz-breakpoints-mode nrepl-popup-buffer-mode
+  "nrepl-ritz-breakpoint"
+  "nREPL Breakpoints Interaction Mode.
+\\{nrepl-ritz-breakpoints-mode-map}
+\\{nrepl-popup-buffer-mode-map}"
+  (set (make-local-variable 'truncate-lines) t))
 
 (defconst nrepl-ritz--breakpoints-buffer-name "*nrepl-breakpoints*")
 
@@ -1755,13 +1755,6 @@ The list elements are lists with old line and new-line."
 
 
 ;;; exception-filters
-(define-derived-mode nrepl-ritz-exception-filters-mode nrepl-popup-buffer-mode
-  "nrepl-ritz-exception-filter"
-  "nREPL Exception-Filters Interaction Mode.
-\\{nrepl-ritz-exception-filters-mode-map}
-\\{nrepl-popup-buffer-mode-map}"
-  (set (make-local-variable 'truncate-lines) t))
-
 (defvar nrepl-ritz-exception-filters-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "g" 'nrepl-ritz-exception-filters)
@@ -1770,6 +1763,13 @@ The list elements are lists with old line and new-line."
     (define-key map (kbd "d") 'nrepl-ritz-exception-filters-disable)
     (define-key map (kbd "s") 'nrepl-ritz-exception-filters-save)
     map))
+
+(define-derived-mode nrepl-ritz-exception-filters-mode nrepl-popup-buffer-mode
+  "nrepl-ritz-exception-filter"
+  "nREPL Exception-Filters Interaction Mode.
+\\{nrepl-ritz-exception-filters-mode-map}
+\\{nrepl-popup-buffer-mode-map}"
+  (set (make-local-variable 'truncate-lines) t))
 
 (defconst nrepl-ritz--exception-filters-buffer-name "*nrepl-exception-filters*")
 
