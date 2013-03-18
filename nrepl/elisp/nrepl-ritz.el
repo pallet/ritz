@@ -330,6 +330,9 @@ Optional argument TIMEOUT specifies a timeout for the flash."
     nil
     'nrepl-emit-into-popup-buffer nil nil)))
 
+(define-key nrepl-interaction-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
+(define-key nrepl-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
+
 ;;; describe
 (defun nrepl-ritz-describe-symbol-input-handler (symbol-name)
   "Describe symbol SYMBOL-NAME."
@@ -1497,6 +1500,9 @@ Argument MOVE-FN is a function to perform the movement."
     (define-key map (kbd "RET") 'nrepl-ritz-breakpoints-goto)
     map))
 
+(define-key nrepl-interaction-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
+(define-key nrepl-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
+
 (define-derived-mode nrepl-ritz-breakpoints-mode nrepl-popup-buffer-mode
   "nrepl-ritz-breakpoint"
   "nREPL Breakpoints Interaction Mode.
@@ -1763,6 +1769,10 @@ The list elements are lists with old line and new-line."
     (define-key map (kbd "d") 'nrepl-ritz-exception-filters-disable)
     (define-key map (kbd "s") 'nrepl-ritz-exception-filters-save)
     map))
+
+(define-key
+  nrepl-interaction-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
+(define-key nrepl-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
 
 (define-derived-mode nrepl-ritz-exception-filters-mode nrepl-popup-buffer-mode
   "nrepl-ritz-exception-filter"
