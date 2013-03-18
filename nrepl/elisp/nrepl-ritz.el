@@ -1734,13 +1734,15 @@ Prefix argument FLAG is used to enable or disable."
 (defun nrepl-ritz-adjust-breakpoints ()
   "Adjust breakpoints to match the current buffer."
   (lexical-let ((to-move (nrepl-ritz--breakpoints-to-move)))
-    (when to-move
-      (nrepl-ritz-send-dbg-op
-       "breakpoints-move"
-       (lambda (buffer value))
-       'ns (or (nrepl-current-ns) "user")
-       'file (buffer-file-name)
-       'lines (nrepl-ritz--breakpoints-to-move)))))
+    (if to-move
+        (nrepl-ritz-send-dbg-op
+         "breakpoints-move"
+         (lambda (buffer value)
+           (nrepl-ritz--set-breakpoint-fringe buffer))
+         'ns (or (nrepl-current-ns) "user")
+         'file (buffer-file-name)
+         'lines (nrepl-ritz--breakpoints-to-move))
+      (nrepl-ritz--set-breakpoint-fringe (current-buffer)))))
 
 (defun nrepl-ritz--breakpoints-to-move ()
   "Return a list of breakpoints to move.
@@ -1759,6 +1761,27 @@ The list elements are lists with old line and new-line."
            (equal bp-line new-line)))
        breakpoints))))
 
+(defun nrepl-ritz--set-breakpoint-fringe (buffer)
+  "Set the fringe for the current breakpoints."
+  (lexical-let ((buffer buffer))
+    (with-current-buffer buffer
+      (nrepl-ritz-send-dbg-op
+       "breakpoint-list"
+       (lambda (buffer value)
+         (nrepl-ritz--update-breakpoints-fringe
+          buffer (mapcar #'nrepl-keywordise value)))))))
+
+(defun nrepl-ritz--update-breakpoints-fringe (buffer breakpoints)
+  "Update the breakpoints fringes in BUFFER to show BREAKPOINTS."
+  (with-current-buffer buffer
+    (nrepl-ritz--breakpoint-fringe-clear-all)
+    (mapc
+     (lambda (data)
+       (destructuring-bind (&key line file enabled) data
+         (lexical-let ((bpt-buffer (find-file-noselect file t)))
+           (when (and bpt-buffer (eq bpt-buffer buffer))
+             (nrepl-ritz--breakpoint-fringe-set line)))))
+     breakpoints)))
 
 ;;; exception-filters
 (defvar nrepl-ritz-exception-filters-mode-map
