@@ -1698,7 +1698,7 @@ Prefix argument FLAG is used to enable or disable."
     (point)))
 
 (defun nrepl-ritz--breakpoint-fringe-set (line)
-  (lexical-let* ((pos (nrepl-ritz-line-to-pos line))
+  (lexical-let* ((pos (nrepl-ritz--line-to-pos line))
                  (overlay (fringe-helper-insert-region
                            pos pos 'nrepl-ritz:breakpoint nil
                            'nrepl-ritz:breakpoint)))
