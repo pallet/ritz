@@ -1,4 +1,5 @@
-{:release
+{:dev {:dependencies [[org.clojure/clojure "1.4.0"]]}
+ :release
  {:set-version
   {:updates [{:path "README.md" :no-snapshot true}
              {:path "src/leiningen/ritz.clj"
