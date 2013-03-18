@@ -653,20 +653,68 @@ classloader for the current frame's declaring type."
 
 (defn class-line-locations
   "Return all locations at the given line for the given class.
-   If the line doesn't exist for the given class, returns nil."
-  [^ReferenceType class line]
+   Returns a vector of the class-def and a sequence of locations
+   found for the line."
+  [^ReferenceType class-def line]
   (logging/trace
-   "Looking for line %s in %s" line (.name class))
+   "Looking for line %s in %s" line (.name class-def))
   (try
-    (distinct
-     (concat
-      (.locationsOfLine class line)
-      (mapcat #(method-line-locations % line) (.methods class))))
+    [class-def (doall (distinct
+                       (concat
+                        (.locationsOfLine class-def line)
+                        (mapcat #(method-line-locations % line)
+                                (.methods class-def)))))]
     (catch com.sun.jdi.ClassNotPreparedException _)
     (catch com.sun.jdi.AbsentInformationException _
       (logging/trace "not found")
       nil)))
 
+(defn- init-location? [location]
+  (= "<init>" (location-method-name location)))
+
+(defn- clinit-location? [location]
+  (= "<clinit>" (location-method-name location)))
+(defn latest-defs
+  "Return only the class-defs with the highest $evalnnnn."
+  [class-locations]
+  (logging/trace
+   "latest defs in %s"
+   (vec
+    (map
+     #(vector (.name (first %)) (second %) (count (.instances (first %) 10)))
+     class-locations)))
+  (let [class-locations (filterv (comp seq second) class-locations)
+        re #".*\$eval(\d+)(\$loading.*)?"
+        evaln (fn [[^ReferenceType class-ref locations]]
+                (when-let [n (second (re-find re (.name class-ref)))]
+                  (Integer/parseInt n)))
+        ns (->> class-locations (mapv evaln) (filterv identity))
+        max-n (apply max -1 ns)         ; -1 in case ns is empty
+        filter-f (fn [[^ReferenceType class-ref locations]]
+                   (let [[_ n loading?] (re-find re (.name class-ref))]
+                     (if n
+                       (and (= max-n (Integer/parseInt n)) (not loading?))
+                       ;; filter on class refs that have an instance
+                       (first (.instances class-ref 1)))))
+        locations (filterv filter-f class-locations)
+        ;; remove class initialisers as breakpoints, as they are implementation
+        ;; details in clojure, as long as there is some other location to break
+        ;; on.
+        remove-inits (fn [ls] (remove
+                               #(or (init-location? %) (clinit-location? %))
+                               ls))
+        locations (mapv (fn [[c ls]]
+                          [c (case (count ls)
+                               1 ls
+                               2 (or (seq (remove-inits ls)) [(first ls)])
+                               (remove-inits ls))])
+                        locations)]
+    (logging/trace
+     "latest defs %s %s %s"
+     (vec (map #(.name (first %)) class-locations))
+     max-n
+     locations)
+    locations))
 
 ;;; breakpoints
 
@@ -688,7 +736,9 @@ classloader for the current frame's declaring type."
   (->>
    (or (and namespace (namespace-classes vm namespace))
        (file-classes vm filename))
-   (mapcat #(class-line-locations % line))
+   (map #(class-line-locations % line))
+   (latest-defs)
+   (mapcat second)
    (map #(breakpoint vm suspend-policy %))))
 
 (defn clojure-frame?
