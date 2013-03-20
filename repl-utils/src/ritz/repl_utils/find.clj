@@ -4,6 +4,7 @@
    [ritz.repl-utils.mangle :as mangle])
   (:use
    [clojure.string :only [split]]
+   [ritz.logging :only [trace]]
    [ritz.repl-utils.source-forms
     :only [source-form-from-path source-form-path?]])
   (:import java.io.File))
@@ -18,15 +19,18 @@
       path))
 
 (defn- zip-resource [^java.net.URL resource]
+  (trace "zip-resource %s" resource)
   (let [jar-connection ^java.net.JarURLConnection (.openConnection resource)
         jar-file (.getPath (.toURI (.getJarFileURL jar-connection)))]
     {:zip [(clean-windows-path jar-file) (.getEntryName jar-connection)]}))
 
 (defn- file-resource [^java.net.URL resource]
+  (trace "file-resource %s" resource)
   {:file (clean-windows-path (.getFile resource))})
 
 (defn find-resource
   [^String file]
+  (trace "find-resource %s" file)
   (when-let [resource (.getResource (clojure.lang.RT/baseLoader) file)]
     (if (= (.getProtocol resource) "jar")
       (zip-resource resource)
@@ -35,6 +39,7 @@
 (defn find-source-path
   "Find source file or source string for specified source-path"
   [^String source-path]
+  (trace "find-source-path %s" source-path)
   (when source-path
     (if (source-form-path? source-path)
       (source-form-from-path source-path)

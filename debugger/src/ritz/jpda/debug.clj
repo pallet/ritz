@@ -923,6 +923,7 @@ of any debug function that uses a user thread."
   [^ThreadReference thread frame-number]
   (when-let [^StackFrame frame (nth (.frames thread) frame-number nil)]
     (let [location (.location frame)]
+      (trace "frame-source-location %s" (bean location))
       [(find/find-source-path (jdi/location-source-path location))
        {:line (jdi/location-line-number location)}])))
 

@@ -674,14 +674,17 @@ classloader for the current frame's declaring type."
 
 (defn- clinit-location? [location]
   (= "<clinit>" (location-method-name location)))
+
 (defn latest-defs
   "Return only the class-defs with the highest $evalnnnn."
   [class-locations]
+  (logging/trace "latest defs in %s" (vec class-locations))
   (logging/trace
    "latest defs in %s"
    (vec
     (map
-     #(vector (.name (first %)) (second %) (count (.instances (first %) 10)))
+     #(vector (when (first %)
+                (.name (first %))) (second %) (count (.instances (first %) 10)))
      class-locations)))
   (let [class-locations (filterv (comp seq second) class-locations)
         re #".*\$eval(\d+)(\$loading.*)?"
