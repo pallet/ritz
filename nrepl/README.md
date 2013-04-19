@@ -112,6 +112,12 @@ then
  - please check that your hostname resolves (`host $(hostname)`).
  - check that if you are using drip, that you have 0.1.8 or later.
 
+## Additional Resources
+
+* [Debuggers for Clojure](https://github.com/hugoduncan/ritz-conj) - High level overview of Ritz & nrepl with a [live
+demo of ritz-nrepl](http://www.youtube.com/watch?v=sA5zOLCa3Xw&t=21m45s).
+
+
 ## License
 
 Copyright © 2012 Hugo Duncan
