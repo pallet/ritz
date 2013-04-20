@@ -41,6 +41,8 @@ environments and for debuggers.
   </tbody>
 </table>
 
+For a high level overview of Ritz see the clojure-conj 2012 [presentation on it](https://github.com/hugoduncan/ritz-conj).
+
 
 ## License
 
