@@ -167,12 +167,13 @@ the events can be delivered back."
    {:keys [thread thread-id condition event restarts] :as level-info}
    level]
   (trace "display-break-level: thread-id %s level %s" thread-id level)
-  (when-let [msg (-> (debug-context connection) :breakpoint :msg)]
+  (if-let [msg (-> (debug-context connection) :breakpoint :msg)]
     (let [value (debugger-data level-info level 0 100)]
       (trace "display-break-level: reply to %s" msg)
       (trace "display-break-level: reply %s" value)
       (transport/send transport (response-for msg :value value))
-      (trace "display-break-level: sent message"))))
+      (trace "display-break-level: sent message"))
+    (trace "ERROR: No debug context %s" (pr-str (debug-context connection)))))
 
 (defmethod dismiss-break-level :nrepl
   [connection

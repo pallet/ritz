@@ -393,15 +393,19 @@
            (java.util.jar.JarFile.)
            filepaths-from-jar)
           (catch Exception _))
-        [(str file)]))
+        [(str file)])) ; (map #(.getPath %) (file-seq file))
     (map #(java.io.File. ^String %) classpath))))
 
 (defn matching-classpath-files
   "Return a sequence of class paths that the specified filepath matches."
   [classpath ^String filepath]
   (logging/trace "matching-classpath-files %s" filepath)
-  ;; (logging/trace "matching-classpath-files %s" (vec (filepaths classpath)))
-  (filter #(.endsWith filepath %) (filepaths classpath)))
+  ;;(logging/trace "matching-classpath-files %s" (vec (filepaths classpath)))
+  (->> (filepaths classpath)
+       (filter #(or (.endsWith filepath %) (.startsWith filepath %)))
+       (map #(if (and (.startsWith filepath %) (.isDirectory (io/file %)))
+               (subs filepath (inc (count %)))
+               %))))
 
 (defn namespace-for-path
   "Takes a path and builds a namespace string from it"
@@ -740,6 +744,7 @@ classloader for the current frame's declaring type."
    (or (and namespace (namespace-classes vm namespace))
        (file-classes vm filename))
    (map #(class-line-locations % line))
+   (remove nil?)
    (latest-defs)
    (mapcat second)
    (map #(breakpoint vm suspend-policy %))))
