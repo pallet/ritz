@@ -1,5 +1,6 @@
 (ns lein-ritz.add-sources
   (:require
+   [leiningen.core.main :refer [debug]]
    [clojure.java.io :as io]))
 
 (defn- source-jar
@@ -7,7 +8,9 @@
   [path]
   (if-let [[p basename] (re-matches #"(.*).jar" path)]
     (let [file (io/file (str basename "-sources.jar"))]
+      (debug "jar" path " source jar" (.getPath file))
       (when (.canRead file)
+        (debug "adding source jar")
         (.getPath file)))))
 
 (defn- classpath-with-source-jars
