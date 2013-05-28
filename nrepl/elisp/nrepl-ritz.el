@@ -819,6 +819,9 @@ Full list of commands:
 (set-keymap-parent nrepl-dbg-mode-map nrepl-mode-map)
 
 (nrepl-ritz-define-keys nrepl-dbg-mode-map
+  ((kbd "C-a")  (with-temp-buffer ; nrepl's C-a depends on an nrepl buffer, so breaks in dbg buffer.
+                  (fundamental-mode) ; instead, inherit whatever the user has bound globally
+                  (key-binding (kbd "C-a"))))
   ((kbd "RET") 'nrepl-dbg-default-action)
   ("\C-m"      'nrepl-dbg-default-action)
   ([return] 'nrepl-dbg-default-action)
