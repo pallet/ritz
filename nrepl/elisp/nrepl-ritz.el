@@ -845,7 +845,7 @@ Full list of commands:
   ("x"    'nrepl-dbg-step-over)
   ("o"    'nrepl-dbg-step-out)
   ("a"    'nrepl-dbg-abort)
-  ("q"    'nrepl-dbg-quit)
+  ("q"    'nrepl-dbg-abort)
   ("P"    'nrepl-dbg-print-exception)
   ("C"    'nrepl-dbg-inspect-exception)
   (":"    'nrepl-interactive-eval))
