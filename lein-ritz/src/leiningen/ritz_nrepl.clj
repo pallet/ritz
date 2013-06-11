@@ -14,11 +14,16 @@
    [lein-ritz.plugin-helpers
     :only [classlojure-profile clojure-profile lein-profile]]))
 
-(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.1"
+(def nrepl-profile {:dependencies '[[org.clojure/tools.nrepl "0.2.3"
                                      :exclusions [org.clojure/clojure]]]})
 
 (def ritz-profile {:dependencies '[[ritz/ritz-nrepl "0.7.1-SNAPSHOT"
                                     :exclusions [org.clojure/clojure]]]})
+(def ritz-nrepl-core-profile {:dependencies
+                              '[[ritz/ritz-nrepl-core "0.7.1-SNAPSHOT"
+                                 :exclusions [org.clojure/clojure]]]})
+(def repl-utils-profile {:dependencies '[[ritz/ritz-repl-utils "0.7.1-SNAPSHOT"
+                                          :exclusions [org.clojure/clojure]]]})
 
 
 (defn- start-jpda-server
@@ -41,7 +46,7 @@ project server."
                      [ritz-profile classlojure-profile]))
         user-project (->
                       project
-                      (project/merge-profiles [ritz-profile]))
+                      (project/merge-profiles [ritz-nrepl-core-profile]))
         vm-classpath (vec (get-classpath vm-project))
         user-classpath (vec (get-classpath user-project))
         user-classpath-no-ritz (vec (get-classpath project))
@@ -61,6 +66,10 @@ project server."
              :jvm-opts ~(vec (:jvm-opts user-project))
              :log-level ~log-level})
            @(promise))]
+    (debug "user-classpath" (pr-str user-classpath))
+    (debug "vm-classpath" (pr-str vm-classpath))
+    (debug "extra-classpath" (pr-str extra-classpath))
+    (debug "jpda-project" (pr-str jpda-project))
     (debug "server-starting-form" (pr-str server-starting-form))
     (eval/eval-in-project
      jpda-project

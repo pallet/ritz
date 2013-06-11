@@ -8,6 +8,7 @@
    [clojure.set :only [difference union]]
    [clojure.tools.cli :only [cli]]
    [leiningen.core.classpath :only [get-classpath]]
+   [leiningen.core.main :as main]
    [lein-ritz.plugin-helpers
     :only [classlojure-profile clojure-profile lein-profile jpda-jars]]))
 
@@ -40,6 +41,7 @@
                           (project/merge-profiles
                            user-project [clojure-profile])))]
     (.mkdirs vm-classes)
+    (main/debug "user-classpath" user-classpath)
     `(do (binding [*compile-path* ~(.getAbsolutePath
                                     (io/file
                                      (or (:compile-path project)
@@ -113,4 +115,5 @@
                          (assoc :jvm-opts (concat ["-Djava.awt.headless=true" "-XX:+TieredCompilation"]
                                                   jvm-eopts)))
                         (project/merge-profiles project [ritz-profile]))]
+    (main/debug "Start project" project)
     (eval-in-project start-project (ritz-form project port host opts))))
