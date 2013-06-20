@@ -19,7 +19,7 @@
   (if (or (locate-file nrepl-lein-command exec-path)
           (locate-file (format "%s.bat" nrepl-lein-command) exec-path))
       (format "%s ritz-nrepl" nrepl-lein-command)
-    (format "echo \"%s ritz-nrepl\" | $SHELL -l" nrepl-lein-command))
+    (format "echo \"%s ritz-nrepl\" | eval $SHELL -l" nrepl-lein-command))
   "The command used to start the nREPL via `nrepl-ritz-jack-in'.
 For a remote nREPL server lein must be in your PATH.  The remote
 proc is launched via sh rather than bash, so it might be necessary
