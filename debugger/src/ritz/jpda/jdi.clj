@@ -431,7 +431,7 @@
   "Return a regular expression pattern for matching all classes in the
    given namespace name"
   [ns]
-  (re-pattern (str (string/replace ns "-" "_") "\\$")))
+  (re-pattern (string/replace ns "-" "_")))
 
 (defn namespace-classes
   "Return all classes for the given namespace"

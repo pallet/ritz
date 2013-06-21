@@ -30,13 +30,13 @@ With prefix argument FLAG, do not break on exception"
   (interactive)
   (slime-eval-with-transcript
    `(swank:line-breakpoint
-     ,(slime-current-package) ,(buffer-name) ,(line-number-at-pos))))
+     ,(slime-current-package) ,(buffer-file-name) ,(line-number-at-pos))))
 
 (defun slime-java-line-breakpoint ()
   "Set a breakpoint at the current line in java"
   (interactive)
   (slime-eval-with-transcript
-   `(swank:line-breakpoint nil ,(buffer-name) ,(line-number-at-pos))))
+   `(swank:line-breakpoint nil ,(buffer-file-name) ,(line-number-at-pos))))
 
 ;;;; Breakpoints
 (defvar slime-breakpoints-buffer-name (slime-buffer-name :breakpoints))
