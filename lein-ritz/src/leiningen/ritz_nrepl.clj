@@ -25,6 +25,9 @@
 (def repl-utils-profile {:dependencies '[[ritz/ritz-repl-utils "0.7.1-SNAPSHOT"
                                           :exclusions [org.clojure/clojure]]]})
 
+(defn add-jvm-opts [project opts]
+  (assoc project :jvm-opts
+         (distinct (concat opts (:jvm-opts project)))))
 
 (defn- start-jpda-server
   "Start the JPDA nrepl server. The JPDA nrepl server will start the user
@@ -37,8 +40,8 @@ project server."
                       (project/merge-profiles
                        [clojure-profile lein-profile ritz-profile])
                       (dissoc :test-paths :source-paths :resource-paths)
-                      (assoc :jvm-opts ["-Djava.awt.headless=true"
-                                        "-XX:+TieredCompilation"]))
+                      (add-jvm-opts ["-Djava.awt.headless=true"
+                                     "-XX:+TieredCompilation"]))
         vm-project (->
                     project
                     (dissoc :test-paths :source-paths :dependencies)
