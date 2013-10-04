@@ -25,7 +25,7 @@ For a remote nREPL server lein must be in your PATH.  The remote
 proc is launched via sh rather than bash, so it might be necessary
 to specific the full path to it.  Localhost is assumed."
   :type 'string
-  :group 'nrepl-mode)
+  :group 'nrepl-repl-mode)
 
 ;;;###autoload
 (defun nrepl-ritz-jack-in (&optional prompt-project)
@@ -331,7 +331,7 @@ Optional argument TIMEOUT specifies a timeout for the flash."
     'nrepl-emit-into-popup-buffer nil nil)))
 
 (define-key nrepl-interaction-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
-(define-key nrepl-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
+(define-key nrepl-repl-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
 
 ;;; describe
 (defun nrepl-ritz-describe-symbol-input-handler (symbol-name)
@@ -529,7 +529,7 @@ Optional argument CASE-SENSITIVE-P for case sensitive search."
 (define-key
   nrepl-interaction-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
 (define-key
-  nrepl-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
+  nrepl-repl-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
 
 (defun nrepl-ritz-compile-expression (&optional prefix)
   "Compile the current toplevel form.
@@ -816,7 +816,7 @@ Full list of commands:
   (set (make-local-variable 'truncate-lines) t)
   (setq nrepl-session (nrepl-current-session)))
 
-(set-keymap-parent nrepl-dbg-mode-map nrepl-mode-map)
+(set-keymap-parent nrepl-dbg-mode-map nrepl-repl-mode-map)
 
 (nrepl-ritz-define-keys nrepl-dbg-mode-map
   ((kbd "RET") 'nrepl-dbg-default-action)
@@ -1501,7 +1501,7 @@ Argument MOVE-FN is a function to perform the movement."
     map))
 
 (define-key nrepl-interaction-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
-(define-key nrepl-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
+(define-key nrepl-repl-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
 
 (define-derived-mode nrepl-ritz-breakpoints-mode nrepl-popup-buffer-mode
   "nrepl-ritz-breakpoint"
@@ -1795,7 +1795,7 @@ The list elements are lists with old line and new-line."
 
 (define-key
   nrepl-interaction-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
-(define-key nrepl-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
+(define-key nrepl-repl-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
 
 (define-derived-mode nrepl-ritz-exception-filters-mode nrepl-popup-buffer-mode
   "nrepl-ritz-exception-filter"
