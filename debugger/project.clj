@@ -4,7 +4,8 @@
   :scm {:url "git@github.com:pallet/ritz.git"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[ritz/ritz-repl-utils "0.7.1-SNAPSHOT"]]
+  :dependencies [[org.clojure/clojure "1.4.0"]
+                 [ritz/ritz-repl-utils "0.7.1-SNAPSHOT"]]
   :profiles {:dev {:dependencies [[classlojure "0.6.6"]
                                   [bultitude "0.1.7"]]
                    :plugins [[lein-jdk-tools "0.1.0"]]}})
