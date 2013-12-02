@@ -5,11 +5,11 @@
 ;; Author: Hugo Duncan <hugo_duncan@yahoo.com>
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
-;; Version: 0.7.1
-;; Package-Requires: ((nrepl "0.1.7")(fringe-helper "0.1.1"))
+;; Version: 0.7.2
+;; Package-Requires: ((cider "0.3.1")(fringe-helper "1.0.1"))
 ;; License: EPL
 
-(require 'nrepl)
+(require 'cider)
 (require 'ewoc)
 (require 'fringe-helper)
 
@@ -25,7 +25,7 @@ For a remote nREPL server lein must be in your PATH.  The remote
 proc is launched via sh rather than bash, so it might be necessary
 to specific the full path to it.  Localhost is assumed."
   :type 'string
-  :group 'nrepl-mode)
+  :group 'cider-repl-mode)
 
 ;;;###autoload
 (defun nrepl-ritz-jack-in (&optional prompt-project)
