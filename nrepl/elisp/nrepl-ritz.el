@@ -6,26 +6,26 @@
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
 ;; Version: 0.7.1
-;; Package-Requires: ((nrepl "0.1.7")(fringe-helper "0.1.1"))
+;; Package-Requires: ((cider "0.1.7")(fringe-helper "0.1.1"))
 ;; License: EPL
 
-(require 'nrepl)
+(require 'cider)
 (require 'ewoc)
 (require 'fringe-helper)
 
 ;;; Code:
 
 (defcustom nrepl-ritz-server-command
-  (if (or (locate-file nrepl-lein-command exec-path)
-          (locate-file (format "%s.bat" nrepl-lein-command) exec-path))
-      (format "%s ritz-nrepl" nrepl-lein-command)
-    (format "echo \"%s ritz-nrepl\" | $SHELL -l" nrepl-lein-command))
+  (if (or (locate-file cider-lein-command exec-path)
+          (locate-file (format "%s.bat" cider-lein-command) exec-path))
+      (format "%s ritz-nrepl" cider-lein-command)
+    (format "echo \"%s ritz-nrepl\" | $SHELL -l" cider-lein-command))
   "The command used to start the nREPL via `nrepl-ritz-jack-in'.
 For a remote nREPL server lein must be in your PATH.  The remote
 proc is launched via sh rather than bash, so it might be necessary
 to specific the full path to it.  Localhost is assumed."
   :type 'string
-  :group 'nrepl-mode)
+  :group 'cider-mode)
 
 ;;;###autoload
 (defun nrepl-ritz-jack-in (&optional prompt-project)
@@ -33,8 +33,8 @@ to specific the full path to it.  Localhost is assumed."
 If PROMPT-PROJECT is t, then prompt for the project for which to
 start the server."
   (interactive "P")
-  (let ((nrepl-server-command nrepl-ritz-server-command))
-    (nrepl-jack-in prompt-project)))
+  (let ((cider-server-command nrepl-ritz-server-command))
+    (cider-jack-in prompt-project)))
 
 ;;; overwrite nrepl.el functions to allow easy development of ritz.
 ;;; Maybe these could be put back into nrepl.el
@@ -330,8 +330,8 @@ Optional argument TIMEOUT specifies a timeout for the flash."
     nil
     'nrepl-emit-into-popup-buffer nil nil)))
 
-(define-key nrepl-interaction-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
-(define-key nrepl-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
+(define-key cider-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
+(define-key cider-repl-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
 
 ;;; describe
 (defun nrepl-ritz-describe-symbol-input-handler (symbol-name)
@@ -527,9 +527,9 @@ Optional argument CASE-SENSITIVE-P for case sensitive search."
    "Undefine: " 'nrepl-ritz-undefine-symbol-handler symbol-name))
 
 (define-key
-  nrepl-interaction-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
+  cider-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
 (define-key
-  nrepl-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
+  cider-repl-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
 
 (defun nrepl-ritz-compile-expression (&optional prefix)
   "Compile the current toplevel form.
@@ -561,7 +561,7 @@ Argument END is the position of the end of the region."
        "ns" ,nrepl-buffer-ns))))
 
 (define-key
-  nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-ritz-compile-expression)
+  cider-mode-map (kbd "C-c C-c") 'nrepl-ritz-compile-expression)
 
 ;;; Lein
 (defun nrepl-ritz-lein (arg-string)
@@ -816,7 +816,7 @@ Full list of commands:
   (set (make-local-variable 'truncate-lines) t)
   (setq nrepl-session (nrepl-current-session)))
 
-(set-keymap-parent nrepl-dbg-mode-map nrepl-mode-map)
+(set-keymap-parent nrepl-dbg-mode-map cider-repl-mode-map)
 
 (nrepl-ritz-define-keys nrepl-dbg-mode-map
   ((kbd "RET") 'nrepl-dbg-default-action)
@@ -1500,8 +1500,8 @@ Argument MOVE-FN is a function to perform the movement."
     (define-key map (kbd "RET") 'nrepl-ritz-breakpoints-goto)
     map))
 
-(define-key nrepl-interaction-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
-(define-key nrepl-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
+(define-key cider-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
+(define-key cider-repl-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
 
 (define-derived-mode nrepl-ritz-breakpoints-mode nrepl-popup-buffer-mode
   "nrepl-ritz-breakpoint"
@@ -1612,7 +1612,7 @@ F is a function of two arguments, the ewoc and the data at point."
    nil))
 
 (define-key
-  nrepl-interaction-mode-map (kbd "C-c C-x C-b") 'nrepl-ritz-line-breakpoint)
+  cider-mode-map (kbd "C-c C-x C-b") 'nrepl-ritz-line-breakpoint)
 
 (defun nrepl-ritz-line-breakpoint (flag)
   "Set breakpoint at current line.
@@ -1794,8 +1794,8 @@ The list elements are lists with old line and new-line."
     map))
 
 (define-key
-  nrepl-interaction-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
-(define-key nrepl-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
+  cider-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
+(define-key cider-repl-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
 
 (define-derived-mode nrepl-ritz-exception-filters-mode nrepl-popup-buffer-mode
   "nrepl-ritz-exception-filter"
