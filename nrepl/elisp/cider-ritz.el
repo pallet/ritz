@@ -377,7 +377,7 @@ Optional argument TIMEOUT specifies a timeout for the flash."
       (car strlst))))
 
 ;; If the version of nrepl.el has nrepl-completion-fn, enable this using:
-(setq nrepl-completion-fn 'nrepl-completion-complete-op-fn)
+(setq nrepl-completion-fn 'cider-completion-complete-op-fn)
 
 ;;; apropos
 (defun nrepl-ritz-call-describe (arg)
