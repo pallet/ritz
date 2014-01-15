@@ -326,9 +326,9 @@ Optional argument TIMEOUT specifies a timeout for the flash."
    "(ritz.nrepl.debug/threads)"
    "user"
    (nrepl-make-response-handler
-    (nrepl-popup-buffer "*nREPL threads*" t)
+    (cider-popup-buffer "*nREPL threads*" t)
     nil
-    'nrepl-emit-into-popup-buffer nil nil)))
+    'cider-emit-into-popup-buffer nil nil)))
 
 (define-key cider-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
 (define-key cider-repl-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
@@ -343,7 +343,7 @@ Optional argument TIMEOUT specifies a timeout for the flash."
    (nrepl-make-response-handler
     (current-buffer)
     (lambda (buffer description)
-      (with-current-buffer (nrepl-popup-buffer "*nREPL apropos*" t)
+      (with-current-buffer (cider-popup-buffer "*nREPL apropos*" t)
         (let ((inhibit-read-only t)
               (buffer-undo-list t)
               (standard-output (current-buffer)))
@@ -441,7 +441,7 @@ Optional argument TIMEOUT specifies a timeout for the flash."
    (nrepl-make-response-handler
     (current-buffer)
     (lambda (buffer apropos)
-      (with-current-buffer (nrepl-popup-buffer "*nREPL apropos*" t)
+      (with-current-buffer (cider-popup-buffer "*nREPL apropos*" t)
         (let ((inhibit-read-only t)
               (buffer-undo-list t)
               (standard-output (current-buffer)))
@@ -496,7 +496,7 @@ Optional argument CASE-SENSITIVE-P for case sensitive search."
     (current-buffer)
     (lambda (buffer value)
       (if value
-          (with-current-buffer (nrepl-popup-buffer "*nREPL codeq*" t)
+          (with-current-buffer (cider-popup-buffer "*nREPL codeq*" t)
             (let ((inhibit-read-only t))
               (mapc 'nrepl--codeq-def-insert-def value)))
         (error "No codeq def for %s" symbol-name)))
@@ -570,11 +570,11 @@ Argument END is the position of the end of the region."
   (nrepl-ritz-send-op
    "lein"
    (nrepl-make-response-handler
-    (nrepl-popup-buffer "*nREPL lein*" t)
+    (cider-popup-buffer "*nREPL lein*" t)
     (lambda (buffer description)
       (message description))
-    'nrepl-emit-into-popup-buffer
-    'nrepl-emit-into-popup-buffer
+    'cider-emit-into-popup-buffer
+    'cider-emit-into-popup-buffer
     (lambda (buffer) (message "lein done")))
    `(args ,(split-string arg-string " "))))
 
