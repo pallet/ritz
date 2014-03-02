@@ -6,26 +6,26 @@
 ;; Keywords: languages, lisp, nrepl
 ;; URL: https://github.com/pallet/ritz
 ;; Version: 0.7.1
-;; Package-Requires: ((nrepl "0.1.7")(fringe-helper "0.1.1"))
+;; Package-Requires: ((cider "0.1.7")(fringe-helper "0.1.1"))
 ;; License: EPL
 
-(require 'nrepl)
+(require 'cider)
 (require 'ewoc)
 (require 'fringe-helper)
 
 ;;; Code:
 
 (defcustom nrepl-ritz-server-command
-  (if (or (locate-file nrepl-lein-command exec-path)
-          (locate-file (format "%s.bat" nrepl-lein-command) exec-path))
-      (format "%s ritz-nrepl" nrepl-lein-command)
-    (format "echo \"%s ritz-nrepl\" | $SHELL -l" nrepl-lein-command))
+  (if (or (locate-file cider-lein-command exec-path)
+          (locate-file (format "%s.bat" cider-lein-command) exec-path))
+      (format "%s ritz-nrepl" cider-lein-command)
+    (format "echo \"%s ritz-nrepl\" | $SHELL -l" cider-lein-command))
   "The command used to start the nREPL via `nrepl-ritz-jack-in'.
 For a remote nREPL server lein must be in your PATH.  The remote
 proc is launched via sh rather than bash, so it might be necessary
 to specific the full path to it.  Localhost is assumed."
   :type 'string
-  :group 'nrepl-mode)
+  :group 'cider-mode)
 
 ;;;###autoload
 (defun nrepl-ritz-jack-in (&optional prompt-project)
@@ -33,8 +33,8 @@ to specific the full path to it.  Localhost is assumed."
 If PROMPT-PROJECT is t, then prompt for the project for which to
 start the server."
   (interactive "P")
-  (let ((nrepl-server-command nrepl-ritz-server-command))
-    (nrepl-jack-in prompt-project)))
+  (let ((cider-server-command nrepl-ritz-server-command))
+    (cider-jack-in prompt-project)))
 
 ;;; overwrite nrepl.el functions to allow easy development of ritz.
 ;;; Maybe these could be put back into nrepl.el
@@ -202,7 +202,7 @@ Argument COLUMN specifies the width to indent."
 
 (defsubst nrepl-ritz-insert-propertized (props &rest args)
   "Using the text properties PROPS, insert all ARGS."
-  (nrepl-propertize-region props (apply #'insert args)))
+  (cider-propertize-region props (apply #'insert args)))
 
 (defun nrepl-ritz-property-bounds (prop)
   "Return the positions of the previous and next change to PROP.
@@ -326,12 +326,12 @@ Optional argument TIMEOUT specifies a timeout for the flash."
    "(ritz.nrepl.debug/threads)"
    "user"
    (nrepl-make-response-handler
-    (nrepl-popup-buffer "*nREPL threads*" t)
+    (cider-popup-buffer "*nREPL threads*" t)
     nil
-    'nrepl-emit-into-popup-buffer nil nil)))
+    'cider-emit-into-popup-buffer nil nil)))
 
-(define-key nrepl-interaction-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
-(define-key nrepl-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
+(define-key cider-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
+(define-key cider-repl-mode-map (kbd "C-c M-t") 'nrepl-ritz-threads)
 
 ;;; describe
 (defun nrepl-ritz-describe-symbol-input-handler (symbol-name)
@@ -343,7 +343,7 @@ Optional argument TIMEOUT specifies a timeout for the flash."
    (nrepl-make-response-handler
     (current-buffer)
     (lambda (buffer description)
-      (with-current-buffer (nrepl-popup-buffer "*nREPL apropos*" t)
+      (with-current-buffer (cider-popup-buffer "*nREPL apropos*" t)
         (let ((inhibit-read-only t)
               (buffer-undo-list t)
               (standard-output (current-buffer)))
@@ -360,7 +360,7 @@ Optional argument TIMEOUT specifies a timeout for the flash."
 (defun nrepl-ritz-describe-symbol (symbol)
   "Describe SYMBOL."
   (interactive "P")
-  (nrepl-read-symbol-name
+  (cider-read-symbol-name
    "Describe symbol: " 'nrepl-ritz-describe-symbol-input-handler symbol))
 
 ;;; compeletion
@@ -377,7 +377,7 @@ Optional argument TIMEOUT specifies a timeout for the flash."
       (car strlst))))
 
 ;; If the version of nrepl.el has nrepl-completion-fn, enable this using:
-(setq nrepl-completion-fn 'nrepl-completion-complete-op-fn)
+(setq nrepl-completion-fn 'cider-completion-complete-op-fn)
 
 ;;; apropos
 (defun nrepl-ritz-call-describe (arg)
@@ -441,7 +441,7 @@ Optional argument TIMEOUT specifies a timeout for the flash."
    (nrepl-make-response-handler
     (current-buffer)
     (lambda (buffer apropos)
-      (with-current-buffer (nrepl-popup-buffer "*nREPL apropos*" t)
+      (with-current-buffer (cider-popup-buffer "*nREPL apropos*" t)
         (let ((inhibit-read-only t)
               (buffer-undo-list t)
               (standard-output (current-buffer)))
@@ -496,7 +496,7 @@ Optional argument CASE-SENSITIVE-P for case sensitive search."
     (current-buffer)
     (lambda (buffer value)
       (if value
-          (with-current-buffer (nrepl-popup-buffer "*nREPL codeq*" t)
+          (with-current-buffer (cider-popup-buffer "*nREPL codeq*" t)
             (let ((inhibit-read-only t))
               (mapc 'nrepl--codeq-def-insert-def value)))
         (error "No codeq def for %s" symbol-name)))
@@ -507,7 +507,7 @@ Optional argument CASE-SENSITIVE-P for case sensitive search."
 (defun nrepl-codeq-def (symbol)
   "Display codeq defs for SYMBOL."
   (interactive "P")
-  (nrepl-read-symbol-name
+  (cider-read-symbol-name
    "Codeq defs for: " 'nrepl-codeq-def-handler symbol))
 
 ;;; undefine symbol
@@ -523,13 +523,13 @@ Optional argument CASE-SENSITIVE-P for case sensitive search."
 (defun nrepl-ritz-undefine-symbol (symbol-name)
   "Undefine the SYMBOL-NAME."
   (interactive "P")
-  (nrepl-read-symbol-name
+  (cider-read-symbol-name
    "Undefine: " 'nrepl-ritz-undefine-symbol-handler symbol-name))
 
 (define-key
-  nrepl-interaction-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
+  cider-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
 (define-key
-  nrepl-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
+  cider-repl-mode-map (kbd "C-c C-u") 'nrepl-ritz-undefine-symbol)
 
 (defun nrepl-ritz-compile-expression (&optional prefix)
   "Compile the current toplevel form.
@@ -537,7 +537,7 @@ Optional argument PREFIX specifies locals clearing should be disabled."
   (interactive "P")
   (apply
    #'nrepl-ritz-compile-region
-   prefix (nrepl-region-for-expression-at-point)))
+   prefix (cider--region-for-defun-at-point)))
 
 (defun nrepl-ritz-compile-region (prefix start end)
   "Compile the current toplevel form.
@@ -561,7 +561,7 @@ Argument END is the position of the end of the region."
        "ns" ,nrepl-buffer-ns))))
 
 (define-key
-  nrepl-interaction-mode-map (kbd "C-c C-c") 'nrepl-ritz-compile-expression)
+  cider-mode-map (kbd "C-c C-c") 'nrepl-ritz-compile-expression)
 
 ;;; Lein
 (defun nrepl-ritz-lein (arg-string)
@@ -570,11 +570,11 @@ Argument END is the position of the end of the region."
   (nrepl-ritz-send-op
    "lein"
    (nrepl-make-response-handler
-    (nrepl-popup-buffer "*nREPL lein*" t)
+    (cider-popup-buffer "*nREPL lein*" t)
     (lambda (buffer description)
       (message description))
-    'nrepl-emit-into-popup-buffer
-    'nrepl-emit-into-popup-buffer
+    'cider-emit-into-popup-buffer
+    'cider-emit-into-popup-buffer
     (lambda (buffer) (message "lein done")))
    `(args ,(split-string arg-string " "))))
 
@@ -650,8 +650,8 @@ Argument PROMPT-PROJECT to prompt for a project location."
 (defvar nrepl-ritz-minibuffer-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map minibuffer-local-map)
-    (define-key map "\t" 'nrepl-complete)
-    (define-key map "\M-\t" 'nrepl-complete)
+    (define-key map "\t" 'cider-complete-at-point)
+    (define-key map "\M-\t" 'cider-complete-at-point)
     map)
   "Minibuffer keymap with nREPL completion and clojure syntax table.")
 
@@ -660,7 +660,7 @@ Argument PROMPT-PROJECT to prompt for a project location."
 
 (defun nrepl-ritz-minibuffer-setup-hook ()
   "Hook to setup the minibuffer."
-  (cons (lexical-let ((namespace (nrepl-current-ns))
+  (cons (lexical-let ((namespace (cider-current-ns))
                       (session (nrepl-current-session)))
           (lambda ()
             (setq nrepl-buffer-ns namespace)
@@ -805,7 +805,7 @@ Commands to navigate frames:
 
 Miscellaneous commands:
    \\[nrepl-dbg-step-into]   - step
-   \\[nrepl-interactive-eval]   - eval
+   \\[cider-interactive-eval]   - eval
    \\[nrepl-dbg-inspect-exception]   - inspect thrown exception
 
 Full list of commands:
@@ -816,7 +816,7 @@ Full list of commands:
   (set (make-local-variable 'truncate-lines) t)
   (setq nrepl-session (nrepl-current-session)))
 
-(set-keymap-parent nrepl-dbg-mode-map nrepl-mode-map)
+(set-keymap-parent nrepl-dbg-mode-map cider-repl-mode-map)
 
 (nrepl-ritz-define-keys nrepl-dbg-mode-map
   ((kbd "RET") 'nrepl-dbg-default-action)
@@ -848,7 +848,7 @@ Full list of commands:
   ("q"    'nrepl-dbg-quit)
   ("P"    'nrepl-dbg-print-exception)
   ("C"    'nrepl-dbg-inspect-exception)
-  (":"    'nrepl-interactive-eval))
+  (":"    'cider-interactive-eval))
 
 ;; Keys 0-9 are shortcuts to invoke particular restarts.
 (dotimes (number 10)
@@ -919,7 +919,7 @@ portion of the stacktrace. Frames are numbered from 0."
         (run-hooks 'nrepl-dbg-hook)
         (set-syntax-table clojure-mode-syntax-table))
       (setq buffer-read-only t))
-    (nrepl-popup-buffer-display (current-buffer) t)))
+    (cider-popup-buffer-display (current-buffer) t)))
 
 (defun nrepl-dbg-activate (thread level select)
   "Display the debugger buffer for THREAD.
@@ -951,7 +951,7 @@ Argument SELECT is truthy to select the buffer."
 Optional argument STEPPING is not used."
   (when-let (nrepl-dbg (nrepl-dbg-find-buffer thread))
     (with-current-buffer nrepl-dbg
-      (nrepl-popup-buffer-quit t))))
+      (cider-popup-buffer-quit t))))
 
 ;;; ## Insertion
 (defun nrepl-dbg-insert-exception (exception)
@@ -1043,9 +1043,9 @@ If FACE is nil, `nrepl-dbg-frame-line-face' is used."
         (stratum (lax-plist-get (nrepl-dbg-frame.plist frame) "stratum")))
     (when (or nrepl-dbg-show-java-frames
               (not (equal stratum "Java")))
-      (nrepl-propertize-region
+      (cider-propertize-region
           `(frame ,frame nrepl-dbg-default-action nrepl-dbg-toggle-details)
-        (nrepl-propertize-region '(mouse-face highlight)
+        (cider-propertize-region '(mouse-face highlight)
           (insert
            " " (nrepl-ritz-in-face frame-label (format "%2d:" number)) " ")
           (nrepl-ritz-insert-indented
@@ -1276,7 +1276,7 @@ Optional argument ON to force showing details."
   (let ((inhibit-read-only t))
     (nrepl-ritz-save-coordinates start
       (delete-region start end)
-      (nrepl-propertize-region `(frame ,frame details-visible-p t)
+      (cider-propertize-region `(frame ,frame details-visible-p t)
         (nrepl-dbg-insert-frame frame 'nrepl-dbg-detailed-frame-line-face)
         (insert
          "      "
@@ -1296,7 +1296,7 @@ FRAME is the frame to use."
   (loop for i from 0
         for var in vars do
         (destructuring-bind (&key name id value) (nrepl-keywordise var)
-          (nrepl-propertize-region
+          (cider-propertize-region
               (list 'nrepl-dbg-default-action 'nrepl-dbg-inspect-var 'var i)
             (insert prefix
                     (nrepl-ritz-in-face
@@ -1317,7 +1317,7 @@ FRAME is the frame to use."
     (let ((frame (get-text-property (point) 'frame)))
       (nrepl-ritz-save-coordinates start
         (delete-region start end)
-        (nrepl-propertize-region '(details-visible-p nil)
+        (cider-propertize-region '(details-visible-p nil)
           (nrepl-dbg-insert-frame frame))))))
 
 
@@ -1334,7 +1334,7 @@ FRAME is the frame to use."
     (nrepl-ritz-send-dbg-op
      "disassemble-frame"
      (lambda (&key result)
-       (with-current-buffer (nrepl-popup-buffer "*nREPL disassembly*" t)
+       (with-current-buffer (cider-popup-buffer "*nREPL disassembly*" t)
        (let ((inhibit-read-only t))
          (insert result))))
      'frame-number frame)))
@@ -1358,7 +1358,7 @@ Argument STRING provides a default expression."
   (nrepl-ritz-send-dbg-op
    "frame-eval"
    (lambda (&key result)
-     (with-current-buffer (nrepl-popup-buffer "*nREPL description*" t)
+     (with-current-buffer (cider-popup-buffer "*nREPL description*" t)
        (let ((inhibit-read-only t))
          (insert result))))
    'frame-number frame
@@ -1500,14 +1500,14 @@ Argument MOVE-FN is a function to perform the movement."
     (define-key map (kbd "RET") 'nrepl-ritz-breakpoints-goto)
     map))
 
-(define-key nrepl-interaction-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
-(define-key nrepl-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
+(define-key cider-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
+(define-key cider-repl-mode-map (kbd "C-c M-b") 'nrepl-ritz-breakpoints)
 
-(define-derived-mode nrepl-ritz-breakpoints-mode nrepl-popup-buffer-mode
+(define-derived-mode nrepl-ritz-breakpoints-mode cider-popup-buffer-mode
   "nrepl-ritz-breakpoint"
   "nREPL Breakpoints Interaction Mode.
 \\{nrepl-ritz-breakpoints-mode-map}
-\\{nrepl-popup-buffer-mode-map}"
+\\{cider-popup-buffer-mode-map}"
   (set (make-local-variable 'truncate-lines) t))
 
 (defconst nrepl-ritz--breakpoints-buffer-name "*nrepl-breakpoints*")
@@ -1612,7 +1612,7 @@ F is a function of two arguments, the ewoc and the data at point."
    nil))
 
 (define-key
-  nrepl-interaction-mode-map (kbd "C-c C-x C-b") 'nrepl-ritz-line-breakpoint)
+  cider-mode-map (kbd "C-c C-x C-b") 'nrepl-ritz-line-breakpoint)
 
 (defun nrepl-ritz-line-breakpoint (flag)
   "Set breakpoint at current line.
@@ -1621,7 +1621,7 @@ With a prefix argument FLAG, remove the breakpoint."
   (if flag
       (nrepl-ritz--line-breakpoint-kill (buffer-file-name) (line-number-at-pos))
     (nrepl-ritz--line-breakpoint-add
-     (or (nrepl-current-ns) "user") (buffer-file-name) (line-number-at-pos))))
+     (or (cider-current-ns) "user") (buffer-file-name) (line-number-at-pos))))
 
 (defun nrepl-ritz--line-breakpoint-add (ns file line)
   "Set breakpoint at file and line."
@@ -1739,7 +1739,7 @@ Prefix argument FLAG is used to enable or disable."
          "breakpoints-move"
          (lambda (buffer value)
            (nrepl-ritz--set-breakpoint-fringe buffer))
-         'ns (or (nrepl-current-ns) "user")
+         'ns (or (cider-current-ns) "user")
          'file (buffer-file-name)
          'lines (nrepl-ritz--breakpoints-to-move))
       (nrepl-ritz--set-breakpoint-fringe (current-buffer)))))
@@ -1794,14 +1794,14 @@ The list elements are lists with old line and new-line."
     map))
 
 (define-key
-  nrepl-interaction-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
-(define-key nrepl-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
+  cider-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
+(define-key cider-repl-mode-map (kbd "C-c M-f") 'nrepl-ritz-exception-filters)
 
-(define-derived-mode nrepl-ritz-exception-filters-mode nrepl-popup-buffer-mode
+(define-derived-mode nrepl-ritz-exception-filters-mode cider-popup-buffer-mode
   "nrepl-ritz-exception-filter"
   "nREPL Exception-Filters Interaction Mode.
 \\{nrepl-ritz-exception-filters-mode-map}
-\\{nrepl-popup-buffer-mode-map}"
+\\{cider-popup-buffer-mode-map}"
   (set (make-local-variable 'truncate-lines) t))
 
 (defconst nrepl-ritz--exception-filters-buffer-name "*nrepl-exception-filters*")
